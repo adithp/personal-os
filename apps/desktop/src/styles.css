@@ -17,3 +17,9 @@ textarea,
 [contenteditable='true'] {
   user-select: text;
 }
+
+/* Thin scrollbars that match the glass design (columns scroll on their own) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-muted) transparent;
+}

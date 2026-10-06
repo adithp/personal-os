@@ -123,11 +123,24 @@ The window is frameless. The title bar is not a separate bar: it is fully transp
 - Auto-hide: dock slides down out of view; it slides up when the cursor enters the bottom 28 px of the window, and hides 400 ms after the cursor leaves.
 
 ## 8. Dashboard layout
+Two columns under the title bar: a main column and a wider right column (280 px).
+
+Main column, top to bottom:
 - Top row: greeting (22) with date (11) on the left; glass search bar with "Ctrl K" hint on the right.
 - Assistant card: glass, full width of the main column, lavender sparkle icon, 1–2 line daily summary, input "Ask or tell me what to do", lavender send button.
-- Tile grid under the assistant card (react-grid-layout).
-- Activity feed: right column, 190–240 px wide, glass items.
-- The dock floats over the bottom; content leaves 80 px bottom padding.
+- Two wide tiles: Today's tasks (yellow) and Important emails (Mail blue).
+- Three small tiles: Money (mint), Streak (lime), Projects (pink).
+- Dashboard tiles and the assistant card use the compact size (12 px padding, 28 px big number) so the whole main column fits the 1100×700 minimum window without scrolling.
+- Quick actions: title "Quick actions" (13), then four glass buttons in one row: New task, New note, Log expense, New event. Each has a 22 px rounded icon square in its module color (Tasks yellow, Notes peach, Money mint, Calendar orange) with a dark icon.
+
+Right column, top to bottom, all glass cards:
+- Mini calendar: month name with previous and next arrows, weekday header starting Monday, today highlighted with the lavender accent, a small orange dot under days that have events. Clicking a day opens the Calendar page.
+- Upcoming: events grouped by "Today" and "Tomorrow", at most 4. Each has a thin (3 px) bar in its module color, the title, and the time; the next event also shows "in 45 min".
+- Activity: the latest 3 items and a "View all" link.
+
+Fit and scrolling:
+- The title bar overlays the top (content starts 40 px down) and the dock floats over the bottom (the page area keeps 80 px of bottom padding), so nothing sits under them.
+- The page itself never scrolls. If the content is taller than the window (for example at the 1100×700 minimum), the main column and the right column scroll independently.
 
 ## 9. Keyboard
 - Ctrl K: global search and command palette.

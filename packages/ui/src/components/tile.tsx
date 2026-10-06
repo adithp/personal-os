@@ -19,6 +19,8 @@ export interface TileProps {
   icon?: TablerIcon;
   /** Opens the module from the top-right button. */
   onOpen?: () => void;
+  /** Tighter padding and a 28 px number, for crowded screens like the dashboard. */
+  compact?: boolean;
   className?: string;
 }
 
@@ -32,6 +34,7 @@ export function Tile({
   progress,
   icon,
   onOpen,
+  compact = false,
   className,
 }: TileProps) {
   const Icon = icon ?? MODULE_ICONS[module];
@@ -41,7 +44,8 @@ export function Tile({
     <section
       aria-label={title}
       className={cx(
-        'flex flex-col gap-3 rounded-tile p-4 text-on-tile',
+        'flex flex-col rounded-tile text-on-tile',
+        compact ? 'gap-2 p-3' : 'gap-3 p-4',
         'transition-transform duration-200 ease-out hover:-translate-y-0.5 motion-reduce:transition-none',
         className,
       )}
@@ -62,13 +66,20 @@ export function Tile({
       </div>
 
       <div className="flex items-center gap-2">
-        <Icon size={22} stroke={1.75} aria-hidden />
-        <span className="text-big font-semibold tabular-nums">{value}</span>
+        <Icon size={compact ? 20 : 22} stroke={1.75} aria-hidden />
+        <span
+          className={cx(
+            'font-semibold tabular-nums',
+            compact ? 'text-[28px] leading-8' : 'text-big',
+          )}
+        >
+          {value}
+        </span>
         {unit && <span className="text-body">{unit}</span>}
       </div>
 
       {(lines !== undefined || progress !== undefined) && (
-        <div className="flex flex-col gap-1.5">
+        <div className={cx('flex flex-col', compact ? 'gap-1' : 'gap-1.5')}>
           {lines?.map((line, index) => (
             <p key={index} className="truncate text-small">
               {line}

@@ -41,8 +41,8 @@ afterEach(() => {
 });
 
 describe('placeholder pages', () => {
-  // Settings is a real screen now (see modules/settings)
-  it.each(MODULE_IDS.filter((id) => id !== 'settings'))(
+  // Dashboard and Settings are real screens now (see modules/)
+  it.each(MODULE_IDS.filter((id) => id !== 'settings' && id !== 'dashboard'))(
     '%s page shows its name, color and roadmap step',
     async (id) => {
       await renderApp(modulePath(id));

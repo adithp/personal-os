@@ -55,6 +55,26 @@ describe('Tile', () => {
   });
 });
 
+describe('Tile compact', () => {
+  it('uses tighter padding and a 28 px number but keeps the same content', () => {
+    render(
+      <Tile compact module="money" title="Money" value="₹12,450" unit="spent" lines={['62%']} />,
+    );
+    const el = screen.getByRole('region', { name: 'Money' });
+    expect(el).toHaveClass('p-3', 'gap-2');
+    expect(el).not.toHaveClass('p-4');
+    expect(screen.getByText('₹12,450')).toHaveClass('text-[28px]');
+    expect(screen.getByText('62%')).toBeInTheDocument();
+    expect(el).toHaveStyle({ backgroundColor: 'var(--module-money)' });
+  });
+
+  it('is not compact by default', () => {
+    render(<Tile module="money" title="Money" value="1" />);
+    expect(screen.getByRole('region', { name: 'Money' })).toHaveClass('p-4', 'gap-3');
+    expect(screen.getByText('1')).toHaveClass('text-big');
+  });
+});
+
 describe('ProgressBar', () => {
   it.each([
     [-10, 0],
