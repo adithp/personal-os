@@ -1,0 +1,10 @@
+node_modules/
+dist/
+build/
+coverage/
+target/
+pnpm-lock.yaml
+apps/desktop/src-tauri/gen/
+**/routeTree.gen.ts
+# Docs are hand-written; keep their formatting as is
+**/*.md

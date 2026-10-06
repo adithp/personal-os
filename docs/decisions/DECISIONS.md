@@ -30,5 +30,5 @@
 | 26 | Frameless window with a custom glass title bar | Matches the glass design in dark and light mode |
 | 27 | Gradient placeholder wallpapers | Real images will be added later |
 | 28 | TypeScript 6.0.3, not 7 | typescript-eslint supports TypeScript below 6.1 only |
-| 29 | Repo stays in OneDrive; CARGO_TARGET_DIR outside it (C:\dev\cargo-target) | Keep the current location; avoid syncing Rust build output; move the repo if OneDrive causes real errors |
+| 29 | Repo stays at its current path (Documents\personal-os under the old OneDrive folder) with no sync; Rust uses its default target folder inside the project (git-ignored) | OneDrive was uninstalled, so nothing syncs the folder and no special Cargo setup is needed |
 | 30 | prettier-plugin-tailwindcss, Vite UI gallery in packages/ui, tsup server build, PGlite for tests | Approved tooling for Step 1 |

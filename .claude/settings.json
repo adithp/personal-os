@@ -10,11 +10,6 @@
       "Bash(git diff:*)",
       "Bash(git log:*)"
     ],
-    "deny": [
-      "Read(./.env)",
-      "Read(./**/.env)",
-      "Bash(git push:*)",
-      "Bash(pnpm db:migrate)"
-    ]
+    "deny": ["Read(./.env)", "Read(./**/.env)", "Bash(git push:*)", "Bash(pnpm db:migrate)"]
   }
 }
