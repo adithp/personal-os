@@ -1,0 +1,96 @@
+# Architecture
+
+## 1. Overview
+Three layers:
+1. Apps (what I see): Tauri 2 desktop app now, Tauri 2 mobile app in Phase 2.
+2. Backend (the brain): one Fastify server on Oracle Cloud that runs all logic, the AI agent, Google sync, and reminders.
+3. Services: Supabase (data, login, files, realtime, vector search), OmniRoute (AI gateway), Google APIs.
+
+```
+Desktop app ──HTTPS──► Caddy ──► Fastify backend ──► Supabase (Mumbai)
+Mobile app  ──HTTPS──┘                │
+                                      ├──► OmniRoute ──► AI providers
+                                      └──► Google APIs (Gmail, Calendar, Drive)
+
+Supabase Realtime ──change events──► Desktop and mobile apps
+Laptop coding tools ──Tailscale──► OmniRoute
+```
+
+## 2. Data flow
+- Login: apps sign in with Supabase Auth and send the session JWT to the backend on every request.
+- Reads and writes: apps call the backend REST API only. The backend verifies the JWT, runs the action, and writes to Postgres.
+- Live updates: apps subscribe to Supabase Realtime on their own rows. On a change event, TanStack Query refetches the affected data from the backend.
+- AI: the backend calls OmniRoute; OmniRoute calls the configured AI provider.
+- Google: the backend holds encrypted Google tokens and calls Google APIs. Apps never talk to Google directly.
+
+## 3. Tech stack
+| Area | Choice |
+|---|---|
+| Monorepo | pnpm workspaces |
+| Desktop shell | Tauri 2 |
+| Mobile (Phase 2) | Tauri 2 mobile |
+| UI | React 19, TypeScript, Vite, Tailwind CSS, Tabler Icons |
+| Routing | TanStack Router |
+| State | Zustand (UI state), TanStack Query (server data) |
+| Animation | Framer Motion |
+| Note editor | TipTap, CodeMirror 6 (raw markdown), KaTeX, Shiki |
+| Knowledge graph | Sigma.js + graphology |
+| Dashboard grid | react-grid-layout |
+| Drag and drop | dnd-kit |
+| Calendar views | Schedule-X |
+| Charts | Apache ECharts |
+| Tables | TanStack Table |
+| Command palette | cmdk |
+| Backend | Node.js 22 LTS, TypeScript, Fastify |
+| ORM | Drizzle ORM |
+| Validation | Zod |
+| AI SDK | Vercel AI SDK with the OpenAI-compatible provider pointed at OmniRoute |
+| Scheduler | croner (inside the backend) |
+| Google | googleapis (official Node client) |
+| Database | Supabase Postgres with Row Level Security, full-text search, pgvector |
+| Tests | Vitest |
+| Hosting | Oracle Cloud Always Free ARM VM, Docker Compose, Caddy, DuckDNS, Tailscale |
+
+## 4. Folder structure
+```
+personal-os/
+├── apps/
+│   ├── desktop/          Tauri 2 + React app
+│   │   ├── src-tauri/
+│   │   └── src/
+│   │       ├── modules/  one folder per module (tasks, notes, ...)
+│   │       ├── dock/
+│   │       ├── dashboard/
+│   │       ├── assistant/
+│   │       └── settings/
+│   ├── server/           Fastify backend
+│   │   └── src/
+│   │       ├── routes/
+│   │       ├── actions/      action registry + handlers
+│   │       ├── ai/           agent loop, skills, OmniRoute client
+│   │       ├── integrations/ google (gmail, calendar, drive)
+│   │       ├── jobs/         scheduled jobs (croner)
+│   │       └── lib/
+│   └── mobile/           Phase 2
+├── packages/
+│   ├── shared/           Zod schemas, types, action definitions
+│   ├── db/               Drizzle schema + migrations
+│   └── ui/               design tokens + shared React components
+├── infra/
+│   ├── docker-compose.yml
+│   ├── Caddyfile
+│   └── scripts/          backup, duckdns update
+└── docs/
+```
+
+## 5. Scheduled jobs (backend)
+| Job | Schedule |
+|---|---|
+| Reminders and due notifications | every minute |
+| Recurring tasks, habits, transactions | daily 00:05 IST |
+| Gmail sync (History API) | every 5 minutes |
+| Calendar sync (sync tokens) | every 5 minutes |
+| Drive changes sync | every 15 minutes |
+| Subscription renewal alerts | daily 08:00 IST |
+| Embedding updates for changed notes | every 10 minutes |
+| Database backup | daily 02:00 IST |

@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Env files (keep the example)
+.env
+.env.*
+!.env.example
+
+# Build outputs
+dist/
+build/
+out/
+target/
+coverage/
+*.tsbuildinfo
+apps/desktop/src-tauri/gen/
+apps/desktop/src/routeTree.gen.ts
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Local Claude settings
+.claude/settings.local.json
