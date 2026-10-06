@@ -8,7 +8,7 @@ Work on one step at a time. Use each step daily before starting the next.
 - [x] a. Monorepo setup (pnpm workspaces, strict TypeScript, ESLint, Prettier, Vitest)
 - [x] b. packages/ui design tokens and components (dark and light), UI gallery
 - [x] c. Desktop shell: custom glass title bar, dock, wallpaper, theme switching, placeholder module pages
-- [ ] c2. Supabase email and password login screen and session
+- [x] c2. Supabase email and password login screen and session
 - [ ] d. Settings screen (appearance, wallpaper, dock, logout), saved locally
 - [ ] e. Dashboard with static placeholder data
 - [ ] f. Command palette (commands only) and keyboard shortcuts

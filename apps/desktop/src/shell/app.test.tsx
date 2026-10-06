@@ -1,23 +1,16 @@
 import { MODULE_IDS, MODULES } from '@personal-os/shared';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createAppRouter } from '../router';
+import { signedInAuth } from '../test/fake-auth';
+import { renderApp as renderAppAt } from '../test/render-app';
 import { useSettings } from '../store/settings-store';
 import { modulePath } from './module-paths';
 
 vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: vi.fn() }));
 
 async function renderApp(initialPath = '/') {
-  const router = createAppRouter({
-    history: createMemoryHistory({ initialEntries: [initialPath] }),
-  });
-  await act(async () => {
-    await router.load();
-  });
-  render(<RouterProvider router={router} />);
-  return router;
+  return renderAppAt(initialPath, signedInAuth().auth);
 }
 
 function stubSystemTheme(dark: boolean) {

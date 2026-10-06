@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { ModulePlaceholder } from '../shell/module-placeholder';
+import { ModulePlaceholder } from '../../shell/module-placeholder';
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute('/_app/')({
   component: () => <ModulePlaceholder module="dashboard" />,
 });

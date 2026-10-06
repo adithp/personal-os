@@ -13,6 +13,7 @@
   "dependencies": {
     "@personal-os/shared": "workspace:*",
     "@personal-os/ui": "workspace:*",
+    "@supabase/supabase-js": "2.117.2",
     "@tabler/icons-react": "3.49.0",
     "@tanstack/react-router": "1.170.41",
     "@tauri-apps/api": "2.12.1",

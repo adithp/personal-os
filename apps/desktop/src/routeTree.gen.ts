@@ -9,127 +9,143 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AssistantRouteImport } from './routes/assistant'
-import { Route as CalendarRouteImport } from './routes/calendar'
-import { Route as DriveRouteImport } from './routes/drive'
-import { Route as GraphRouteImport } from './routes/graph'
-import { Route as HabitsRouteImport } from './routes/habits'
-import { Route as MailRouteImport } from './routes/mail'
-import { Route as MoneyRouteImport } from './routes/money'
-import { Route as NotesRouteImport } from './routes/notes'
-import { Route as ProjectsRouteImport } from './routes/projects'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppAssistantRouteImport } from './routes/_app/assistant'
+import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
+import { Route as AppDriveRouteImport } from './routes/_app/drive'
+import { Route as AppGraphRouteImport } from './routes/_app/graph'
+import { Route as AppHabitsRouteImport } from './routes/_app/habits'
+import { Route as AppMailRouteImport } from './routes/_app/mail'
+import { Route as AppMoneyRouteImport } from './routes/_app/money'
+import { Route as AppNotesRouteImport } from './routes/_app/notes'
+import { Route as AppProjectsRouteImport } from './routes/_app/projects'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppTasksRouteImport } from './routes/_app/tasks'
 
-const IndexRoute = IndexRouteImport.update({
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const AssistantRoute = AssistantRouteImport.update({
+const AppAssistantRoute = AppAssistantRouteImport.update({
   id: '/assistant',
   path: '/assistant',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const CalendarRoute = CalendarRouteImport.update({
+const AppCalendarRoute = AppCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const DriveRoute = DriveRouteImport.update({
+const AppDriveRoute = AppDriveRouteImport.update({
   id: '/drive',
   path: '/drive',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const GraphRoute = GraphRouteImport.update({
+const AppGraphRoute = AppGraphRouteImport.update({
   id: '/graph',
   path: '/graph',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const HabitsRoute = HabitsRouteImport.update({
+const AppHabitsRoute = AppHabitsRouteImport.update({
   id: '/habits',
   path: '/habits',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const MailRoute = MailRouteImport.update({
+const AppMailRoute = AppMailRouteImport.update({
   id: '/mail',
   path: '/mail',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const MoneyRoute = MoneyRouteImport.update({
+const AppMoneyRoute = AppMoneyRouteImport.update({
   id: '/money',
   path: '/money',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const NotesRoute = NotesRouteImport.update({
+const AppNotesRoute = AppNotesRouteImport.update({
   id: '/notes',
   path: '/notes',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const ProjectsRoute = ProjectsRouteImport.update({
+const AppProjectsRoute = AppProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const SettingsRoute = SettingsRouteImport.update({
+const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const TasksRoute = TasksRouteImport.update({
+const AppTasksRoute = AppTasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/assistant': typeof AssistantRoute
-  '/calendar': typeof CalendarRoute
-  '/drive': typeof DriveRoute
-  '/graph': typeof GraphRoute
-  '/habits': typeof HabitsRoute
-  '/mail': typeof MailRoute
-  '/money': typeof MoneyRoute
-  '/notes': typeof NotesRoute
-  '/projects': typeof ProjectsRoute
-  '/settings': typeof SettingsRoute
-  '/tasks': typeof TasksRoute
+  '/': typeof AppIndexRoute
+  '/login': typeof LoginRoute
+  '/assistant': typeof AppAssistantRoute
+  '/calendar': typeof AppCalendarRoute
+  '/drive': typeof AppDriveRoute
+  '/graph': typeof AppGraphRoute
+  '/habits': typeof AppHabitsRoute
+  '/mail': typeof AppMailRoute
+  '/money': typeof AppMoneyRoute
+  '/notes': typeof AppNotesRoute
+  '/projects': typeof AppProjectsRoute
+  '/settings': typeof AppSettingsRoute
+  '/tasks': typeof AppTasksRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/assistant': typeof AssistantRoute
-  '/calendar': typeof CalendarRoute
-  '/drive': typeof DriveRoute
-  '/graph': typeof GraphRoute
-  '/habits': typeof HabitsRoute
-  '/mail': typeof MailRoute
-  '/money': typeof MoneyRoute
-  '/notes': typeof NotesRoute
-  '/projects': typeof ProjectsRoute
-  '/settings': typeof SettingsRoute
-  '/tasks': typeof TasksRoute
+  '/login': typeof LoginRoute
+  '/assistant': typeof AppAssistantRoute
+  '/calendar': typeof AppCalendarRoute
+  '/drive': typeof AppDriveRoute
+  '/graph': typeof AppGraphRoute
+  '/habits': typeof AppHabitsRoute
+  '/mail': typeof AppMailRoute
+  '/money': typeof AppMoneyRoute
+  '/notes': typeof AppNotesRoute
+  '/projects': typeof AppProjectsRoute
+  '/settings': typeof AppSettingsRoute
+  '/tasks': typeof AppTasksRoute
+  '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/assistant': typeof AssistantRoute
-  '/calendar': typeof CalendarRoute
-  '/drive': typeof DriveRoute
-  '/graph': typeof GraphRoute
-  '/habits': typeof HabitsRoute
-  '/mail': typeof MailRoute
-  '/money': typeof MoneyRoute
-  '/notes': typeof NotesRoute
-  '/projects': typeof ProjectsRoute
-  '/settings': typeof SettingsRoute
-  '/tasks': typeof TasksRoute
+  '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_app/assistant': typeof AppAssistantRoute
+  '/_app/calendar': typeof AppCalendarRoute
+  '/_app/drive': typeof AppDriveRoute
+  '/_app/graph': typeof AppGraphRoute
+  '/_app/habits': typeof AppHabitsRoute
+  '/_app/mail': typeof AppMailRoute
+  '/_app/money': typeof AppMoneyRoute
+  '/_app/notes': typeof AppNotesRoute
+  '/_app/projects': typeof AppProjectsRoute
+  '/_app/settings': typeof AppSettingsRoute
+  '/_app/tasks': typeof AppTasksRoute
+  '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/login'
     | '/assistant'
     | '/calendar'
     | '/drive'
@@ -143,7 +159,7 @@ export interface FileRouteTypes {
     | '/tasks'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
+    | '/login'
     | '/assistant'
     | '/calendar'
     | '/drive'
@@ -155,139 +171,168 @@ export interface FileRouteTypes {
     | '/projects'
     | '/settings'
     | '/tasks'
+    | '/'
   id:
     | '__root__'
-    | '/'
-    | '/assistant'
-    | '/calendar'
-    | '/drive'
-    | '/graph'
-    | '/habits'
-    | '/mail'
-    | '/money'
-    | '/notes'
-    | '/projects'
-    | '/settings'
-    | '/tasks'
+    | '/_app'
+    | '/login'
+    | '/_app/assistant'
+    | '/_app/calendar'
+    | '/_app/drive'
+    | '/_app/graph'
+    | '/_app/habits'
+    | '/_app/mail'
+    | '/_app/money'
+    | '/_app/notes'
+    | '/_app/projects'
+    | '/_app/settings'
+    | '/_app/tasks'
+    | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AssistantRoute: typeof AssistantRoute
-  CalendarRoute: typeof CalendarRoute
-  DriveRoute: typeof DriveRoute
-  GraphRoute: typeof GraphRoute
-  HabitsRoute: typeof HabitsRoute
-  MailRoute: typeof MailRoute
-  MoneyRoute: typeof MoneyRoute
-  NotesRoute: typeof NotesRoute
-  ProjectsRoute: typeof ProjectsRoute
-  SettingsRoute: typeof SettingsRoute
-  TasksRoute: typeof TasksRoute
+  AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/assistant': {
-      id: '/assistant'
+    '/_app/assistant': {
+      id: '/_app/assistant'
       path: '/assistant'
       fullPath: '/assistant'
-      preLoaderRoute: typeof AssistantRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppAssistantRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/calendar': {
-      id: '/calendar'
+    '/_app/calendar': {
+      id: '/_app/calendar'
       path: '/calendar'
       fullPath: '/calendar'
-      preLoaderRoute: typeof CalendarRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppCalendarRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/drive': {
-      id: '/drive'
+    '/_app/drive': {
+      id: '/_app/drive'
       path: '/drive'
       fullPath: '/drive'
-      preLoaderRoute: typeof DriveRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppDriveRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/graph': {
-      id: '/graph'
+    '/_app/graph': {
+      id: '/_app/graph'
       path: '/graph'
       fullPath: '/graph'
-      preLoaderRoute: typeof GraphRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppGraphRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/habits': {
-      id: '/habits'
+    '/_app/habits': {
+      id: '/_app/habits'
       path: '/habits'
       fullPath: '/habits'
-      preLoaderRoute: typeof HabitsRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppHabitsRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/mail': {
-      id: '/mail'
+    '/_app/mail': {
+      id: '/_app/mail'
       path: '/mail'
       fullPath: '/mail'
-      preLoaderRoute: typeof MailRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppMailRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/money': {
-      id: '/money'
+    '/_app/money': {
+      id: '/_app/money'
       path: '/money'
       fullPath: '/money'
-      preLoaderRoute: typeof MoneyRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppMoneyRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/notes': {
-      id: '/notes'
+    '/_app/notes': {
+      id: '/_app/notes'
       path: '/notes'
       fullPath: '/notes'
-      preLoaderRoute: typeof NotesRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppNotesRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/projects': {
-      id: '/projects'
+    '/_app/projects': {
+      id: '/_app/projects'
       path: '/projects'
       fullPath: '/projects'
-      preLoaderRoute: typeof ProjectsRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppProjectsRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/settings': {
-      id: '/settings'
+    '/_app/settings': {
+      id: '/_app/settings'
       path: '/settings'
       fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/tasks': {
-      id: '/tasks'
+    '/_app/tasks': {
+      id: '/_app/tasks'
       path: '/tasks'
       fullPath: '/tasks'
-      preLoaderRoute: typeof TasksRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppTasksRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppAssistantRoute: typeof AppAssistantRoute
+  AppCalendarRoute: typeof AppCalendarRoute
+  AppDriveRoute: typeof AppDriveRoute
+  AppGraphRoute: typeof AppGraphRoute
+  AppHabitsRoute: typeof AppHabitsRoute
+  AppMailRoute: typeof AppMailRoute
+  AppMoneyRoute: typeof AppMoneyRoute
+  AppNotesRoute: typeof AppNotesRoute
+  AppProjectsRoute: typeof AppProjectsRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppTasksRoute: typeof AppTasksRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAssistantRoute: AppAssistantRoute,
+  AppCalendarRoute: AppCalendarRoute,
+  AppDriveRoute: AppDriveRoute,
+  AppGraphRoute: AppGraphRoute,
+  AppHabitsRoute: AppHabitsRoute,
+  AppMailRoute: AppMailRoute,
+  AppMoneyRoute: AppMoneyRoute,
+  AppNotesRoute: AppNotesRoute,
+  AppProjectsRoute: AppProjectsRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppTasksRoute: AppTasksRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AssistantRoute: AssistantRoute,
-  CalendarRoute: CalendarRoute,
-  DriveRoute: DriveRoute,
-  GraphRoute: GraphRoute,
-  HabitsRoute: HabitsRoute,
-  MailRoute: MailRoute,
-  MoneyRoute: MoneyRoute,
-  NotesRoute: NotesRoute,
-  ProjectsRoute: ProjectsRoute,
-  SettingsRoute: SettingsRoute,
-  TasksRoute: TasksRoute,
+  AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
