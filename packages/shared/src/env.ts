@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** True while a value is still the placeholder from .env.example. */
-function isExampleValue(value: string): boolean {
+export function isExampleValue(value: string): boolean {
   return value.includes('replace-me') || value.includes('xxxx') || value.includes('yourname');
 }
 

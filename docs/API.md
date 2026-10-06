@@ -14,7 +14,8 @@ Resources: /tasks, /habits, /habit-logs, /notes, /note-folders, /note-templates,
 ## Special routes
 | Method | Path | Purpose |
 |---|---|---|
-| GET | /health | Server health (full path /api/v1/health, no auth) |
+| GET | /health | Server health (full path /api/v1/health, no auth). Returns {"status":"ok","time":<UTC>} |
+| GET | /me | The signed-in user from the token: {id, email, role}. Used to check that login works end to end |
 | GET | /links?entityId= | Links for an entity (backlinks, project items) |
 | POST | /links | Create a link |
 | GET | /graph?focus=&depth=&types= | Nodes and edges for the knowledge graph |
