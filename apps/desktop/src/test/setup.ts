@@ -3,7 +3,7 @@ import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
 
 // jsdom does not implement scrolling; the router calls it on navigation
-window.scrollTo = () => undefined;
+if (typeof window !== 'undefined') window.scrollTo = () => undefined;
 
 afterEach(() => {
   cleanup();

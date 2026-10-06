@@ -9,7 +9,7 @@ Work on one step at a time. Use each step daily before starting the next.
 - [x] b. packages/ui design tokens and components (dark and light), UI gallery
 - [x] c. Desktop shell: custom glass title bar, dock, wallpaper, theme switching, placeholder module pages
 - [x] c2. Supabase email and password login screen and session
-- [ ] d. Settings screen (appearance, wallpaper, dock, logout), saved locally
+- [ ] d. Settings screen (appearance incl. Background: Transparent / Wallpaper / Solid, dock, logout), saved locally
 - [ ] e. Dashboard with static placeholder data
 - [ ] f. Command palette (commands only) and keyboard shortcuts
 - [ ] g. Fastify skeleton with JWKS JWT verification and /api/v1/health
@@ -38,7 +38,7 @@ Work on one step at a time. Use each step daily before starting the next.
 - [ ] Assistant card and full chat panel
 - [ ] Skills: Daily planner, Knowledge assistant
 - [ ] Settings → AI (OmniRoute dashboard, model routes)
-- [ ] Move appearance, wallpaper, and dock settings from local Zustand persist (Step 1) to the server settings table through the action registry
+- [ ] Move appearance, background, and dock settings from local Zustand persist (Step 1) to the server settings table through the action registry
 - [ ] Done when: the AI creates a task from a chat message
 
 ## Step 4 – Google

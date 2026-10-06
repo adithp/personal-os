@@ -1,3 +1,4 @@
+import type * as TauriWindow from '@tauri-apps/api/window';
 import { MODULE_IDS, MODULES } from '@personal-os/shared';
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -7,7 +8,10 @@ import { renderApp as renderAppAt } from '../test/render-app';
 import { useSettings } from '../store/settings-store';
 import { modulePath } from './module-paths';
 
-vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: vi.fn() }));
+vi.mock('@tauri-apps/api/window', async (importOriginal) => ({
+  ...(await importOriginal<typeof TauriWindow>()),
+  getCurrentWindow: vi.fn(),
+}));
 
 async function renderApp(initialPath = '/') {
   return renderAppAt(initialPath, signedInAuth().auth);
@@ -103,7 +107,7 @@ describe('navigation with the dock', () => {
   });
 });
 
-describe('theme and wallpaper', () => {
+describe('theme', () => {
   it('applies the OS theme in System mode', async () => {
     stubSystemTheme(false);
     await renderApp();
@@ -123,17 +127,6 @@ describe('theme and wallpaper', () => {
       useSettings.getState().update({ theme: 'light' });
     });
     expect(document.documentElement.dataset.theme).toBe('light');
-  });
-
-  it('shows the wallpaper by default and a solid color when off', async () => {
-    await renderApp();
-    expect(screen.getByTestId('wallpaper')).toHaveStyle({ background: 'var(--wallpaper-default)' });
-
-    act(() => {
-      useSettings.getState().update({ wallpaperEnabled: false });
-    });
-    expect(screen.getByTestId('wallpaper')).toHaveAttribute('data-enabled', 'false');
-    expect(screen.getByTestId('wallpaper').style.background).toBe('');
   });
 
   it('applies the blur strength from settings', async () => {

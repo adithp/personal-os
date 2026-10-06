@@ -1,3 +1,4 @@
+import type * as TauriWindow from '@tauri-apps/api/window';
 import { MODULE_IDS } from '@personal-os/shared';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -8,7 +9,10 @@ import { useSettings } from '../store/settings-store';
 import { createAuth } from '../auth/auth';
 import { modulePath } from './module-paths';
 
-vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: vi.fn() }));
+vi.mock('@tauri-apps/api/window', async (importOriginal) => ({
+  ...(await importOriginal<typeof TauriWindow>()),
+  getCurrentWindow: vi.fn(),
+}));
 
 beforeEach(() => {
   localStorage.clear();

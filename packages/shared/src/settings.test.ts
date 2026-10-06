@@ -1,16 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { BLUR_RANGE, DEFAULT_SETTINGS, DOCK_ICON_SIZES, clampBlur } from './settings';
+import {
+  BACKGROUND_MODES,
+  BLUR_RANGE,
+  DEFAULT_SETTINGS,
+  DOCK_ICON_SIZES,
+  clampBlur,
+} from './settings';
 
 describe('default settings (docs/DESIGN.md)', () => {
   it('uses the documented defaults', () => {
     expect(DEFAULT_SETTINGS).toEqual({
       theme: 'system',
-      wallpaperEnabled: true,
+      backgroundMode: 'transparent',
       blurPx: 24,
       dockAutoHide: false,
       dockMagnification: true,
       dockIconSize: 'medium',
     });
+  });
+
+  it('has the three background modes with Transparent as the default', () => {
+    expect(BACKGROUND_MODES).toEqual(['transparent', 'wallpaper', 'solid']);
+    expect(DEFAULT_SETTINGS.backgroundMode).toBe('transparent');
   });
 
   it('has the documented dock icon sizes', () => {

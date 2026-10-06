@@ -4,13 +4,17 @@ import type { ThemeMode } from './modules';
 export const DOCK_ICON_SIZES = { small: 32, medium: 36, large: 44 } as const;
 export type DockIconSize = keyof typeof DOCK_ICON_SIZES;
 
-/** Wallpaper blur strength limits in px (docs/DESIGN.md section 2). */
+/** Window background modes (docs/DESIGN.md section 2). */
+export const BACKGROUND_MODES = ['transparent', 'wallpaper', 'solid'] as const;
+export type BackgroundMode = (typeof BACKGROUND_MODES)[number];
+
+/** Glass blur strength limits in px, used in Wallpaper mode (docs/DESIGN.md section 2). */
 export const BLUR_RANGE = { min: 0, max: 40 } as const;
 
 /** Device-local appearance and dock settings. Moves to the server in Step 3. */
 export interface AppSettings {
   theme: ThemeMode;
-  wallpaperEnabled: boolean;
+  backgroundMode: BackgroundMode;
   blurPx: number;
   dockAutoHide: boolean;
   dockMagnification: boolean;
@@ -19,7 +23,7 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
-  wallpaperEnabled: true,
+  backgroundMode: 'transparent',
   blurPx: 24,
   dockAutoHide: false,
   dockMagnification: true,

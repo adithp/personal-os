@@ -16,14 +16,25 @@ Setting: Appearance → Theme = Dark, Light, or System. Default: System.
 | text-muted | rgba(255,255,255,0.45) | rgba(0,0,0,0.4) |
 | text-on-tile | #1C1C1C | #1C1C1C |
 | danger | #F28B82 | #C5221F |
+| tint (background layer) | rgba(21,23,28,0.55) | rgba(238,240,243,0.55) |
 
 Define all tokens as CSS variables in packages/ui and switch them with a data-theme attribute on the root.
 
-## 2. Wallpaper
-- Glass panels sit on top of a wallpaper image with backdrop-filter blur.
-- Settings: Appearance → Wallpaper = On/Off, choose image (built-in images or upload), blur strength (0–40 px, default 24).
-- Default: On, built-in dark landscape for dark mode, built-in light landscape for light mode.
-- When Off, the solid bg color is used.
+## 2. Background
+The window background has three modes. Setting: Appearance → Background = Transparent, Wallpaper, or Solid. Default: Transparent.
+
+| Mode | What shows behind the glass |
+|---|---|
+| Transparent (default) | The Windows desktop shows through the window, blurred, like macOS vibrancy. A tint layer sits on top so text and pastel tiles stay readable on any desktop wallpaper. |
+| Wallpaper | A built-in gradient (dark for dark mode, light for light mode) or an uploaded image. Glass panels blur it with the blur setting. |
+| Solid | The solid bg color. |
+
+- Transparent mode uses a transparent Tauri window with the Windows Acrylic effect (Mica as the fallback when Acrylic is not available). Acrylic can make dragging and resizing the window less smooth on some Windows 10 and 11 builds.
+- Tint layer (the tint token in section 1): dark mode rgba(21,23,28,0.55), light mode rgba(238,240,243,0.55). It is the bg color at 55% opacity.
+- Glass cards, tiles, the dock, and the title bar keep their normal style on top of every mode.
+- Blur strength (0–40 px, default 24) and the image choice (built-in gradient or upload) are shown only for Wallpaper. Blur is the backdrop-filter blur of glass panels.
+- If the Acrylic effect is not supported or fails, the app falls back to Wallpaper mode automatically for that session. The saved choice stays Transparent.
+- Saved settings from before this change (Wallpaper On/Off) migrate safely: Off becomes Solid, anything else becomes the default Transparent.
 
 ## 3. Module colors
 Every module has one pastel color used everywhere: dock icon, dashboard tile, page header accent, graph node color, and activity feed avatar. Text and icons on these colors are always #1C1C1C.
@@ -91,7 +102,7 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 - Small chip per key: input background, 0.5 px glass-border, radius 8, 11 px muted text, height 20.
 
 ## 6b. Title bar
-The window is frameless. The title bar is not a separate bar: it is fully transparent, so the wallpaper and the page show straight through and the top of the window looks like one continuous surface.
+The window is frameless. The title bar is not a separate bar: it is fully transparent, so the background and the page show straight through and the top of the window looks like one continuous surface.
 - Height 40 px, overlaying the top of the page area. Page content has 40 px of top padding so it never sits under the buttons.
 - No background, no border, no blur, no separate color.
 - The whole empty area is a drag region; double-click maximizes and restores.

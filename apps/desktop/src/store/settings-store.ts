@@ -1,9 +1,18 @@
 import type { AppSettings, DockIconSize } from '@personal-os/shared';
-import { DEFAULT_SETTINGS, DOCK_ICON_SIZES, THEME_MODES, clampBlur } from '@personal-os/shared';
+import {
+  BACKGROUND_MODES,
+  DEFAULT_SETTINGS,
+  DOCK_ICON_SIZES,
+  THEME_MODES,
+  clampBlur,
+} from '@personal-os/shared';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export const SETTINGS_STORAGE_KEY = 'personal-os.settings';
+
+/** Version 1 saved "wallpaperEnabled"; version 2 saves "backgroundMode". */
+const SETTINGS_VERSION = 2;
 
 interface SettingsState extends AppSettings {
   update: (patch: Partial<AppSettings>) => void;
@@ -14,14 +23,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+/**
+ * Background mode from saved data. Settings saved before the three modes existed only had a
+ * wallpaper on/off switch: Off means a solid color, anything else gets the new default.
+ */
+function backgroundModeFrom(saved: Record<string, unknown>): AppSettings['backgroundMode'] {
+  const mode = BACKGROUND_MODES.find((candidate) => candidate === saved.backgroundMode);
+  if (mode) return mode;
+  if (saved.wallpaperEnabled === false) return 'solid';
+  return DEFAULT_SETTINGS.backgroundMode;
+}
+
 /** Keeps valid saved values and falls back to defaults for anything missing or corrupt. */
 export function sanitizeSettings(raw: unknown): AppSettings {
   const saved = isRecord(raw) ? raw : {};
-  const { theme, wallpaperEnabled, blurPx, dockAutoHide, dockMagnification, dockIconSize } = saved;
+  const { theme, blurPx, dockAutoHide, dockMagnification, dockIconSize } = saved;
   return {
     theme: THEME_MODES.find((mode) => mode === theme) ?? DEFAULT_SETTINGS.theme,
-    wallpaperEnabled:
-      typeof wallpaperEnabled === 'boolean' ? wallpaperEnabled : DEFAULT_SETTINGS.wallpaperEnabled,
+    backgroundMode: backgroundModeFrom(saved),
     blurPx: typeof blurPx === 'number' ? clampBlur(blurPx) : DEFAULT_SETTINGS.blurPx,
     dockAutoHide: typeof dockAutoHide === 'boolean' ? dockAutoHide : DEFAULT_SETTINGS.dockAutoHide,
     dockMagnification:
@@ -48,15 +67,16 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: SETTINGS_STORAGE_KEY,
-      version: 1,
+      version: SETTINGS_VERSION,
       partialize: (state): AppSettings => ({
         theme: state.theme,
-        wallpaperEnabled: state.wallpaperEnabled,
+        backgroundMode: state.backgroundMode,
         blurPx: state.blurPx,
         dockAutoHide: state.dockAutoHide,
         dockMagnification: state.dockMagnification,
         dockIconSize: state.dockIconSize,
       }),
+      migrate: (persisted) => sanitizeSettings(persisted),
       merge: (persisted, current) => ({ ...current, ...sanitizeSettings(persisted) }),
     },
   ),

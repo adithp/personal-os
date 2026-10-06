@@ -23,6 +23,7 @@
   --color-fg-muted: var(--text-muted);
   --color-tile-action: var(--tile-action-bg);
   --color-window-close: var(--window-close);
+  --color-tint: var(--tint);
   --color-progress-track: var(--progress-track);
   --color-progress-fill: var(--progress-fill);
 
@@ -99,6 +100,12 @@
   body {
     font-size: 13px;
     line-height: 19px;
+  }
+
+  /* Background: Transparent. The window itself is see-through, so the page must be too. */
+  html[data-background='transparent'],
+  html[data-background='transparent'] body {
+    background-color: transparent;
   }
 
   ::placeholder {

@@ -17,6 +17,9 @@
   --danger: #f28b82;
   --input-bg: rgba(255, 255, 255, 0.06);
 
+  /* Layer over the see-through window (Background: Transparent) */
+  --tint: rgba(21, 23, 28, 0.55);
+
   /* Placeholder wallpaper until real images are added (decision 27) */
   --wallpaper-default:
     radial-gradient(ellipse 80% 60% at 15% 0%, #3d3a70 0%, transparent 60%),
@@ -37,6 +40,8 @@
   --text-on-tile: #1c1c1c;
   --danger: #c5221f;
   --input-bg: rgba(0, 0, 0, 0.04);
+
+  --tint: rgba(238, 240, 243, 0.55);
 
   --wallpaper-default:
     radial-gradient(ellipse 80% 60% at 15% 0%, #d9defc 0%, transparent 60%),
@@ -70,7 +75,7 @@
   --progress-track: rgba(0, 0, 0, 0.15);
   --progress-fill: #1c1c1c;
 
-  /* Glass blur strength (Settings → Wallpaper, 0–40 px, default 24) */
+  /* Glass blur strength (Settings → Background, 0–40 px, default 24) */
   --glass-blur: 24px;
 
   /* Motion */
