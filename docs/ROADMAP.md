@@ -11,7 +11,7 @@ Work on one step at a time. Use each step daily before starting the next.
 - [x] c2. Supabase email and password login screen and session
 - [x] d. Settings screen (appearance incl. Background: Transparent / Wallpaper / Solid, dock, logout), saved locally
 - [x] e. Dashboard with static placeholder data
-- [ ] f. Command palette (commands only) and keyboard shortcuts
+- [x] f. Command palette (commands only) and keyboard shortcuts
 - [ ] g. Fastify skeleton with JWKS JWT verification and /api/v1/health
 - [ ] h. Drizzle schema for entities and links with RLS, user-scope helper, migrations generated but not applied
 - [ ] i. Infra: docker-compose (caddy, server), Caddyfile, server Dockerfile, backup script, DuckDNS script

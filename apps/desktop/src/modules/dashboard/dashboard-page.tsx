@@ -3,6 +3,7 @@ import { Kbd, Tile } from '@personal-os/ui';
 import { IconSearch } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
 import { modulePath } from '../../shell/module-paths';
+import { usePalette } from '../../store/palette-store';
 import { ActivityCard } from './activity-card';
 import { AssistantCard } from './assistant-card';
 import { addDays, todayInIndia } from './calendar-grid';
@@ -41,10 +42,12 @@ export function DashboardPage() {
             <h1 className="text-page font-semibold text-fg">{greetingFor(now)}</h1>
             <p className="text-small text-fg-muted">{formatDashboardDate(now)}</p>
           </div>
-          {/* Opens the command palette in feature (f) */}
           <button
             type="button"
             aria-label="Search"
+            onClick={() => {
+              usePalette.getState().setOpen(true);
+            }}
             className="flex h-[34px] w-72 shrink-0 items-center gap-2 rounded-control glass px-3 text-body text-fg-muted focus-ring"
           >
             <IconSearch size={16} aria-hidden />

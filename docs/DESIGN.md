@@ -147,6 +147,15 @@ Fit and scrolling:
 - Ctrl 1 to Ctrl 9: Dashboard, Tasks, Habits, Notes, Graph, Calendar, Mail, Drive, Projects.
 - Ctrl 0: Money. Ctrl J: open AI assistant. Ctrl , : Settings.
 
+### Command palette
+- Opens with Ctrl K, or by clicking the dashboard search bar. Esc, or Ctrl K again, closes it. It is only available on signed-in screens.
+- A glass-strong panel, 560 px wide, radius 16, near the top of the window over a dimmed page. A search field with an Esc hint, a list, and a hint line ("↑ ↓ to move · Enter to run · Esc to close").
+- Groups: Go to (every module in dock order, with its shortcut), Appearance (dark, light, or system theme; the current one is marked), and Dock (toggle auto-hide, showing On or Off).
+- Module commands use a 22 px icon square in the module color; other commands use a neutral square.
+- Typing filters by whole or partial words in the title or its keywords (for example "night" finds the dark theme). The selected row uses the input background.
+- For now it only runs commands. Searching tasks, notes, mail, and files comes with those modules.
+- All shortcuts live in one registry (apps/desktop/src/commands/shortcuts.ts). Shortcut keys are cancelled in the page so Windows' own use of them (for example Ctrl J for downloads) does not also run.
+
 ## 10. Mobile (Phase 2)
 - Same tokens, colors, tiles, and glass.
 - Navigation: bottom tab bar with Dashboard, Tasks, AI assistant, Calendar, More. No magnification on mobile.

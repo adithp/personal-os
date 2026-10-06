@@ -1,5 +1,7 @@
 import { Navigate, Outlet, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import { useAuthState } from '../auth/use-auth-state';
+import { CommandPalette } from '../commands/command-palette';
+import { useShortcuts } from '../commands/use-shortcuts';
 import { Dock } from '../dock/dock';
 import { useSettings } from '../store/settings-store';
 import { moduleFromPath, modulePath } from './module-paths';
@@ -12,6 +14,8 @@ export function AppLayout() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
+  useShortcuts();
+
   // Signing out (or an expired session) while a screen is open goes back to login.
   if (status !== 'signedIn') return <Navigate to="/login" replace />;
 
@@ -21,6 +25,7 @@ export function AppLayout() {
       <main className="min-h-0 flex-1 overflow-y-auto pt-10 pb-20">
         <Outlet />
       </main>
+      <CommandPalette />
       <Dock
         activeModule={moduleFromPath(pathname)}
         onNavigate={(id) => {
