@@ -2,6 +2,7 @@
 
 Base URL: https://<duckdns-domain>/api/v1
 Auth: every request sends Authorization: Bearer <Supabase JWT>. The backend verifies it with the Supabase JWKS (asymmetric signing keys) using the jose library: keys from <SUPABASE_URL>/auth/v1/.well-known/jwks.json, issuer <SUPABASE_URL>/auth/v1, audience authenticated. Fastify registers every route under /api/v1 itself; Caddy does not rewrite paths.
+The server listens on 127.0.0.1 by default (HOST); the Docker image sets HOST=0.0.0.0 so Caddy can reach it.
 Format: JSON. Validation: Zod schemas from packages/shared.
 Errors: { "error": { "code": string, "message": string } }
 

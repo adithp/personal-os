@@ -1,0 +1,26 @@
+# Keep the Docker build context small and free of secrets
+.git
+.github
+.claude
+**/node_modules
+**/dist
+**/build
+**/coverage
+**/target
+**/.turbo
+**/*.log
+
+# Secrets: never copied into an image
+**/.env
+**/.env.*
+!**/.env.example
+
+# Not needed to build the server
+docs
+infra
+apps/desktop/src
+apps/desktop/src-tauri
+apps/desktop/index.html
+apps/mobile
+packages/ui/src
+packages/ui/gallery

@@ -20,6 +20,10 @@
 | omniroute | OmniRoute pinned version (ARM64), added in Step 3 | internal port 20128, plus Tailscale IP only |
 
 - Step 1 compose file contains only caddy and server. OmniRoute is added in Step 3 with a pinned version chosen then.
+- caddy: `caddy:2.11.7-alpine`, publishes 80 and 443 (and 443/udp for HTTP/3), keeps its certificates in the `caddy_data` volume, and starts only after the server is healthy.
+- server: built from `apps/server/Dockerfile`. The server is bundled into one JavaScript file on the build machine and only the small runtime image (`node:22-alpine`, non-root user `node`) is made for linux/arm64. It listens on port 3000 inside the Docker network only (never published), checks itself with `GET /api/v1/health`, and runs with a read-only filesystem, no extra Linux capabilities, and a 512 MB memory limit.
+- Needs two files on the server that are never committed: `infra/.env` (`DUCKDNS_DOMAIN`, see .env.example) and `apps/server/.env` (the server settings, including `SUPABASE_URL` and `DATABASE_URL`). Compose refuses to start if `DUCKDNS_DOMAIN` is missing.
+- Start: `cd infra && docker compose up -d --build`. Check: open `https://<name>.duckdns.org/api/v1/health` in a browser; it should show `{"status":"ok", ...}`.
 
 - OmniRoute data volume: omniroute-data, mounted at /app/data.
 - OmniRoute settings: login required, API keys required for /v1.
@@ -27,6 +31,9 @@
 
 ## 4. Caddyfile
 - yourname.duckdns.org → reverse proxy to server:3000 with automatic HTTPS. No path rewriting: the server serves /api/v1/* itself.
+- The name comes from `DUCKDNS_DOMAIN` in infra/.env (`{$DUCKDNS_DOMAIN}.duckdns.org`).
+- Adds Strict-Transport-Security, X-Content-Type-Options and Referrer-Policy headers, removes the Server header, compresses responses, and checks the server's health. Caddy's access log hides the Authorization and Cookie headers.
+- Ports 80 and 443 must be open in the Oracle security list and the host firewall (section 1).
 
 ## 5. Supabase
 - Free plan project in the Mumbai region.
@@ -41,8 +48,13 @@
 - The backend's scheduled jobs keep the project active, so the free project does not pause.
 
 ## 6. Backups
+- Settings in infra/.env: `BACKUP_DATABASE_URL` (the session pooler URL), `PG_MAJOR_VERSION`, `BACKUP_RETENTION_DAYS`, `OCI_BACKUP_BUCKET`, `OCI_REGION`, `OCI_S3_ENDPOINT`, `OCI_S3_ACCESS_KEY`, `OCI_S3_SECRET_KEY`. Create the S3 keys in the Oracle Console: your profile → Customer secret keys. The endpoint looks like `https://<namespace>.compat.objectstorage.<region>.oraclecloud.com`.
+- Try it without changing anything: `DRY_RUN=1 infra/scripts/backup.sh` checks the settings and prints what it would do.
+- The script verifies the dump can be read back before uploading, confirms the file is in the bucket afterwards, only deletes files named `personal-os-*.dump`, never prints secrets, and runs only one backup at a time.
+- To restore: download a dump, then `pg_restore --no-owner --dbname "<database url>" personal-os-<time>.dump` using the same postgres major version.
 - infra/scripts/backup.sh runs daily at 02:00 IST (host cron). It runs pg_dump from the official postgres Docker image whose major version matches the Supabase project (PG_MAJOR_VERSION, default 17), over the session pooler URL, compresses the file, uploads it with rclone to the Oracle Object Storage bucket personal-os-backups through the S3-compatible API, and deletes backups older than 30 days.
-- infra/scripts/duckdns-update.sh updates the DuckDNS record every 5 minutes (host cron).
+- infra/scripts/duckdns-update.sh updates the DuckDNS record every 5 minutes (host cron). It needs `DUCKDNS_DOMAIN` and `DUCKDNS_TOKEN` in infra/.env, sends the token to curl through standard input so it never shows in a process list, and prints `OK` or `KO` with a UTC time.
+- Cron lines for both scripts are in infra/scripts/cron.example. The server clock is UTC, so 02:00 IST is `30 20 * * *`.
 
 ## 7. Coding tools access
 - Claude Code and other coding tools point to http://<server-tailscale-ip>:20128/v1 with the coding key.

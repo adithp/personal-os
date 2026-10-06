@@ -1,0 +1,24 @@
+# Public HTTPS for the API. Caddy gets and renews the certificate by itself.
+# DUCKDNS_DOMAIN comes from infra/.env (just the name, e.g. "yourname").
+# Paths are passed through unchanged: the server serves /api/v1/* itself.
+{$DUCKDNS_DOMAIN}.duckdns.org {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	# Access log on stdout. Caddy hides the Authorization and Cookie headers in its logs.
+	log {
+		output stdout
+		format json
+	}
+
+	reverse_proxy server:3000 {
+		health_uri /api/v1/health
+		health_interval 30s
+	}
+}

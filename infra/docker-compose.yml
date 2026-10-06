@@ -1,0 +1,67 @@
+# Personal OS on the Oracle server: Caddy (public HTTPS) in front of the Fastify server.
+# OmniRoute is added in Step 3. Run from this folder:  docker compose up -d --build
+#
+# Needs two files on the server (never committed):
+#   infra/.env          DUCKDNS_DOMAIN=yourname   (see .env.example)
+#   apps/server/.env    the server settings        (see .env.example)
+name: personal-os
+
+services:
+  caddy:
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp' # HTTP/3
+    environment:
+      DUCKDNS_DOMAIN: ${DUCKDNS_DOMAIN:?Set DUCKDNS_DOMAIN in infra/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # certificates
+      - caddy_config:/config
+    depends_on:
+      server:
+        condition: service_healthy
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE # to listen on ports 80 and 443
+    security_opt:
+      - no-new-privileges:true
+
+  server:
+    build:
+      context: ..
+      dockerfile: apps/server/Dockerfile
+      platforms:
+        - linux/arm64
+    image: personal-os-server:local
+    restart: unless-stopped
+    env_file:
+      - ../apps/server/.env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3000'
+    # Reachable only by Caddy on the internal Docker network. Never published to the internet.
+    expose:
+      - '3000'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/api/v1/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+
+volumes:
+  caddy_data:
+  caddy_config:
