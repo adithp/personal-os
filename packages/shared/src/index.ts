@@ -4,3 +4,4 @@ export const APP_NAME = 'Personal OS';
 export const APP_TIMEZONE = 'Asia/Kolkata';
 
 export * from './modules';
+export * from './settings';

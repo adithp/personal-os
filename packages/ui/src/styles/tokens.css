@@ -62,6 +62,9 @@
 
   --accent: var(--module-assistant);
 
+  /* Window close button hover (same in dark and light) */
+  --window-close: #e81123;
+
   /* Tile internals */
   --tile-action-bg: rgba(0, 0, 0, 0.12);
   --progress-track: rgba(0, 0, 0, 0.15);

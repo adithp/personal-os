@@ -1,0 +1,19 @@
+@import '@personal-os/ui/styles.css';
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Text stays selectable in inputs and editors */
+input,
+textarea,
+[contenteditable='true'] {
+  user-select: text;
+}

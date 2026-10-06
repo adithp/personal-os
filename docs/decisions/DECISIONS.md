@@ -30,5 +30,5 @@
 | 26 | Frameless window with a custom glass title bar | Matches the glass design in dark and light mode |
 | 27 | Gradient placeholder wallpapers | Real images will be added later |
 | 28 | TypeScript 6.0.3, not 7 | typescript-eslint supports TypeScript below 6.1 only |
-| 29 | Repo stays at its current path (Documents\personal-os under the old OneDrive folder) with no sync; Rust uses its default target folder inside the project (git-ignored) | OneDrive was uninstalled, so nothing syncs the folder and no special Cargo setup is needed |
+| 29 | Repo stays at C:\Users\adith\OneDrive\Documents\personal-os (OneDrive is uninstalled, so nothing syncs it); Rust uses its default target folder inside the project (git-ignored); C:\dev\personal-os is only a temporary backup copy | The move to another folder failed and was reverted; one location keeps docs, scripts, and paths consistent. Windows Controlled Folder Access protects Documents and blocked cargo.exe from writing there, so it is turned off on this machine for Rust builds |
 | 30 | prettier-plugin-tailwindcss, Vite UI gallery in packages/ui, tsup server build, PGlite for tests | Approved tooling for Step 1 |

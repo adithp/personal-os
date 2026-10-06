@@ -22,6 +22,7 @@
   --color-fg-secondary: var(--text-secondary);
   --color-fg-muted: var(--text-muted);
   --color-tile-action: var(--tile-action-bg);
+  --color-window-close: var(--window-close);
   --color-progress-track: var(--progress-track);
   --color-progress-fill: var(--progress-fill);
 

@@ -90,6 +90,16 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 ### Keyboard hint (Kbd)
 - Small chip per key: input background, 0.5 px glass-border, radius 8, 11 px muted text, height 20.
 
+## 6b. Title bar
+The window is frameless. The title bar is not a separate bar: it is fully transparent, so the wallpaper and the page show straight through and the top of the window looks like one continuous surface.
+- Height 40 px, overlaying the top of the page area. Page content has 40 px of top padding so it never sits under the buttons.
+- No background, no border, no blur, no separate color.
+- The whole empty area is a drag region; double-click maximizes and restores.
+- App name: left side, 11 px, text-muted, no logo or background behind it.
+- Window buttons on the right (minimize, maximize/restore, close): 36×28, thin icons in text-secondary, no background by default.
+- Hover: soft glass background (glass token), radius 8. Close on hover: red (#E81123, token window-close) with a white icon.
+- The same look in dark and light mode.
+
 ## 7. Dock (main navigation)
 - Position: bottom center, 10 px above the window edge, floating.
 - Look: glass-strong background, radius 18, padding 6×10, height 60.

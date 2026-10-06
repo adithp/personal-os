@@ -10,6 +10,7 @@
     "dev:desktop": "pnpm --filter @personal-os/desktop dev",
     "dev:server": "pnpm --filter @personal-os/server dev",
     "dev:ui": "pnpm --filter @personal-os/ui gallery",
+    "build:desktop": "pnpm --filter @personal-os/desktop tauri build",
     "build": "pnpm typecheck && pnpm -r --if-present build",
     "typecheck": "tsc -p tsconfig.json && pnpm -r --if-present typecheck",
     "lint": "eslint . --max-warnings 0 && prettier --check .",
