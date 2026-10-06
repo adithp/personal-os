@@ -4,6 +4,7 @@ export const APP_NAME = 'Personal OS';
 export const APP_TIMEZONE = 'Asia/Kolkata';
 
 export * from './auth';
+export * from './entities';
 export * from './env';
 export * from './modules';
 export * from './money';
