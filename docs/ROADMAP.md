@@ -3,17 +3,25 @@
 Work on one step at a time. Use each step daily before starting the next.
 
 ## Step 1 – Foundation
-- [ ] Oracle server: account, ARM instance, firewall, SSH key, Docker, Tailscale, DuckDNS
-- [ ] Caddy with HTTPS on the DuckDNS domain
-- [ ] Supabase project (Mumbai), auth, sign-ups disabled
-- [ ] Monorepo with pnpm workspaces (apps/desktop, apps/server, packages/shared, packages/db, packages/ui)
-- [ ] Drizzle setup with entities and links tables, RLS policies
-- [ ] Fastify skeleton with JWT auth and /health
-- [ ] Tauri 2 desktop shell with login
-- [ ] Design tokens (dark and light), glass components, tiles, dock with magnification and auto-hide, wallpaper
-- [ ] Settings screen: appearance, wallpaper, dock
-- [ ] Command palette (Ctrl K) and keyboard shortcuts
-- [ ] Nightly backup script
+
+### Features (code)
+- [ ] a. Monorepo setup (pnpm workspaces, strict TypeScript, ESLint, Prettier, Vitest)
+- [ ] b. packages/ui design tokens and components (dark and light), UI gallery
+- [ ] c. Desktop shell: custom glass title bar, dock, wallpaper, theme switching, placeholder module pages
+- [ ] c2. Supabase email and password login screen and session
+- [ ] d. Settings screen (appearance, wallpaper, dock, logout), saved locally
+- [ ] e. Dashboard with static placeholder data
+- [ ] f. Command palette (commands only) and keyboard shortcuts
+- [ ] g. Fastify skeleton with JWKS JWT verification and /api/v1/health
+- [ ] h. Drizzle schema for entities and links with RLS, user-scope helper, migrations generated but not applied
+- [ ] i. Infra: docker-compose (caddy, server), Caddyfile, server Dockerfile, backup script, DuckDNS script
+
+### Manual setup (me)
+- [ ] Oracle account and server
+- [ ] Tailscale
+- [ ] DuckDNS
+- [ ] Supabase project and account
+- [ ] Google Cloud project
 
 ## Step 2 – Tasks and notes
 - [ ] Tasks: CRUD, subtasks, priorities, deadlines, tags, recurring, dependencies

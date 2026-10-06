@@ -88,7 +88,7 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 - Look: glass-strong background, radius 18, padding 6×10, height 60.
 - Icons: 36×36 tiles in module colors, radius 10, gap 6, dark icon glyph.
 - Order: Dashboard, Tasks, Habits, Notes, Graph, Calendar, Mail, Drive, Projects, Money | divider | AI assistant, Settings.
-- Hover: magnification. Size scales up to 1.7× for the icon under the cursor and falls off within 90 px. Built with Framer Motion.
+- Hover: magnification. Size scales up to 1.7× for the icon under the cursor and falls off within 90 px. Built with Motion (formerly Framer Motion).
 - Tooltip with the module name above the hovered icon.
 - Active module: 4 px dot under its icon.
 - Settings: Dock → Auto-hide (default Off), Magnification (default On), Icon size (Small 32 / Medium 36 / Large 44, default Medium).

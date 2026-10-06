@@ -20,3 +20,15 @@
 | 16 | AI providers start free and are configurable in Settings | Change models without code changes |
 | 17 | Schedule-X for calendar views | Chosen for its modern look |
 | 18 | Single user | Personal assistant for me only |
+| 19 | Motion (formerly Framer Motion) 14 for animation | Same library under its new package name |
+| 20 | Email and password login, no sign-up in the app | Works fully inside Tauri; my one account is created in the Supabase dashboard and public sign-ups are disabled |
+| 21 | JWT verification with Supabase JWKS using jose | New Supabase projects use asymmetric signing keys; no shared JWT secret on the server |
+| 22 | Backend scopes every query by user_id with one shared helper; RLS stays ON | The backend connects as postgres (bypasses RLS); RLS still protects client and Realtime access; isolation is proven by tests |
+| 23 | Settings saved locally (Zustand persist) until Step 3 | The action registry and settings API arrive in Step 3 |
+| 24 | Supabase session pooler (IPv4) for DATABASE_URL | The direct connection is IPv6-only and the Oracle VM uses IPv4 |
+| 25 | Backups with pg_dump in a matching postgres container and rclone to Oracle Object Storage (S3-compatible API) | No host Postgres or OCI CLI needed; pg_dump version matches Supabase |
+| 26 | Frameless window with a custom glass title bar | Matches the glass design in dark and light mode |
+| 27 | Gradient placeholder wallpapers | Real images will be added later |
+| 28 | TypeScript 6.0.3, not 7 | typescript-eslint supports TypeScript below 6.1 only |
+| 29 | Repo stays in OneDrive; CARGO_TARGET_DIR outside it (C:\dev\cargo-target) | Keep the current location; avoid syncing Rust build output; move the repo if OneDrive causes real errors |
+| 30 | prettier-plugin-tailwindcss, Vite UI gallery in packages/ui, tsup server build, PGlite for tests | Approved tooling for Step 1 |

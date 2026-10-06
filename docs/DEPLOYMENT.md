@@ -33,7 +33,11 @@
 - DATABASE_URL uses the Supabase session pooler (IPv4, port 5432), because the direct connection is IPv6-only and the Oracle VM uses IPv4. Copy it from Supabase → Connect → Session pooler.
 - JWTs are verified with the project JWKS; no JWT secret is needed on the server.
 - Run Drizzle migrations from the laptop: pnpm db:migrate.
-- Disable public sign-ups after creating my account.
+- Create my one account (the app has no sign-up screen):
+  1. Supabase dashboard → Authentication → Users → Add user → Create new user.
+  2. Enter my email and a strong password, tick "Auto Confirm User", and create it.
+- Disable public sign-ups: Authentication → Sign In / Providers → turn off "Allow new users to sign up" → Save.
+- Check: signing in from the app works with my account, and a sign-up request through the API is rejected.
 - The backend's scheduled jobs keep the project active, so the free project does not pause.
 
 ## 6. Backups
