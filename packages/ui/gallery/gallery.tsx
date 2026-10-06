@@ -12,6 +12,9 @@ import {
   Kbd,
   MODULE_ICONS,
   ModuleAvatar,
+  SegmentedControl,
+  Slider,
+  Switch,
   Tile,
   Tooltip,
   cx,
@@ -40,6 +43,61 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       <h2 className="text-section font-semibold text-fg">{title}</h2>
       {children}
     </section>
+  );
+}
+
+function ControlsDemo() {
+  const [background, setBackground] = useState<'transparent' | 'wallpaper' | 'solid'>(
+    'transparent',
+  );
+  const [autoHide, setAutoHide] = useState(false);
+  const [blur, setBlur] = useState(24);
+  return (
+    <GlassCard className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-body text-fg">Segmented control</span>
+        <SegmentedControl
+          label="Background"
+          value={background}
+          onChange={setBackground}
+          options={[
+            { value: 'transparent', label: 'Transparent' },
+            { value: 'wallpaper', label: 'Wallpaper' },
+            { value: 'solid', label: 'Solid' },
+          ]}
+        />
+      </div>
+      <div className="flex items-center justify-between gap-4">
+        <span id="demo-switch" className="text-body text-fg">
+          Switch
+        </span>
+        <Switch checked={autoHide} onCheckedChange={setAutoHide} aria-labelledby="demo-switch" />
+      </div>
+      <div className="flex items-center justify-between gap-4">
+        <span id="demo-slider" className="text-body text-fg">
+          Slider
+        </span>
+        <div className="flex items-center gap-3">
+          <Slider
+            value={blur}
+            min={0}
+            max={40}
+            onValueChange={setBlur}
+            aria-labelledby="demo-slider"
+          />
+          <span className="w-10 text-small text-fg-muted tabular-nums">{blur} px</span>
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-body text-fg">Disabled</span>
+        <Switch
+          checked={false}
+          disabled
+          onCheckedChange={() => undefined}
+          aria-label="Disabled switch"
+        />
+      </div>
+    </GlassCard>
   );
 }
 
@@ -307,6 +365,10 @@ export function Gallery() {
               ))}
             </div>
           </div>
+        </Section>
+
+        <Section title="Controls">
+          <ControlsDemo />
         </Section>
 
         <Section title="Keyboard hint and tooltip">

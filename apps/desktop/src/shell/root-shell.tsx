@@ -1,6 +1,7 @@
 import { useApplyTheme } from '@personal-os/ui';
 import { Outlet } from '@tanstack/react-router';
 import { useEffect } from 'react';
+import { useWallpaperUrl } from '../modules/settings/use-wallpaper-url';
 import { useSettings } from '../store/settings-store';
 import { Background } from './background';
 import { TitleBar } from './title-bar';
@@ -14,6 +15,9 @@ export function RootShell() {
 
   useApplyTheme(settings.theme);
   const background = useBackground(settings.backgroundMode);
+  const imageUrl = useWallpaperUrl(
+    settings.wallpaperSource === 'custom' ? settings.wallpaperFile : null,
+  );
 
   useEffect(() => {
     // The page itself must be see-through in Transparent mode (see packages/ui styles).
@@ -26,7 +30,7 @@ export function RootShell() {
 
   return (
     <div className="flex h-full flex-col">
-      <Background mode={background} />
+      <Background mode={background} imageUrl={imageUrl} />
       <TitleBar
         maximized={appWindow.maximized}
         onMinimize={appWindow.minimize}

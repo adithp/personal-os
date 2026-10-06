@@ -41,17 +41,21 @@ afterEach(() => {
 });
 
 describe('placeholder pages', () => {
-  it.each(MODULE_IDS)('%s page shows its name, color and roadmap step', async (id) => {
-    await renderApp(modulePath(id));
-    const { name, roadmapStep } = MODULES[id];
+  // Settings is a real screen now (see modules/settings)
+  it.each(MODULE_IDS.filter((id) => id !== 'settings'))(
+    '%s page shows its name, color and roadmap step',
+    async (id) => {
+      await renderApp(modulePath(id));
+      const { name, roadmapStep } = MODULES[id];
 
-    const main = screen.getByRole('main');
-    expect(within(main).getByRole('heading', { level: 1, name })).toBeInTheDocument();
-    expect(within(main).getByText(`Coming in step ${String(roadmapStep)}`)).toBeInTheDocument();
-    expect(main.querySelector(`[data-module="${id}"]`)).toHaveStyle({
-      backgroundColor: `var(--module-${id})`,
-    });
-  });
+      const main = screen.getByRole('main');
+      expect(within(main).getByRole('heading', { level: 1, name })).toBeInTheDocument();
+      expect(within(main).getByText(`Coming in step ${String(roadmapStep)}`)).toBeInTheDocument();
+      expect(main.querySelector(`[data-module="${id}"]`)).toHaveStyle({
+        backgroundColor: `var(--module-${id})`,
+      });
+    },
+  );
 
   it('matches the ROADMAP.md steps', () => {
     const expected: Record<string, number> = {

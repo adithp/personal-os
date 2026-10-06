@@ -4,7 +4,9 @@ import {
   DEFAULT_SETTINGS,
   DOCK_ICON_SIZES,
   THEME_MODES,
+  WALLPAPER_SOURCES,
   clampBlur,
+  isWallpaperFileName,
 } from '@personal-os/shared';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -37,11 +39,24 @@ function backgroundModeFrom(saved: Record<string, unknown>): AppSettings['backgr
 /** Keeps valid saved values and falls back to defaults for anything missing or corrupt. */
 export function sanitizeSettings(raw: unknown): AppSettings {
   const saved = isRecord(raw) ? raw : {};
-  const { theme, blurPx, dockAutoHide, dockMagnification, dockIconSize } = saved;
+  const {
+    theme,
+    blurPx,
+    wallpaperSource,
+    wallpaperFile,
+    dockAutoHide,
+    dockMagnification,
+    dockIconSize,
+  } = saved;
   return {
     theme: THEME_MODES.find((mode) => mode === theme) ?? DEFAULT_SETTINGS.theme,
     backgroundMode: backgroundModeFrom(saved),
     blurPx: typeof blurPx === 'number' ? clampBlur(blurPx) : DEFAULT_SETTINGS.blurPx,
+    wallpaperSource:
+      WALLPAPER_SOURCES.find((source) => source === wallpaperSource) ??
+      DEFAULT_SETTINGS.wallpaperSource,
+    // Only plain stored names are kept, so a saved value can never point outside the folder.
+    wallpaperFile: isWallpaperFileName(wallpaperFile) ? wallpaperFile : null,
     dockAutoHide: typeof dockAutoHide === 'boolean' ? dockAutoHide : DEFAULT_SETTINGS.dockAutoHide,
     dockMagnification:
       typeof dockMagnification === 'boolean'
@@ -72,6 +87,8 @@ export const useSettings = create<SettingsState>()(
         theme: state.theme,
         backgroundMode: state.backgroundMode,
         blurPx: state.blurPx,
+        wallpaperSource: state.wallpaperSource,
+        wallpaperFile: state.wallpaperFile,
         dockAutoHide: state.dockAutoHide,
         dockMagnification: state.dockMagnification,
         dockIconSize: state.dockIconSize,

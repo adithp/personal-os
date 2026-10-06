@@ -9,7 +9,7 @@ Work on one step at a time. Use each step daily before starting the next.
 - [x] b. packages/ui design tokens and components (dark and light), UI gallery
 - [x] c. Desktop shell: custom glass title bar, dock, wallpaper, theme switching, placeholder module pages
 - [x] c2. Supabase email and password login screen and session
-- [ ] d. Settings screen (appearance incl. Background: Transparent / Wallpaper / Solid, dock, logout), saved locally
+- [x] d. Settings screen (appearance incl. Background: Transparent / Wallpaper / Solid, dock, logout), saved locally
 - [ ] e. Dashboard with static placeholder data
 - [ ] f. Command palette (commands only) and keyboard shortcuts
 - [ ] g. Fastify skeleton with JWKS JWT verification and /api/v1/health

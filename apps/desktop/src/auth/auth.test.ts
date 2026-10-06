@@ -158,7 +158,7 @@ describe('signOut', () => {
     const auth = createAuth({ client });
     await auth.initialize();
 
-    await expect(auth.signOut()).rejects.toThrow('offline');
+    await expect(auth.signOut()).resolves.toBeUndefined();
     expect(auth.store.getState().status).toBe('signedOut');
   });
 });

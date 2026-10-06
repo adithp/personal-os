@@ -19,6 +19,8 @@ describe('sanitizeSettings', () => {
       theme: 'light',
       backgroundMode: 'wallpaper',
       blurPx: 10,
+      wallpaperSource: 'custom',
+      wallpaperFile: 'wallpaper-1760000000000.png',
       dockAutoHide: true,
       dockMagnification: false,
       dockIconSize: 'large',
@@ -72,6 +74,35 @@ describe('sanitizeSettings', () => {
         dockIconSize: 'small',
       });
     });
+  });
+});
+
+describe('uploaded wallpaper settings', () => {
+  it('defaults to the built-in gradient with no file', () => {
+    expect(sanitizeSettings({})).toMatchObject({ wallpaperSource: 'builtin', wallpaperFile: null });
+  });
+
+  it.each(['wallpaper-5.png', 'wallpaper-1760000000000.webp'])(
+    'keeps the stored name %s',
+    (file) => {
+      expect(sanitizeSettings({ wallpaperFile: file }).wallpaperFile).toBe(file);
+    },
+  );
+
+  it.each([
+    '../../Windows/win.ini',
+    'C:\\Windows\\win.ini',
+    'wallpapers/wallpaper-5.png',
+    'photo.png',
+    'wallpaper-5.exe',
+    42,
+    null,
+  ])('drops the unsafe saved file %j', (file) => {
+    expect(sanitizeSettings({ wallpaperFile: file }).wallpaperFile).toBeNull();
+  });
+
+  it('replaces an unknown wallpaper source', () => {
+    expect(sanitizeSettings({ wallpaperSource: 'cloud' }).wallpaperSource).toBe('builtin');
   });
 });
 

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions for the main window: custom title bar controls and the see-through window effect.",
+  "description": "Permissions for the main window: title bar controls, the see-through window effect, and choosing a wallpaper image that is copied into the app's own wallpapers folder.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -10,6 +10,32 @@
     "core:window:allow-close",
     "core:window:allow-start-dragging",
     "core:window:allow-is-maximized",
-    "core:window:allow-set-effects"
+    "core:window:allow-set-effects",
+    "dialog:allow-open",
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [
+        {
+          "path": "$APPDATA/wallpapers"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-copy-file",
+      "allow": [
+        {
+          "path": "$APPDATA/wallpapers/*"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-remove",
+      "allow": [
+        {
+          "path": "$APPDATA/wallpapers/*"
+        }
+      ]
+    },
+    "fs:allow-stat"
   ]
 }

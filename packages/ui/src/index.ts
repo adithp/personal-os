@@ -3,6 +3,13 @@ export { ModuleAvatar, type ModuleAvatarProps } from './components/avatar';
 export { Button, IconButton, type ButtonProps, type IconButtonProps } from './components/button';
 export { GlassCard, type GlassCardProps } from './components/glass-card';
 export { Input } from './components/input';
+export {
+  SegmentedControl,
+  type SegmentedControlProps,
+  type SegmentedOption,
+} from './components/segmented-control';
+export { Slider, type SliderProps } from './components/slider';
+export { Switch, type SwitchProps } from './components/switch';
 export { Kbd, type KbdProps } from './components/kbd';
 export { ProgressBar, type ProgressBarProps } from './components/progress-bar';
 export { clampPercent } from './lib/percent';

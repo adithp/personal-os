@@ -100,10 +100,10 @@ export function createAuth(source: AuthSource): Auth {
     if ('issues' in source) return;
     try {
       await source.client.signOut({ scope: 'local' });
-    } finally {
-      // Even if the server call fails, this device must forget the session.
-      store.setState(stateFor(null));
+    } catch {
+      // The server could not be reached. This device still forgets the session below.
     }
+    store.setState(stateFor(null));
   };
 
   return { store, initialize, signIn, signOut };
