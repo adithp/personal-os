@@ -21,6 +21,15 @@ links: id, user_id, source_id → entities, target_id → entities, relation (me
 
 Each module table uses the same id as its entity row.
 
+### Rules enforced by the database (packages/db)
+- entities has a unique (id, user_id) pair, and links point at that pair through two composite foreign keys (source and target). A link can therefore only join two items owned by the link's own user, even for the backend, which skips Row Level Security.
+- A link cannot join an item to itself (links_no_self_link).
+- There is at most one live link per user, source, target, and relation. A soft-deleted link does not block creating the same link again.
+- Deleting an entity deletes its links; deleting a user deletes their entities and links.
+- updated_at is refreshed by a trigger on every update of entities and links.
+- Each table has one policy, "<table>_own_rows", for the authenticated role: user_id = (select auth.uid()) for both reading and writing. The anon role has no access.
+- Migrations live in packages/db/drizzle. They are generated with pnpm db:generate and applied only by the owner with pnpm db:migrate. The second migration (updated_at trigger) is written by hand because drizzle-kit cannot describe functions and triggers.
+
 ## 3. Tables
 ### Tasks
 - tasks: id, title, description, status (todo, doing, done), priority (1–4), due_at, reminder_at, recurrence_rule (RRULE text), parent_task_id, project_id, category, position, completed_at, archived_at
