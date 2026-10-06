@@ -6,7 +6,7 @@ Work on one step at a time. Use each step daily before starting the next.
 
 ### Features (code)
 - [x] a. Monorepo setup (pnpm workspaces, strict TypeScript, ESLint, Prettier, Vitest)
-- [ ] b. packages/ui design tokens and components (dark and light), UI gallery
+- [x] b. packages/ui design tokens and components (dark and light), UI gallery
 - [ ] c. Desktop shell: custom glass title bar, dock, wallpaper, theme switching, placeholder module pages
 - [ ] c2. Supabase email and password login screen and session
 - [ ] d. Settings screen (appearance, wallpaper, dock, logout), saved locally

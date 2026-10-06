@@ -9,6 +9,7 @@
   "scripts": {
     "dev:desktop": "pnpm --filter @personal-os/desktop dev",
     "dev:server": "pnpm --filter @personal-os/server dev",
+    "dev:ui": "pnpm --filter @personal-os/ui gallery",
     "build": "pnpm typecheck && pnpm -r --if-present build",
     "typecheck": "tsc -p tsconfig.json && pnpm -r --if-present typecheck",
     "lint": "eslint . --max-warnings 0 && prettier --check .",
@@ -23,8 +24,11 @@
     "@types/node": "22.20.5",
     "eslint": "10.12.0",
     "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
     "globals": "17.13.0",
     "prettier": "3.9.9",
+    "prettier-plugin-tailwindcss": "0.8.1",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.1",
     "vitest": "5.0.3"

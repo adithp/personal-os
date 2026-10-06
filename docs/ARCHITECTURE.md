@@ -52,7 +52,7 @@ Laptop coding tools ──Tailscale──► OmniRoute
 | Google | googleapis (official Node client) |
 | Database | Supabase Postgres with Row Level Security, full-text search, pgvector |
 | Tests | Vitest, Testing Library, jsdom; PGlite (in-memory Postgres, tests only) |
-| Lint and format | ESLint, typescript-eslint, Prettier, prettier-plugin-tailwindcss |
+| Lint and format | ESLint, typescript-eslint, eslint-plugin-react-hooks, eslint-plugin-react-refresh, Prettier, prettier-plugin-tailwindcss |
 | UI gallery | Vite dev server in packages/ui (dev dependency only) |
 | Hosting | Oracle Cloud Always Free ARM VM, Docker Compose, Caddy, DuckDNS, Tailscale |
 

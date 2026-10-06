@@ -48,7 +48,7 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 ## 4. Typography
 - Font: Inter (bundled with the app).
 - Weights: 400 regular, 500 medium, 600 semibold (headings and big numbers only).
-- Sizes: page title 22, section title 16, card title 13, body 13, small 11, big tile number 28–32.
+- Sizes: page title 22, section title 16, card title 13, body 13, small 11, big tile number 30 (28–32 allowed).
 - Sentence case everywhere.
 
 ## 5. Shapes and spacing
@@ -82,6 +82,13 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 
 ### Icons
 - Tabler Icons (outline) everywhere.
+- Module icons: Dashboard layout-dashboard, Tasks checklist, Habits flame, Notes notes, Graph affiliate, Calendar calendar, Mail mail, Drive brand-google-drive, Projects briefcase, Money wallet, AI assistant sparkles, Settings settings.
+
+### Tooltip
+- Glass-strong background, radius 8, 11 px text, shown above the element on hover or keyboard focus; Escape hides it.
+
+### Keyboard hint (Kbd)
+- Small chip per key: input background, 0.5 px glass-border, radius 8, 11 px muted text, height 20.
 
 ## 7. Dock (main navigation)
 - Position: bottom center, 10 px above the window edge, floating.

@@ -1,0 +1,76 @@
+/*
+ * Design tokens from docs/DESIGN.md. Switch themes with data-theme="dark" | "light" on <html>.
+ * Tests compare these values with the tables in DESIGN.md.
+ */
+
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #15171c;
+  --glass: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-strong: rgba(40, 43, 50, 0.92);
+  --text-primary: #f2f2f2;
+  --text-secondary: rgba(255, 255, 255, 0.65);
+  --text-muted: rgba(255, 255, 255, 0.45);
+  --text-on-tile: #1c1c1c;
+  --danger: #f28b82;
+  --input-bg: rgba(255, 255, 255, 0.06);
+
+  /* Placeholder wallpaper until real images are added (decision 27) */
+  --wallpaper-default:
+    radial-gradient(ellipse 80% 60% at 15% 0%, #3d3a70 0%, transparent 60%),
+    radial-gradient(ellipse 70% 50% at 90% 15%, #1f5466 0%, transparent 60%),
+    radial-gradient(ellipse 90% 60% at 50% 100%, #2a2440 0%, transparent 70%),
+    linear-gradient(180deg, #1c1f2b 0%, #15171c 100%);
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --bg: #eef0f3;
+  --glass: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(0, 0, 0, 0.07);
+  --glass-strong: rgba(255, 255, 255, 0.85);
+  --text-primary: #1c1c1c;
+  --text-secondary: rgba(0, 0, 0, 0.6);
+  --text-muted: rgba(0, 0, 0, 0.4);
+  --text-on-tile: #1c1c1c;
+  --danger: #c5221f;
+  --input-bg: rgba(0, 0, 0, 0.04);
+
+  --wallpaper-default:
+    radial-gradient(ellipse 80% 60% at 15% 0%, #d9defc 0%, transparent 60%),
+    radial-gradient(ellipse 70% 50% at 90% 15%, #fde0cc 0%, transparent 60%),
+    radial-gradient(ellipse 90% 60% at 50% 100%, #d4efe4 0%, transparent 70%),
+    linear-gradient(180deg, #f5f6f9 0%, #eef0f3 100%);
+}
+
+:root {
+  /* Module colors (same in both themes) */
+  --module-dashboard: #e8e8e8;
+  --module-tasks: #f7d96b;
+  --module-habits: #c6e46e;
+  --module-notes: #f0c9a0;
+  --module-graph: #b8c4f7;
+  --module-calendar: #f6a462;
+  --module-mail: #93d3f5;
+  --module-drive: #c5ccd6;
+  --module-projects: #f4a9c4;
+  --module-money: #9ee0c8;
+  --module-assistant: #c9b4f7;
+  --module-settings: #a9a9a9;
+
+  --accent: var(--module-assistant);
+
+  /* Tile internals */
+  --tile-action-bg: rgba(0, 0, 0, 0.12);
+  --progress-track: rgba(0, 0, 0, 0.15);
+  --progress-fill: #1c1c1c;
+
+  /* Glass blur strength (Settings → Wallpaper, 0–40 px, default 24) */
+  --glass-blur: 24px;
+
+  /* Motion */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+}
