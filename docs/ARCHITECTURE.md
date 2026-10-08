@@ -3,7 +3,7 @@
 ## 1. Overview
 Three layers:
 1. Apps (what I see): Tauri 2 desktop app now, Tauri 2 mobile app in Phase 2.
-2. Backend (the brain): one Fastify server on Oracle Cloud that runs all logic, the AI agent, Google sync, and reminders.
+2. Backend (the brain): one Fastify server on an AWS EC2 ARM server (Oracle Cloud later) that runs all logic, the AI agent, Google sync, and reminders.
 3. Services: Supabase (data, login, files, realtime, vector search), OmniRoute (AI gateway), Google APIs.
 
 ```
@@ -54,7 +54,7 @@ Laptop coding tools ──Tailscale──► OmniRoute
 | Tests | Vitest, Testing Library, jsdom; PGlite (in-memory Postgres, tests only) |
 | Lint and format | ESLint, typescript-eslint, eslint-plugin-react-hooks, eslint-plugin-react-refresh, Prettier, prettier-plugin-tailwindcss |
 | UI gallery | Vite dev server in packages/ui (dev dependency only) |
-| Hosting | Oracle Cloud Always Free ARM VM, Docker Compose, Caddy, DuckDNS, Tailscale |
+| Hosting | AWS EC2 ARM VM for now (Oracle Cloud Always Free later), Docker Compose, Caddy, DuckDNS, Tailscale |
 
 ## 4. Folder structure
 ```

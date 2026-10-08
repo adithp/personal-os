@@ -54,7 +54,7 @@ Full detail: docs/AI_SYSTEM.md.
 Dark glass design with bright pastel tiles and a macOS-style magnifying bottom dock, plus a matching light mode. Full detail: docs/DESIGN.md.
 
 ## 8. Architecture and hosting
-Desktop app (Tauri 2) → Fastify backend on an Oracle Cloud Always Free server → Supabase (Mumbai) for data, and OmniRoute for AI. Full detail: docs/ARCHITECTURE.md and docs/DEPLOYMENT.md.
+Desktop app (Tauri 2) → Fastify backend on an AWS ARM server (Oracle Cloud Always Free later) → Supabase (Mumbai) for data, and OmniRoute for AI. Full detail: docs/ARCHITECTURE.md and docs/DEPLOYMENT.md.
 
 ## 9. Phase 2 – mobile
 Tauri 2 mobile app using the same backend, database, AI, and integrations. Mobile includes tasks, habits, notes, knowledge graph, calendar, Gmail, Drive, finance, projects, AI assistant, dashboard, and push notifications.

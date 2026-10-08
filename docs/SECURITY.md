@@ -8,9 +8,9 @@
 - Server-only secrets: Supabase service role key, database URL, OmniRoute keys, Google client secret, token encryption key. Stored in infra .env files on the server, never committed.
 - Google tokens encrypted with AES-256-GCM before saving.
 - OmniRoute is never exposed to the internet: reachable only from the Docker network and over Tailscale.
-- Caddy is the only public service; only ports 80 and 443 are open (Oracle security list and host firewall).
+- Caddy is the only public service; only ports 80 and 443 are open (cloud security group and host firewall).
 - SSH: key login only, password login disabled.
 - AI: external and destructive actions always need my confirmation; every action is logged.
 - Logs never contain tokens, email bodies, or file contents.
 - Nightly database backup to Oracle Object Storage, 30 days kept.
-- Oracle budget alert set at ₹1 to catch any unexpected charge.
+- Cloud budget alert (AWS about $5, Oracle ₹1) set to catch any unexpected charge.

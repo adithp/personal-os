@@ -8,7 +8,8 @@ Setup log (one line per step, newest last; no secrets here):
 - 2026-10-08: private GitHub repository created (adithp/personal-os); both branches pushed. CI workflow (.github/workflows/ci.yml) runs lint, tests, and build on every push and passed.
 - 2026-10-08: AWS EC2 instance running and reachable over SSH; Elastic IP attached.
 - 2026-10-08: DuckDNS name adith-os.duckdns.org created and points at the Elastic IP (checked with nslookup).
-- Next: install Docker, get the code onto the server, create the two .env files on the server, docker compose up, health check, then the deploy workflow.
+- 2026-10-08: Docker Engine 29.8.2 and Compose v5.6.0 installed on the server (Ubuntu, aarch64 confirmed).
+- Next: get the code onto the server, get the code onto the server, create the two .env files on the server, docker compose up, health check, then the deploy workflow.
 
 AWS rules for this server: security group allows TCP 80 and 443 from anywhere (UDP 443 for HTTP/3) and TCP 22 from my IP only; port 3000 is never opened. Budget alert of about $5 in AWS Billing. Check that the account is on the Free plan and note the end date of the credits in the calendar.
 
