@@ -104,4 +104,4 @@ Then write: "Feature complete. Waiting for your check. Reply 'next' to continue 
 - Only after I reply "next": tick the item in docs/ROADMAP.md and suggest a commit message.
 
 ## Parallel work
-The main session is the orchestrator and may run at most 3 subagents at once (server-dev, ui-dev, and the reviewers code-reviewer, design-reviewer, security-reviewer, docs-reviewer). All use Sonnet and each works in its own git worktree. Only I start a parallel feature, with /orchestrate-feature <feature>; the procedure (contract first, file ownership, merge, reviews) lives in that skill. Agents cannot ask me anything: they stop and report questions, and the orchestrator asks me.
+The main session is the orchestrator and may run at most 5 subagents at once (server-dev, ui-dev, and the reviewers code-reviewer, design-reviewer, security-reviewer, docs-reviewer). All use Sonnet and each works in its own git worktree. Only I start a parallel feature, with /orchestrate-feature <feature>; the procedure (contract first, file ownership, merge, reviews) lives in that skill. Agents cannot ask me anything: they stop and report questions, and the orchestrator asks me.

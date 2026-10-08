@@ -4,7 +4,7 @@
 Track income and spending.
 
 ## Screens
-Transactions list, add transaction, categories, budgets, savings goals, monthly report with ECharts charts, finance dashboard.
+Transactions list, add transaction, categories, budgets, savings goals, monthly report with Recharts charts, finance dashboard.
 
 ## Features
 Income and expense tracking, transactions, categories, budgets, savings, goals, monthly summaries, spending analysis, reports, recurring transactions, CSV statement import with AI categorization. All amounts in INR (paise).

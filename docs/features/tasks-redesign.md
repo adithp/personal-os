@@ -5,7 +5,7 @@ This is the approved plan for the Tasks module redesign (Asana-style, dark glass
 ## Status
 - Feature 1 is built (side panel, Overview, My tasks Cards and List, detail panel, subtasks, tags, archive); Repeat and Blocked by are placeholders in the detail panel.
 - Feature 2: stub only (board/board-view.tsx returns null). Feature 3: server stubs only, no UI. Feature 4: the quick-add bar is title only and quick-add/parse.ts does not exist. Feature 5: modules/tasks/favorites/* are stubs; manage-tags/ does not exist. Features 6 to 8 are not started (Inbox, Reporting, Goals show a "Coming soon" page).
-- None of @dnd-kit, rrule, chrono-node, or echarts is installed yet.
+- None of @dnd-kit, rrule, chrono-node, or recharts is installed yet.
 
 ## Screens
 - **Inner side panel** (inside the Tasks page; the bottom dock stays the main navigation): Overview, My tasks, Inbox (count), Reporting, Goals, Portfolios (disabled, "Soon", Step 5), and a Favorites list with a + button. Collapsible. Inbox, Reporting, Goals and the Favorites + button are disabled with "Soon" until their feature is built (`modules/tasks/features.ts`).
@@ -29,7 +29,7 @@ Shared types and actions (`packages/shared/src/tasks.ts`, `tags.ts`), the databa
 ## Build order and ownership
 Ownership is per feature: within one feature no two agents own the same file. Only the orchestrator edits migrations, `packages/shared/src/index.ts`, route files and `routeTree.gen.ts`, `features.ts`, `fake-api.ts`, docs, `ROADMAP.md`, `DECISIONS.md`, `CLAUDE.md`.
 
-| Feature | Agents (max 3 at once) and the files each owns |
+| Feature | Agents (max 5 at once) and the files each owns |
 |---|---|
 | 1. Side panel, Overview, My tasks (Cards and List), detail panel, subtasks, tags, archive | Wave 1: `server-dev` owns `apps/server/src/actions/tasks.ts`, `actions/tags.ts`, `routes/tasks.ts`, `routes/tags.ts` and their tests. `ui-dev` A owns `modules/tasks/shell/**` and `overview/**`. `ui-dev` B owns `modules/tasks/my-tasks/**` and `quick-add/bar/**`. Wave 2: `ui-dev` C owns `modules/tasks/detail/**`. Then `code-reviewer`. |
 | 2. Board view and drag and drop | `server-dev`: `actions/task-moves.ts`, `routes/task-moves.ts` and tests. `ui-dev` A: `modules/tasks/board/**`. `ui-dev` B: `modules/tasks/my-tasks/**` (adds drag handles, sortable, section drops, date picker). Contract adds `resolveDrop()`, the dnd-kit setup, and stub files. |
@@ -40,4 +40,4 @@ Ownership is per feature: within one feature no two agents own the same file. On
 | 7. Reporting | `server-dev`: `actions/task-report.ts`, `routes/task-report.ts` and tests. `ui-dev`: `modules/tasks/reporting/**`. |
 | 8. Goals | `server-dev`: `actions/goals.ts`, `routes/goals.ts` and tests. `ui-dev` A: `modules/tasks/goals/list/**`. `ui-dev` B: `modules/tasks/goals/detail/**`. |
 
-Libraries: `@dnd-kit/core` 6.3.1, `@dnd-kit/sortable` 10.0.0, `@dnd-kit/utilities` 3.2.2 (Feature 2); `rrule` 2.8.1 (Feature 3); `chrono-node` 2.10.2 (Feature 4); `echarts` 6.1.0 (Feature 7).
+Libraries: `@dnd-kit/core` 6.3.1, `@dnd-kit/sortable` 10.0.0, `@dnd-kit/utilities` 3.2.2 (Feature 2); `rrule` 2.8.1 (Feature 3); `chrono-node` 2.10.2 (Feature 4); `recharts` 3.10.1 (Feature 7, replaces echarts, decision 53).

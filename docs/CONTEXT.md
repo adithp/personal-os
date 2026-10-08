@@ -51,7 +51,7 @@ Full product details: `docs/PRD.md`. Build order: `docs/ROADMAP.md`. Decisions w
 | Local development | Backend runs locally (`pnpm dev:server`, `http://127.0.0.1:3000/api/v1`). The desktop `.env` points `VITE_API_URL` there during Step 2. Port 3000 can be taken by another Docker container (ruview); auto-restart turned off |
 | Design | Dark glass + light mode. Pastel module colors (Tasks yellow #F7D96B, Calendar orange #F6A462, Habits lime #C6E46E, Notes peach #F0C9A0, Graph periwinkle #B8C4F7, Mail sky #93D3F5, Drive slate #C5CCD6, Projects pink #F4A9C4, Money mint #9EE0C8, AI and accent lavender #C9B4F7). Inter font, Tabler icons. No sidebar: macOS-style bottom dock with magnification. Frameless window with a transparent title bar. Backgrounds: Transparent (Windows Acrylic, default) / Wallpaper / Solid, all in Settings |
 | Liquid Glass | Built (decision 33, DESIGN.md section 2b): Liquid / Simple / Off with a Strength slider. Our own CSS + SVG filters, NOT the liquid-glass-js library (single-commit experiment, html2canvas can't see the desktop, one WebGL canvas per element). |
-| Work process | Claude Code builds. Parallel agents (max 3 at once, Sonnet, git worktrees): server-dev, ui-dev, plus reviewers code-reviewer, design-reviewer, security-reviewer, docs-reviewer. Contract-first, file ownership, the orchestrator merges. Karpathy coding principles in CLAUDE.md. Project skills (verify, new-action, api-route, db-change, ui-design-system, data-hooks, time-and-money, testing-patterns, record-lesson, docs-sync, feature-report, orchestrate-feature, dev-environment, discuss) |
+| Work process | Claude Code builds. Parallel agents (max 5 at once, Sonnet, git worktrees): server-dev, ui-dev, plus reviewers code-reviewer, design-reviewer, security-reviewer, docs-reviewer. Contract-first, file ownership, the orchestrator merges. Karpathy coding principles in CLAUDE.md. Project skills (verify, new-action, api-route, db-change, ui-design-system, data-hooks, time-and-money, testing-patterns, record-lesson, docs-sync, feature-report, orchestrate-feature, dev-environment, discuss) |
 | Quality systems | Lessons system (docs/LESSONS.md + pitfalls.md per skill; prefer automated guards). Docs sync (doc-map.json + docs:check + commit-msg hook + docs-reviewer). Design consistency (design:check, shared components only, design audit: planned, design-consistency job). Schema-behind startup guard |
 
 ---
@@ -73,7 +73,7 @@ Full product details: `docs/PRD.md`. Build order: `docs/ROADMAP.md`. Decisions w
 - **Favorites:** stored on the server (task_favorites table); auto color and icon, changeable.
 - **Inbox:** tasks with no date and no tags, excluding done and archived.
 - **Quick add:** chrono-node, "#tag", "!1–!4" and "!urgent/high/medium/low", "every monday".
-- **Reporting:** weeks start Monday; on-time rate; This week | This month switch; ECharts.
+- **Reporting:** weeks start Monday; on-time rate; This week | This month switch; Recharts (decision 53).
 - **Goals:** linked through the links table (goal entity type); progress counts top-level tasks only; asks "mark as achieved?" instead of changing status automatically.
 - **Keyboard:** N, Space, Enter, Delete, Esc, arrow keys, "?" for help (page-scoped, no new Ctrl shortcuts).
 - **Build order:** 1 panel + Overview + My tasks + detail + subtasks + tags + archive → 2 Board + drag and drop → 3 dependencies + recurring → 4 quick add → 5 favorites + manage tags → 6 inbox → 7 reporting → 8 goals.
@@ -84,9 +84,11 @@ Full product details: `docs/PRD.md`. Build order: `docs/ROADMAP.md`. Decisions w
 
 - **Step 1:** done (shell, dock, login, settings, dashboard, palette, server, database, infra).
 - **Skills, agents, lessons and docs-sync job:** done (commit f7a746d).
-- **Step 2, Tasks feature 1:** built with parallel agents, migrations applied. Waiting for my check and "next".
-- **Design-consistency job** (design audit, design:check, shared-components rule, design-reviewer checklist): next.
-- **Discuss skill and this CONTEXT.md:** being added now.
+- **Step 2, Tasks feature 1:** built, tested and approved by me. ROADMAP.md is ticked.
+- **Decisions 52 to 54:** up to 5 agents at once; Recharts instead of ECharts; keep dnd-kit, rrule and chrono-node.
+- **Design-consistency job** (design audit, design:check, shared-components rule, design-reviewer checklist): I send it next, before feature 2.
+- **Next build prompt:** `docs/prompts/next.md` is Tasks feature 2 (Board and drag and drop) with two cleanups. Features 3 to 8 follow in ROADMAP order, one prompt each.
+- **Discuss skill and this CONTEXT.md:** done.
 - **Pending later:** Notes features, realtime, redeploying AWS, Step 3 (AI + OmniRoute + Tailscale), Step 4 (Google), and the rest of the roadmap.
 
 ---

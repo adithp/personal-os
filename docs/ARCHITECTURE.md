@@ -24,7 +24,7 @@ Laptop coding tools ──Tailscale──► OmniRoute
 - Google: the backend holds encrypted Google tokens and calls Google APIs. Apps never talk to Google directly.
 
 ## 3. Tech stack
-Libraries not installed yet (planned): TipTap, CodeMirror, KaTeX, Shiki, Sigma.js, graphology, react-grid-layout, dnd-kit (Feature 2), rrule (Feature 3), Schedule-X, ECharts, TanStack Table, Vercel AI SDK, croner, googleapis.
+Libraries not installed yet (planned): TipTap, CodeMirror, KaTeX, Shiki, Sigma.js, graphology, react-grid-layout, dnd-kit (Feature 2), rrule (Feature 3), Schedule-X, Recharts, TanStack Table, Vercel AI SDK, croner, googleapis.
 
 | Area | Choice |
 |---|---|
@@ -42,7 +42,7 @@ Libraries not installed yet (planned): TipTap, CodeMirror, KaTeX, Shiki, Sigma.j
 | Drag and drop | dnd-kit |
 | Recurring dates | rrule (RRULE parsing and the next occurrence of a recurring task) |
 | Calendar views | Schedule-X |
-| Charts | Apache ECharts |
+| Charts | Recharts |
 | Tables | TanStack Table |
 | Command palette | cmdk |
 | Auth | Supabase Auth, email and password (no sign-up in the app) |
