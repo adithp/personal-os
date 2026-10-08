@@ -18,7 +18,9 @@ export interface TaskShortcutHandlers {
 }
 
 const TYPING = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
-const POPUPS = '[role="menu"], [role="dialog"], [role="alertdialog"], [role="listbox"]';
+// The detail panel owns the keyboard while focus is in it (it handles Escape itself)
+const POPUPS =
+  '[role="menu"], [role="dialog"], [role="alertdialog"], [role="listbox"], [role="complementary"]';
 
 /** True when the key press happened somewhere typing or a popup owns the keyboard. */
 function ownedElsewhere(target: EventTarget | null): boolean {

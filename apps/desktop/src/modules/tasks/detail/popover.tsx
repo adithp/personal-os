@@ -68,7 +68,7 @@ export function Popover({ label, popupLabel, trigger, triggerClassName, children
       <button
         ref={button}
         type="button"
-        aria-haspopup="true"
+        aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         aria-label={label}
@@ -83,7 +83,7 @@ export function Popover({ label, popupLabel, trigger, triggerClassName, children
         <div
           ref={popup}
           id={id}
-          role="group"
+          role="menu"
           aria-label={popupLabel}
           tabIndex={-1}
           className="absolute top-full left-0 z-30 mt-1 flex min-w-[200px] flex-col gap-1 rounded-card border-[0.5px] border-glass-border glass-strong p-1.5"

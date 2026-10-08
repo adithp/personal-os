@@ -201,3 +201,19 @@ describe('tag permissions', () => {
     expect(result.data).toMatchObject({ name: 'by-ai' });
   });
 });
+
+describe('two creates of the same name at once', () => {
+  it('both succeed and give back the same tag (no 500 from the unique index)', async () => {
+    const results = await Promise.allSettled([
+      registry.run(alice(), 'tags.create', { name: 'racing' }),
+      registry.run(alice(), 'tags.create', { name: 'Racing' }),
+    ]);
+    expect(results.map((r) => r.status)).toEqual(['fulfilled', 'fulfilled']);
+    const ids = results.map((r) =>
+      r.status === 'fulfilled' ? (r.value.data as { id: string }).id : '',
+    );
+    expect(ids[0]).toBe(ids[1]);
+    const all = (await registry.run(alice(), 'tags.list', {})).data as { id: string }[];
+    expect(all).toHaveLength(1);
+  });
+});

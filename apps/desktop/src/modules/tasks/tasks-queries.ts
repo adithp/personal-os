@@ -1,5 +1,6 @@
 import type {
   CreateTaskInput,
+  Tag,
   ListTasksInput,
   Task,
   TaskStatus,
@@ -20,6 +21,8 @@ import { startOfIstDay } from './dates';
  * Changes show up at once and are rolled back with a message if the server refuses.
  */
 export const TASKS_KEY = ['tasks'] as const;
+/** Every cached tag list starts with this key (see tags-queries.ts). */
+export const TAGS_KEY = ['tags'] as const;
 export const taskKeys = {
   all: TASKS_KEY,
   lists: [...TASKS_KEY, 'list'] as const,
@@ -100,7 +103,12 @@ export function useTask(id: string | null) {
 }
 
 /** What a task should look like right after a change, before the server has answered. */
-export function applyPatch(task: Task, patch: TaskPatch, now: string): Task {
+export function applyPatch(
+  task: Task,
+  patch: TaskPatch,
+  now: string,
+  knownTags: readonly Tag[] = [],
+): Task {
   const next: Task = { ...task };
   if (patch.title !== undefined) next.title = patch.title;
   if (patch.description !== undefined) next.description = patch.description;
@@ -108,6 +116,13 @@ export function applyPatch(task: Task, patch: TaskPatch, now: string): Task {
   if (patch.dueAt !== undefined) next.dueAt = patch.dueAt;
   if (patch.dueAllDay !== undefined) next.dueAllDay = patch.dueAllDay;
   if (patch.reminderAt !== undefined) next.reminderAt = patch.reminderAt;
+  if (patch.tagIds !== undefined) {
+    // Tags show at once; one the cache does not know yet appears after the refetch
+    next.tags = patch.tagIds.flatMap((id) => {
+      const tag = knownTags.find((candidate) => candidate.id === id);
+      return tag ? [{ id: tag.id, name: tag.name, color: tag.color }] : [];
+    });
+  }
   if (patch.status !== undefined && patch.status !== task.status) {
     next.status = patch.status;
     next.completedAt = patch.status === 'done' ? now : null;
@@ -120,14 +135,21 @@ const messageOf = (error: unknown) =>
 
 type Snapshot = [readonly unknown[], unknown][];
 
-/** Changes one task in every cached list and in its detail cache; returns what to put back. */
+/**
+ * Changes one task in every cached list and in its detail cache; returns what to put back. Only
+ * the cache entries that contain this task are saved and restored, so a failed change to one task
+ * never rolls back a later change to another.
+ */
 function patchEverywhere(
   client: QueryClient,
   id: string,
   change: (task: Task) => Task | null,
 ): Snapshot {
+  const has = (data: Task[] | Task | undefined) =>
+    Array.isArray(data) ? data.some((task) => task.id === id) : data?.id === id;
   const snapshot: Snapshot = client
     .getQueriesData<Task[] | Task>({ queryKey: TASKS_KEY })
+    .filter(([, data]) => has(data))
     .map(([key, data]) => [key, data]);
   client.setQueriesData<Task[] | Task>({ queryKey: TASKS_KEY }, (data) => {
     if (Array.isArray(data)) {
@@ -196,7 +218,10 @@ export function useTaskActions() {
     onMutate: async ({ id, ...patch }) => {
       await client.cancelQueries({ queryKey: TASKS_KEY });
       const now = new Date().toISOString();
-      return { snapshot: patchEverywhere(client, id, (task) => applyPatch(task, patch, now)) };
+      const known = client.getQueryData<Tag[]>(TAGS_KEY) ?? [];
+      return {
+        snapshot: patchEverywhere(client, id, (task) => applyPatch(task, patch, now, known)),
+      };
     },
     onError: (error, _input, context) => {
       fail(error, context?.snapshot);

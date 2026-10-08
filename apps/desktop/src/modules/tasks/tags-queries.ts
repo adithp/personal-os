@@ -3,9 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../api/api-client';
 import { useApi } from '../../api/api-context';
 import { useToasts } from '../../store/toast-store';
-import { TASKS_KEY } from './tasks-queries';
+import { TAGS_KEY, TASKS_KEY } from './tasks-queries';
 
-export const TAGS_KEY = ['tags'] as const;
+export { TAGS_KEY };
 
 interface TagWriteResult {
   item: Tag;

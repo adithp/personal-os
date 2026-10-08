@@ -868,3 +868,38 @@ describe('tasks.complete with the Feature 3 stubs', () => {
     expect(done.data).toMatchObject({ status: 'done' });
   });
 });
+
+describe('all-day due dates are always stored as the start of the India day', () => {
+  it('normalises on create', async () => {
+    const { task } = await create(alice(), {
+      title: 'All day',
+      dueAt: '2025-10-07T10:00:00.000Z', // 15:30 India time on 7 October
+      dueAllDay: true,
+    });
+    expect(task).toMatchObject({ dueAt: '2025-10-06T18:30:00.000Z', dueAllDay: true });
+  });
+
+  it('normalises on update, also when only the date changes on an all-day task', async () => {
+    const { task } = await create(alice(), {
+      title: 'All day',
+      dueAt: '2025-10-06T18:30:00.000Z',
+      dueAllDay: true,
+    });
+    const moved = await registry.run(alice(), 'tasks.update', {
+      id: task.id,
+      dueAt: '2025-10-09T05:00:00.000Z', // 10:30 on 9 October India time
+    });
+    expect(moved.data).toMatchObject({ dueAt: '2025-10-08T18:30:00.000Z', dueAllDay: true });
+    const both = await registry.run(alice(), 'tasks.update', {
+      id: task.id,
+      dueAt: '2025-10-10T21:00:00.000Z', // 02:30 on 11 October India time
+      dueAllDay: true,
+    });
+    expect(both.data).toMatchObject({ dueAt: '2025-10-10T18:30:00.000Z' });
+  });
+
+  it('leaves timed tasks alone', async () => {
+    const { task } = await create(alice(), { title: 'Timed', dueAt: '2025-10-07T10:00:00.000Z' });
+    expect(task.dueAt).toBe('2025-10-07T10:00:00.000Z');
+  });
+});

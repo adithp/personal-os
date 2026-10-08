@@ -54,6 +54,8 @@ function Frame({
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape' && !event.defaultPrevented) {
       event.preventDefault();
+      // Leave the field first, so a title, note, or date being typed is saved (blur saves it)
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       onClose();
     }
   };

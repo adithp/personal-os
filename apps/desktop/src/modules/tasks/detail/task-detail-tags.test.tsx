@@ -129,9 +129,9 @@ describe('TaskDetailPanel: tag menus and keyboard', () => {
     const { task, fake } = setup();
     const { user, onClose } = await openLoaded(fake, task.id);
     await user.click(screen.getByRole('button', { name: 'Add tag' }));
-    await screen.findByRole('group', { name: 'Tags' });
+    await screen.findByRole('menu', { name: 'Tags' });
     await user.keyboard('{Escape}');
-    expect(screen.queryByRole('group', { name: 'Tags' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menu', { name: 'Tags' })).not.toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Add tag' })).toHaveFocus();
     await user.keyboard('{Escape}');
@@ -142,9 +142,9 @@ describe('TaskDetailPanel: tag menus and keyboard', () => {
     const { task, fake } = setup();
     const { user, onClose } = await openLoaded(fake, task.id);
     await user.click(screen.getByRole('button', { name: 'Tag work' }));
-    await screen.findByRole('group', { name: 'Tag work options' });
+    await screen.findByRole('menu', { name: 'Tag work options' });
     await user.keyboard('{Escape}');
-    expect(screen.queryByRole('group', { name: 'Tag work options' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menu', { name: 'Tag work options' })).not.toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -162,9 +162,9 @@ describe('TaskDetailPanel: tag menus and keyboard', () => {
     const { task, fake } = setup();
     const { user } = await openLoaded(fake, task.id);
     await user.click(screen.getByRole('button', { name: 'Add tag' }));
-    await screen.findByRole('group', { name: 'Tags' });
+    await screen.findByRole('menu', { name: 'Tags' });
     await user.click(screen.getByText('Repeat'));
-    expect(screen.queryByRole('group', { name: 'Tags' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menu', { name: 'Tags' })).not.toBeInTheDocument();
   });
 
   it('is usable with the keyboard only', async () => {
@@ -180,7 +180,7 @@ describe('TaskDetailPanel: tag menus and keyboard', () => {
     await waitFor(() => {
       expect(lastPatch(fake)).toEqual({ tagIds: [work.id, home.id] });
     });
-    const menu = screen.getByRole('group', { name: 'Tags' });
+    const menu = screen.getByRole('menu', { name: 'Tags' });
     expect(within(menu).getByRole('textbox', { name: 'New tag' })).toBeInTheDocument();
   });
 });

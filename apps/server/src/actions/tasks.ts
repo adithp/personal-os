@@ -28,6 +28,13 @@ import { implement, type ActionOutcome } from './registry';
 /** Gap between positions. Moving a task later puts it between its neighbours. */
 const POSITION_STEP = 1024;
 
+const IST_MS = (5 * 60 + 30) * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The start of the India calendar day that contains this time (an all-day task is stored so). */
+const istDayStart = (isoTime: string) =>
+  new Date(Math.floor((Date.parse(isoTime) + IST_MS) / DAY_MS) * DAY_MS - IST_MS).toISOString();
+
 const iso = (date: Date | null) => (date ? date.toISOString() : null);
 
 /** The database row as the API returns it, without the tags and counts (see withDetails). */
@@ -203,7 +210,6 @@ async function applyChange(
   scope: UserScope,
   id: string,
   patch: Patch,
-  options: { spawnNext?: boolean } = {},
 ): Promise<ActionOutcome<Task>> {
   return scope.transaction(async (tx) => {
     const current = await findTask(tx, id);
@@ -224,8 +230,15 @@ async function applyChange(
       // Clearing the date of an all-day task clears the flag too
       nextAllDay = false;
     }
-    if ((nextAllDay ?? current.dueAllDay) && !finalDueAt) {
+    const finalAllDay = nextAllDay ?? current.dueAllDay;
+    if (finalAllDay && !finalDueAt) {
       throw new HttpError(400, 'validation_error', 'An all-day task needs a due date');
+    }
+    // An all-day task always stores the start of its day in India time
+    let dueAtChange = patch.dueAt;
+    if (finalAllDay && finalDueAt) {
+      const start = istDayStart(finalDueAt);
+      if (start !== iso(current.dueAt)) dueAtChange = start;
     }
 
     change('title', patch.title, current.title, { title: patch.title });
@@ -233,8 +246,8 @@ async function applyChange(
       description: patch.description,
     });
     change('priority', patch.priority, current.priority, { priority: patch.priority });
-    change('dueAt', patch.dueAt, iso(current.dueAt), {
-      dueAt: patch.dueAt ? new Date(patch.dueAt) : null,
+    change('dueAt', dueAtChange, iso(current.dueAt), {
+      dueAt: dueAtChange ? new Date(dueAtChange) : null,
     });
     change('dueAllDay', nextAllDay, current.dueAllDay, { dueAllDay: nextAllDay });
     change('reminderAt', patch.reminderAt, iso(current.reminderAt), {
@@ -271,7 +284,8 @@ async function applyChange(
       }
     }
     if (tagIds !== undefined) await setTags(tx, id, tagIds);
-    if (options.spawnNext && completing && updated.recurrenceRule) {
+    // Any change to done (the checkbox, the status control, a drag, the AI) makes the next copy
+    if (completing && updated.recurrenceRule) {
       await spawnNextOccurrence(tx, updated, new Date());
     }
     const undo: UndoDescriptor = { action: 'tasks.update', input: { id, ...previous } };
@@ -372,7 +386,9 @@ export const taskImplementations = [
         description: input.description ?? null,
         status,
         priority: input.priority ?? 4,
-        dueAt: input.dueAt ? new Date(input.dueAt) : null,
+        dueAt: input.dueAt
+          ? new Date(input.dueAllDay ? istDayStart(input.dueAt) : input.dueAt)
+          : null,
         dueAllDay: input.dueAllDay ?? false,
         reminderAt: input.reminderAt ? new Date(input.reminderAt) : null,
         parentTaskId,
@@ -398,7 +414,7 @@ export const taskImplementations = [
   implement(taskActions.unarchive, async ({ scope }, { id }) => setArchived(scope, id, false)),
 
   implement(taskActions.complete, async ({ scope }, { id }) =>
-    applyChange(scope, id, { status: 'done' }, { spawnNext: true }),
+    applyChange(scope, id, { status: 'done' }),
   ),
 
   implement(taskActions.prioritize, async ({ scope }, { id, priority }) =>

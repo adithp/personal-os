@@ -7,6 +7,7 @@ const strings = (value: unknown): string[] | undefined => {
   return list.length > 0 ? list : undefined;
 };
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = ['todo', 'doing', 'done'] as const;
 const PRIORITIES = [1, 2, 3, 4] as const;
 
@@ -36,6 +37,6 @@ export function validateTaskSearch(raw: Record<string, unknown>): TaskSearch {
   if (isString(raw.sort) && (SORT_KEYS as readonly string[]).includes(raw.sort)) {
     search.sort = raw.sort as TaskSearch['sort'];
   }
-  if (isString(raw.task) && raw.task.length > 0) search.task = raw.task;
+  if (isString(raw.task) && UUID.test(raw.task)) search.task = raw.task;
   return search;
 }

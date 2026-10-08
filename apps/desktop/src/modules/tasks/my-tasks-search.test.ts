@@ -12,7 +12,7 @@ describe('validateTaskSearch', () => {
         archived: 'true',
         group: 'tag',
         sort: 'due',
-        task: 'abc',
+        task: '00000000-0000-4000-8000-000000000001',
       }),
     ).toEqual({
       status: ['todo', 'doing'],
@@ -22,7 +22,7 @@ describe('validateTaskSearch', () => {
       archived: true,
       group: 'tag',
       sort: 'due',
-      task: 'abc',
+      task: '00000000-0000-4000-8000-000000000001',
     });
   });
 
@@ -35,7 +35,7 @@ describe('validateTaskSearch', () => {
         archived: 'nope',
         group: 'colour',
         sort: 'random',
-        task: '',
+        task: 'abc',
         extra: 1,
       }),
     ).toEqual({ status: ['done'] });

@@ -326,7 +326,17 @@ export function MyTasksPage() {
         <TaskDetailPanel
           taskId={ui.selectedTaskId}
           onClose={() => {
+            const closing = ui.selectedTaskId;
+            const inPanel = document.activeElement?.closest('[role="complementary"]') !== null;
             select(null);
+            // Keyboard users land back on the task they were editing (if it is still there)
+            if (closing !== null && inPanel) {
+              setTimeout(() => {
+                listRoot.current
+                  ?.querySelector<HTMLElement>(`[data-task-id="${closing}"]`)
+                  ?.focus();
+              }, 0);
+            }
           }}
         />
       ) : null}

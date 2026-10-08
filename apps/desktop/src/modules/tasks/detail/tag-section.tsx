@@ -8,7 +8,7 @@ import {
 } from '@personal-os/shared';
 import { Input } from '@personal-os/ui';
 import { IconCheck, IconPlus } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../../api/api-client';
 import { TagChip } from '../shared/tag-chip';
 import { useTagActions, useTags } from '../tags-queries';
@@ -82,6 +82,11 @@ function AddTagMenu({ tags, onChange }: TagSectionProps) {
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const ids = tags.map((tag) => tag.id);
+  // The newest tag set, also after the await in add() (a toggle may have happened meanwhile)
+  const latestIds = useRef(ids);
+  useEffect(() => {
+    latestIds.current = ids.join(',') === latestIds.current.join(',') ? latestIds.current : ids;
+  });
 
   const toggle = (tag: Tag) => {
     onChange(ids.includes(tag.id) ? ids.filter((id) => id !== tag.id) : [...ids, tag.id]);
@@ -97,7 +102,8 @@ function AddTagMenu({ tags, onChange }: TagSectionProps) {
     try {
       const { item } = await create.mutateAsync({ name: parsed.data.name });
       setName('');
-      if (!ids.includes(item.id)) onChange([...ids, item.id]);
+      const current = latestIds.current;
+      if (!current.includes(item.id)) onChange([...current, item.id]);
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'Could not create the tag.');
     }
