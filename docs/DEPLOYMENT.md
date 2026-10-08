@@ -76,6 +76,10 @@ AWS rules for this server: security group allows TCP 80 and 443 from anywhere (U
 ## 7. Coding tools access
 - Claude Code and other coding tools point to http://<server-tailscale-ip>:20128/v1 with the coding key.
 
+## 7a. Migrations and the startup check
+- Migrations are applied only by the owner with `pnpm db:migrate`. The server never applies them.
+- At startup the server reads the migration list in packages/db (the drizzle journal) and compares it with drizzle.__drizzle_migrations. If migrations are missing it logs a warning naming the files and "Database update needed: run pnpm db:migrate". Requests that fail because of it answer 503 `schema_behind` (not a 500), and the desktop app shows the same message.
+
 ## 7b. Git hooks and the docs check
 - The repo has a commit-msg hook (.githooks/commit-msg) that runs `pnpm docs:check`: a commit that changes code listed in docs/doc-map.json must also change its docs, or carry a line `[docs-ok] <reason>` in the message.
 - `pnpm install` turns the hook on by itself (the root `prepare` script runs scripts/install-hooks.mjs, which sets `git config core.hooksPath .githooks`). Run `pnpm hooks:install` to do it by hand. The script does nothing and never fails when there is no .git folder, so Docker builds and the AWS server are not affected.

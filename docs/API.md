@@ -5,6 +5,7 @@ Auth: every request sends Authorization: Bearer <Supabase JWT>. The backend veri
 The server listens on 127.0.0.1 by default (HOST); the Docker image sets HOST=0.0.0.0 so Caddy can reach it.
 Format: JSON. Validation: Zod schemas from packages/shared.
 Errors: { "error": { "code": string, "message": string } }
+While the database is missing migrations, a request that fails because of it answers 503 with code `schema_behind` and the message "Database update needed: run pnpm db:migrate" (the server also logs the missing migration files at startup). The server only checks; it never applies migrations.
 
 ## Standard resource routes
 Each resource has: GET list (filters, sort, page), GET by id, POST create, PATCH update, DELETE (soft delete).

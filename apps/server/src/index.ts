@@ -1,6 +1,7 @@
 import { buildApp } from './app';
 import { EnvError, loadEnv } from './config/env';
 import { connectDatabase } from './lib/database';
+import { createSchemaGuard, SCHEMA_BEHIND_MESSAGE } from './lib/schema-guard';
 
 function readEnv() {
   try {
@@ -19,7 +20,8 @@ function readEnv() {
 
 const env = readEnv();
 const database = connectDatabase(env.DATABASE_URL);
-const app = buildApp({ env, db: database.db });
+const schemaGuard = createSchemaGuard(database.db);
+const app = buildApp({ env, db: database.db, schemaGuard });
 
 async function shutdown(signal: string) {
   app.log.info({ signal }, 'shutting down');
@@ -36,3 +38,18 @@ try {
   app.log.error({ err: error }, 'could not start');
   process.exit(1);
 }
+
+// Read-only check: warn clearly when the database is missing migrations (never applies them)
+void schemaGuard
+  .check()
+  .then((schema) => {
+    if (schema.behind) {
+      app.log.warn(
+        { missing: schema.missing },
+        `${SCHEMA_BEHIND_MESSAGE}. Missing: ${schema.missing.join(', ')}`,
+      );
+    }
+  })
+  .catch(() => {
+    app.log.warn('Could not check which database migrations are applied');
+  });

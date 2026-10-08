@@ -665,6 +665,15 @@ describe('loading, empty, and error states', () => {
     expect(await screen.findByText('No tasks match these filters.')).toBeInTheDocument();
   });
 
+  it('says "Database update needed" when the server reports pending migrations', async () => {
+    const fake = createFakeApi([makeTask({ title: 'Waiting' })]);
+    fake.failNext(503, 'schema_behind', 'Database update needed: run pnpm db:migrate');
+    await openMyTasks(fake);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Database update needed: run pnpm db:migrate',
+    );
+  });
+
   it('shows an error with Try again', async () => {
     const fake = createFakeApi([makeTask({ title: 'Back again' })]);
     fake.failNext(0, 'network', 'Cannot reach the server. Check that it is running and try again.');

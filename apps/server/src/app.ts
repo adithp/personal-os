@@ -6,6 +6,7 @@ import { createRegistry } from './actions';
 import { createJwtVerifier, type JwtVerifier } from './auth/verify-jwt';
 import type { ServerEnv } from './config/env';
 import { HttpError } from './lib/http-error';
+import { isSchemaError, SCHEMA_BEHIND_MESSAGE, type SchemaGuard } from './lib/schema-guard';
 import type { Db } from './lib/user-scope';
 import { v1Routes } from './routes/v1';
 
@@ -17,6 +18,8 @@ export interface BuildAppOptions {
   verifier?: JwtVerifier;
   /** The database (always given when the server runs; some tests leave it out). */
   db?: Db;
+  /** Tells a missing migration apart from a bug when a query fails (see lib/schema-guard.ts). */
+  schemaGuard?: SchemaGuard;
   /** Where log lines go. Defaults to stdout. */
   logStream?: Writable;
 }
@@ -32,7 +35,13 @@ const body = (code: string, message: string): ErrorBody => ({ error: { code, mes
  * Logs never contain tokens: the Authorization and cookie headers are redacted and only the
  * path (no query string) of a request is logged.
  */
-export function buildApp({ env, verifier, db, logStream }: BuildAppOptions): FastifyInstance {
+export function buildApp({
+  env,
+  verifier,
+  db,
+  schemaGuard,
+  logStream,
+}: BuildAppOptions): FastifyInstance {
   const app = Fastify({
     trustProxy: true,
     logger: {
@@ -71,7 +80,7 @@ export function buildApp({ env, verifier, db, logStream }: BuildAppOptions): Fas
     void reply.status(404).send(body('not_found', 'Route not found'));
   });
 
-  app.setErrorHandler((error: FastifyError | Error, request, reply) => {
+  app.setErrorHandler(async (error: FastifyError | Error, request, reply) => {
     if (error instanceof HttpError) {
       return reply.status(error.statusCode).send(body(error.code, error.message));
     }
@@ -79,6 +88,18 @@ export function buildApp({ env, verifier, db, logStream }: BuildAppOptions): Fas
       return reply
         .status(400)
         .send(body('validation_error', error.issues.map((issue) => issue.message).join('; ')));
+    }
+    if (schemaGuard && isSchemaError(error)) {
+      // A query failed on a missing table or column: say so plainly if migrations are pending
+      try {
+        const schema = await schemaGuard.check();
+        if (schema.behind) {
+          request.log.error({ missing: schema.missing }, 'the database schema is behind');
+          return await reply.status(503).send(body('schema_behind', SCHEMA_BEHIND_MESSAGE));
+        }
+      } catch {
+        // Could not check: fall through to the generic error
+      }
     }
     const status =
       'statusCode' in error && typeof error.statusCode === 'number' ? error.statusCode : 500;
