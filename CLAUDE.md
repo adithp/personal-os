@@ -10,6 +10,16 @@ Read these before starting any work:
 - docs/DATABASE.md – tables and security rules
 - docs/AI_SYSTEM.md – actions, permissions, skills, OmniRoute
 - docs/features/<module>.md – details for the module being built
+- docs/LESSONS.md – mistakes we already made (also read the pitfalls.md of the skills you will use)
+
+## Coding principles
+For trivial changes (typos, one-liners), use judgment instead of the full process.
+1. **Think before coding.** State your assumptions. When something has more than one reading, show the options instead of picking silently. Say so when a simpler approach exists. When confused, stop and ask (this is the rule "ask me, never guess" below).
+2. **Simplicity first.** Write the minimum code that solves the request. No speculative features, no abstractions for one use, no configurability nobody asked for, no error handling for cases that cannot happen. If 200 lines could be 50, rewrite it.
+3. **Surgical changes.** Touch only what the task needs. Do not reformat, refactor, or "improve" nearby code, comments, or style. Remove only what your own change made unused; mention other dead code instead of deleting it. Every changed line must trace back to the request.
+4. **Goal-driven execution.** Turn each task into checks before coding (for example "write a failing test, then make it pass"). For multi-step work, state a short plan with a check per step, and loop until the checks pass.
+
+(Based on the ideas in github.com/multica-ai/andrej-karpathy-skills, MIT license, written in our own words.)
 
 ## Tech stack (fixed, do not change without asking)
 - Monorepo: pnpm workspaces
@@ -23,12 +33,14 @@ Read these before starting any work:
 - Hosting: AWS EC2 ARM server for now (free-plan credits), moving to Oracle Cloud Always Free when capacity allows; Docker Compose, Caddy, DuckDNS, Tailscale (decision 35)
 
 ## Commands
-- pnpm install – install everything
+- pnpm install – install everything (also turns on the git hooks)
 - pnpm dev:desktop – run the desktop app
 - pnpm dev:server – run the backend
 - pnpm test – run all tests (Vitest)
 - pnpm lint – ESLint + Prettier check
-- pnpm db:generate / pnpm db:migrate – Drizzle migrations
+- pnpm typecheck – TypeScript checks
+- pnpm docs:check – checks that code changes come with their docs
+- pnpm db:generate / pnpm db:migrate – Drizzle migrations (I run db:migrate, never Claude)
 
 ## Rules
 1. Every data change goes through the action registry (docs/AI_SYSTEM.md). UI buttons and the AI call the same actions.
@@ -42,6 +54,26 @@ Read these before starting any work:
 9. Do not add new libraries without asking.
 10. When something in the docs is unclear, ask before building.
 
+## Skills (use them instead of guessing the procedure)
+- Before every commit and before a feature report: **verify** (lint, typecheck, test, docs check, build).
+- New action: **new-action**. New route: **api-route**. Schema change or migration: **db-change**.
+- Screens and components: **ui-design-system**. Server data in the app: **data-hooks**.
+- Dates, recurrence, money: **time-and-money**. Writing tests: **testing-patterns**.
+- After any code change: **docs-sync** (docs must match the code). After any fix that cost a retry: **record-lesson**.
+- Machine, ports, Docker, Supabase, hosting, git: **dev-environment**. Finished feature: **feature-report**.
+- A feature with parallel agents: **/orchestrate-feature <feature>** (only I start it).
+
+## Known pitfalls (the full list is docs/LESSONS.md)
+- Never read, print, or edit .env files (deny rules enforce it). Never paste secrets, tokens, or connection strings anywhere.
+- Never run pnpm db:migrate. After a schema change tell me which new migration files to apply and what to check in Supabase (the app shows "Database update needed: run pnpm db:migrate" until then).
+- Check port 3000 before starting a server or Docker; never touch another project's container.
+- Your Bash tool is Git Bash; my terminal is PowerShell (give me PowerShell or Notepad steps). Write files with the Write tool, not long heredocs.
+- Dates: UTC stored, India calendar days for "today" and "overdue"; rrule needs the floating-UTC conversion (time-and-money).
+- Supabase: session pooler URL (not the IPv6-only direct one); tokens are verified with JWKS.
+- Vite reads .env only at startup: restart pnpm dev:desktop after changes.
+- Agent worktrees only see committed work and branch from my current branch; agent definitions load only when a session starts.
+- A commit that changes mapped code (docs/doc-map.json) is blocked unless its docs changed or the message has `[docs-ok] <reason>`.
+- Do not restart heavy processes (dev app, Docker Desktop) on your own when memory is short.
 
 ## Working rules (always follow, in every mode, including auto-accept mode)
 
@@ -58,7 +90,7 @@ Read these before starting any work:
 - Ask all your questions together, numbered, then wait.
 
 ### Every feature must be verified before it is called done
-When a feature is finished, give me a feature report with:
+When a feature is finished, give me a feature report (the **feature-report** skill has the format) with:
 1. What was built (short list).
 2. Files created or changed.
 3. Automated checks you ran and their results: pnpm lint, pnpm test, and the build. All must pass. If something fails, fix it before reporting.
@@ -71,12 +103,4 @@ Then write: "Feature complete. Waiting for your check. Reply 'next' to continue 
 - Only after I reply "next": tick the item in docs/ROADMAP.md and suggest a commit message.
 
 ## Parallel work
-The main session is the orchestrator. It may run at most 3 subagents at once (server-dev, ui-dev, and code-reviewer for review). All use Sonnet, and each works in its own git worktree.
-1. Use parallel agents only for independent units that are big enough to be worth it. Small changes, and anything that needs back-and-forth, stay in the main session.
-2. Contract first. Before starting agents, the orchestrator writes and COMMITS the shared contract: Zod schemas and types in packages/shared, action names with permission levels, the route list and shapes, the database schema with its generated migration, React Query hook signatures, and a page skeleton with empty slots. Worktrees branch from the committed HEAD, so uncommitted work is invisible to agents.
-3. File ownership. Every agent gets a list of the files or folders it owns, and no two agents own the same file. Only the orchestrator touches migrations and the drizzle meta files, packages/shared/src/index.ts, apps/desktop/src/routeTree.gen.ts, ROADMAP.md, DECISIONS.md, other docs, and CLAUDE.md.
-4. Agents cannot ask me anything. Every task message must say: if something is unclear, stop and report questions instead of guessing. The orchestrator collects the questions and asks me.
-5. Merge. The orchestrator merges agent branches one at a time, resolves conflicts, regenerates routeTree.gen.ts, runs pnpm lint, pnpm typecheck and pnpm test on the merged result, and fixes failures. Then it runs code-reviewer and fixes what it finds.
-6. The stop rule still applies: stop only when I can see and test a feature. One report per merged feature.
-7. When I need to run pnpm db:migrate, tell me exactly which migration files are new and what I should see in Supabase afterwards.
-8. Parallel agents use the same plan limits as the main session. Never run more than 3 at once.
+The main session is the orchestrator and may run at most 3 subagents at once (server-dev, ui-dev, and the reviewers code-reviewer, design-reviewer, security-reviewer, docs-reviewer). All use Sonnet and each works in its own git worktree. Only I start a parallel feature, with /orchestrate-feature <feature>; the procedure (contract first, file ownership, merge, reviews) lives in that skill. Agents cannot ask me anything: they stop and report questions, and the orchestrator asks me.
