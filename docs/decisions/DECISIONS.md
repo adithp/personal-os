@@ -45,3 +45,9 @@
 | 41 | Step 2 is developed against the local server (VITE_API_URL required, example http://127.0.0.1:3000/api/v1); the AWS server is redeployed later | Oracle/AWS capacity and cost do not block the app |
 | 42 | Search uses the Postgres simple text-search configuration with prefix matching | Works for any language, names, and code; can be revisited |
 | 43 | Notes extras (math, callouts, attachments, embeds, raw markdown, local graph) move to Step 2b in the roadmap | Ship the core editor first |
+| 44 | Tasks module has its own slim inner side panel (Overview, My tasks, Inbox, Reporting, Goals, Portfolios, Favorites); the bottom dock stays the app navigation | Asana-style layout; apps/desktop/CLAUDE.md updated |
+| 45 | A due date can be all-day: tasks.due_all_day (default false); an all-day task stores the start of that day in India time and the server normalises it; overdue is by India calendar day | Date-only deadlines without a second column |
+| 46 | Tags are auto-colored from the module pastel palette in a cycle; a tag name has no spaces or # characters; names are unique ignoring case among live tags | Simple, quick-add friendly (#tag) |
+| 47 | Any change of a task to done (checkbox, status control, drag, AI) makes the next copy of a recurring task; Feature 3 must also make the undo remove that copy | One rule for every path to done |
+| 48 | Parallel agents (server-dev, ui-dev, code-reviewer, Sonnet, worktrees) build features from a committed contract; the plan and file ownership are in docs/features/tasks-redesign.md | Faster delivery with no file overlap |
+
