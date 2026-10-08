@@ -5,9 +5,9 @@ One screen that shows my whole day and lets me act on it.
 
 ## Layout
 Follows docs/DESIGN.md section 8.
-- Main column: greeting and search, assistant card, two wide tiles (Today's tasks, Important emails), three small tiles (Money, Streak, Projects), then a Quick actions row (New task, New note, Log expense, New event).
+- Main column: greeting and date, a wide search field (type to open the command palette with your text), the assistant card, then a 3 by 2 grid of equal-size cards: Today's tasks, Important emails, Money, Streak, Projects, and the Quick actions card (New task, New note, Log expense, New event in a 2 by 2 grid).
 - Right column (280 px): mini calendar, Upcoming (Today and Tomorrow, at most 4 events), Activity (3 items with "View all").
-- Tiles and the assistant card are compact so the main column fits the 1100×700 minimum window. The two columns scroll independently when the window is shorter or the content is taller.
+- At the 1100×700 minimum window the main column fits without scrolling; the two columns scroll independently if the window is shorter.
 
 ## Widgets
 | Widget | Color | Shows |

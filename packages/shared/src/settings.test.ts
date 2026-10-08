@@ -5,7 +5,10 @@ import {
   DEFAULT_SETTINGS,
   DOCK_ICON_SIZES,
   MAX_WALLPAPER_BYTES,
+  GLASS_EFFECTS,
+  LIQUID_STRENGTH_RANGE,
   clampBlur,
+  clampLiquidStrength,
   fileExtension,
   isWallpaperExtension,
   isWallpaperFileName,
@@ -16,6 +19,8 @@ describe('default settings (docs/DESIGN.md)', () => {
     expect(DEFAULT_SETTINGS).toEqual({
       theme: 'system',
       backgroundMode: 'transparent',
+      glassEffect: 'liquid',
+      liquidStrength: 50,
       blurPx: 24,
       wallpaperSource: 'builtin',
       wallpaperFile: null,
@@ -97,5 +102,32 @@ describe('uploaded wallpaper rules', () => {
 
   it('limits uploads to 20 MB', () => {
     expect(MAX_WALLPAPER_BYTES).toBe(20 * 1024 * 1024);
+  });
+});
+
+describe('Liquid Glass settings', () => {
+  it('has three glass effects with Liquid as the default', () => {
+    expect(GLASS_EFFECTS).toEqual(['liquid', 'simple', 'off']);
+    expect(DEFAULT_SETTINGS.glassEffect).toBe('liquid');
+  });
+
+  it('defaults to medium strength on a 0–100 scale', () => {
+    expect(LIQUID_STRENGTH_RANGE).toEqual({ min: 0, max: 100 });
+    expect(DEFAULT_SETTINGS.liquidStrength).toBe(50);
+  });
+
+  it.each([
+    [-10, 0],
+    [0, 0],
+    [50, 50],
+    [49.6, 50],
+    [100, 100],
+    [250, 100],
+  ])('clamps strength %s to %s', (input, expected) => {
+    expect(clampLiquidStrength(input)).toBe(expected);
+  });
+
+  it('falls back to the default strength for NaN', () => {
+    expect(clampLiquidStrength(Number.NaN)).toBe(50);
   });
 });

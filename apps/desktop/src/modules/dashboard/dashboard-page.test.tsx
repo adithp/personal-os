@@ -44,7 +44,7 @@ describe('Dashboard layout', () => {
     expect(screen.queryByText(/Coming in step/)).not.toBeInTheDocument();
   });
 
-  it('shows the greeting and date on the left, and the search bar with Ctrl K on the right', async () => {
+  it('shows the greeting and date, then a wide search field with a Ctrl K hint under them', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2025-10-07T06:00:00Z')); // 11:30 in India
     await openDashboard();
@@ -52,9 +52,17 @@ describe('Dashboard layout', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Good morning');
     expect(screen.getByText('Tuesday, 7 October')).toBeInTheDocument();
 
-    const search = screen.getByRole('button', { name: 'Search' });
-    expect(within(search).getByLabelText('Ctrl K')).toBeInTheDocument();
-    expect(search).toHaveClass('glass');
+    const search = screen.getByRole('searchbox', { name: 'Search' });
+    expect(search).toHaveAttribute('placeholder', 'Search or type a command');
+    expect(search).toHaveClass('w-full', 'liquid-input'); // fills the column, a glass well
+    expect(search.parentElement).toContainElement(screen.getByLabelText('Ctrl K'));
+    // It sits under the greeting and above the assistant card
+    const heading = screen.getByRole('heading', { level: 1 });
+    const assistant = screen.getByRole('textbox', { name: 'Ask or tell me what to do' });
+    expect(heading.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      search.compareDocumentPosition(assistant) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('has the assistant card with the summary, the input, and a lavender send button', async () => {
@@ -67,22 +75,34 @@ describe('Dashboard layout', () => {
     expect(screen.getByRole('button', { name: 'Send' })).toHaveClass('bg-accent');
   });
 
-  it('shows the five tiles: two wide, then three small', async () => {
+  it('shows five tiles and the quick actions card in one grid, three per row', async () => {
     await openDashboard();
     const tiles = screen.getAllByRole('region').filter((el) => el.tagName === 'SECTION');
     const titles = tiles
       .map((el) => el.getAttribute('aria-label'))
       .filter((title) => title !== null && title !== 'Today' && title !== 'Tomorrow');
     expect(titles).toEqual(["Today's tasks", 'Important emails', 'Money', 'Streak', 'Projects']);
-    expect(tile("Today's tasks").parentElement).toHaveClass('grid-cols-2');
-    expect(tile('Money').parentElement).toHaveClass('grid-cols-3');
+
+    const grid = tile("Today's tasks").parentElement;
+    expect(grid).toHaveClass('grid', 'grid-cols-3');
+    // Every card in the grid has the same width and height (equal rows)
+    expect(grid).toHaveClass('auto-rows-fr');
+    for (const title of ['Important emails', 'Money', 'Streak', 'Projects']) {
+      expect(tile(title).parentElement).toBe(grid);
+    }
+    const quick = screen.getByRole('region', { name: 'Quick actions' });
+    expect(quick.parentElement).toBe(grid);
+    expect(grid?.children).toHaveLength(6);
+    expect(grid?.lastElementChild).toBe(quick);
   });
 
-  it('uses compact tiles so the whole left column fits a short window', async () => {
+  it('uses the normal tile size, so no tile is a short wide strip', async () => {
     await openDashboard();
     for (const title of ["Today's tasks", 'Important emails', 'Money', 'Streak', 'Projects']) {
-      expect(tile(title)).toHaveClass('p-3', 'gap-2');
+      expect(tile(title)).toHaveClass('p-4', 'gap-3');
+      expect(tile(title)).not.toHaveClass('p-3');
     }
+    expect(screen.getByRole('region', { name: 'Quick actions' })).toHaveClass('glass');
   });
 
   it('no longer has the Next event tile', async () => {
@@ -158,7 +178,8 @@ describe('Dashboard content', () => {
     const el = tile("Today's tasks");
     expect(within(el).getByText('3')).toBeInTheDocument();
     expect(within(el).getByText('of 7 done')).toBeInTheDocument();
-    expect(within(el).getByText(/Next: Submit DBMS assignment · 5:00 PM/)).toBeInTheDocument();
+    expect(within(el).getByText('Next: Submit DBMS assignment')).toBeInTheDocument();
+    expect(within(el).getByText('Due 5:00 PM')).toBeInTheDocument();
     expect(within(el).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '43');
     expect(tasksProgressPercent()).toBe(43);
   });
@@ -254,7 +275,7 @@ describe('Assistant card (assistant arrives in step 3)', () => {
       screen.getByRole('textbox', { name: 'Ask or tell me what to do' }),
       'plan my day{Enter}',
     );
-    expect(screen.getByRole('status')).toHaveTextContent('The assistant arrives in step 3.');
+    expect(screen.getByText('The assistant arrives in step 3.')).toBeInTheDocument();
   });
 
   it('ignores a blank message', async () => {
@@ -263,25 +284,21 @@ describe('Assistant card (assistant arrives in step 3)', () => {
       screen.getByRole('textbox', { name: 'Ask or tell me what to do' }),
       '   {Enter}',
     );
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByText('The assistant arrives in step 3.')).not.toBeInTheDocument();
   });
 });
 
 describe('Quick actions row', () => {
   const section = () => screen.getByRole('region', { name: 'Quick actions' });
 
-  it('is titled "Quick actions" in 13 px type, under the tiles', async () => {
+  it('is titled "Quick actions" and is the sixth card in the tile grid', async () => {
     await openDashboard();
     const heading = within(section()).getByRole('heading', { name: 'Quick actions' });
-    expect(heading).toHaveClass('text-card'); // 13 px
-    const projects = tile('Projects');
-    expect(
-      projects.parentElement?.compareDocumentPosition(section()) ??
-        0 & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(heading).toBeInTheDocument();
+    expect(section().parentElement?.lastElementChild).toBe(section());
   });
 
-  it('has four glass buttons in one row, in order', async () => {
+  it('has four glass buttons in a 2 by 2 grid, in order', async () => {
     await openDashboard();
     const buttons = within(section()).getAllByRole('button');
     expect(buttons.map((b) => b.textContent)).toEqual([
@@ -291,7 +308,17 @@ describe('Quick actions row', () => {
       'New event',
     ]);
     for (const button of buttons) expect(button).toHaveClass('glass');
-    expect(buttons[0]?.parentElement).toHaveClass('grid-cols-4');
+    expect(buttons[0]?.parentElement).toHaveClass('grid-cols-2');
+  });
+
+  it('keeps room for the note, so the card does not change size when you click', async () => {
+    const { user } = await openDashboard();
+    const note = within(section()).getByRole('status');
+    expect(note).toHaveClass('h-4');
+    expect(note).toHaveTextContent('');
+    await user.click(screen.getByRole('button', { name: 'New task' }));
+    expect(note).toHaveClass('h-4');
+    expect(note).toHaveTextContent('Tasks arrive in step 2');
   });
 
   it.each([

@@ -24,3 +24,24 @@ export {
   systemPrefersDark,
   useApplyTheme,
 } from './theme';
+export {
+  FILTER_VAR,
+  LIQUID_SELECTOR,
+  canvasMapFactory,
+  createLiquidGlassEngine,
+  type EngineOptions,
+  type LiquidGlassEngine,
+} from './liquid-glass/engine';
+export {
+  MAX_DISPLACEMENT_PX,
+  computeDisplacementMap,
+  displacementPx,
+  filterScale,
+  type MapSpec,
+} from './liquid-glass/displacement-map';
+export {
+  detectLiquidGlassSupport,
+  type LiquidSupport,
+  type SupportEnvironment,
+} from './liquid-glass/support';
+export { useLiquidGlass, type LiquidGlassState } from './liquid-glass/use-liquid-glass';

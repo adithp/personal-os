@@ -1,5 +1,5 @@
 import type { ModuleId } from '@personal-os/shared';
-import { Kbd, Tile } from '@personal-os/ui';
+import { Input, Kbd, Tile } from '@personal-os/ui';
 import { IconSearch } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
 import { modulePath } from '../../shell/module-paths';
@@ -37,40 +37,58 @@ export function DashboardPage() {
         data-testid="main-column"
         className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto pb-4"
       >
-        <header className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-page font-semibold text-fg">{greetingFor(now)}</h1>
-            <p className="text-small text-fg-muted">{formatDashboardDate(now)}</p>
-          </div>
-          <button
-            type="button"
+        <header>
+          <h1 className="text-page font-semibold text-fg">{greetingFor(now)}</h1>
+          <p className="text-small text-fg-muted">{formatDashboardDate(now)}</p>
+        </header>
+
+        <div className="relative">
+          <Input
+            type="search"
             aria-label="Search"
+            placeholder="Search or type a command"
+            autoComplete="off"
+            value=""
+            className="h-10 pr-20 pl-9"
             onClick={() => {
               usePalette.getState().setOpen(true);
             }}
-            className="flex h-[34px] w-72 shrink-0 items-center gap-2 rounded-control glass px-3 text-body text-fg-muted focus-ring"
-          >
-            <IconSearch size={16} aria-hidden />
-            <span className="flex-1 text-left">Search</span>
-            <Kbd keys={['Ctrl', 'K']} />
-          </button>
-        </header>
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') usePalette.getState().setOpen(true);
+            }}
+            onChange={(event) => {
+              // Typing here opens the palette with the text, and the field itself stays empty.
+              // Fast typing can add letters before focus has moved, so they are appended.
+              const { open, query, openWith, setQuery } = usePalette.getState();
+              if (open) setQuery(query + event.target.value);
+              else openWith(event.target.value);
+            }}
+          />
+          <IconSearch
+            size={16}
+            className="pointer-events-none absolute top-1/2 left-3 z-10 -translate-y-1/2 text-fg-muted"
+            aria-hidden
+          />
+          <Kbd
+            keys={['Ctrl', 'K']}
+            className="pointer-events-none absolute top-1/2 right-3 z-10 -translate-y-1/2"
+          />
+        </div>
 
         <AssistantCard summary={DASHBOARD_DATA.summary} />
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* Five tiles and the quick actions card, all the same size */}
+        <div className="grid auto-rows-fr grid-cols-3 gap-3">
           <Tile
-            compact
             module="tasks"
             title="Today's tasks"
             value={tasks.done}
             unit={`of ${String(tasks.total)} done`}
-            lines={[`Next: ${tasks.nextTitle} · ${tasks.nextDue}`]}
+            lines={[`Next: ${tasks.nextTitle}`, tasks.nextDue]}
             progress={tasksProgressPercent()}
             onOpen={open('tasks')}
           />
           <Tile
-            compact
             module="mail"
             title="Important emails"
             value={emails.needReply}
@@ -78,11 +96,7 @@ export function DashboardPage() {
             lines={[emails.topSubjects[0], emails.topSubjects[1]]}
             onOpen={open('mail')}
           />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
           <Tile
-            compact
             module="money"
             title="Money"
             value={money.spent}
@@ -92,7 +106,6 @@ export function DashboardPage() {
             onOpen={open('money')}
           />
           <Tile
-            compact
             module="habits"
             title="Streak"
             value={streak.days}
@@ -101,7 +114,6 @@ export function DashboardPage() {
             onOpen={open('habits')}
           />
           <Tile
-            compact
             module="projects"
             title="Projects"
             value={projects.active}
@@ -112,9 +124,8 @@ export function DashboardPage() {
             ]}
             onOpen={open('projects')}
           />
+          <QuickActions />
         </div>
-
-        <QuickActions />
       </div>
 
       <aside

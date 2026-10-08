@@ -30,7 +30,7 @@ function CommandIcon({ command }: { command: Command }) {
       <span
         data-module={command.module}
         aria-hidden
-        className="flex size-[22px] shrink-0 items-center justify-center rounded-[7px] text-on-tile"
+        className="flex size-[22px] shrink-0 items-center justify-center rounded-[7px] liquid-tile text-on-tile"
         style={{ backgroundColor: moduleColorVar(command.module) }}
       >
         <Icon size={14} stroke={2} />
@@ -55,6 +55,8 @@ function CommandIcon({ command }: { command: Command }) {
 export function CommandPalette() {
   const open = usePalette((state) => state.open);
   const setOpen = usePalette((state) => state.setOpen);
+  const query = usePalette((state) => state.query);
+  const setQuery = usePalette((state) => state.setQuery);
   const navigate = useNavigate();
   const { theme, dockAutoHide, update } = useSettings();
 
@@ -90,6 +92,8 @@ export function CommandPalette() {
         <IconSearch size={18} className="shrink-0 text-fg-muted" aria-hidden />
         <Cmdk.Input
           autoFocus
+          value={query}
+          onValueChange={setQuery}
           placeholder="Type a command…"
           className="h-12 flex-1 bg-transparent text-body text-fg outline-none placeholder:text-fg-muted"
         />

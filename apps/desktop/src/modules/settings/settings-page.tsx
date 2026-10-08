@@ -1,8 +1,16 @@
-import type { BackgroundMode, DockIconSize, ThemeMode } from '@personal-os/shared';
-import { MODULES } from '@personal-os/shared';
-import { Button, MODULE_ICONS, SegmentedControl, Switch, moduleColorVar } from '@personal-os/ui';
+import type { BackgroundMode, DockIconSize, GlassEffect, ThemeMode } from '@personal-os/shared';
+import { LIQUID_STRENGTH_RANGE, MODULES } from '@personal-os/shared';
+import {
+  Button,
+  MODULE_ICONS,
+  SegmentedControl,
+  Slider,
+  Switch,
+  moduleColorVar,
+} from '@personal-os/ui';
 import { useRouter } from '@tanstack/react-router';
 import { useAuthState } from '../../auth/use-auth-state';
+import { useGlassSupport } from '../../store/glass-support-store';
 import { useSettings } from '../../store/settings-store';
 import { useWindowEffect } from '../../store/window-effect-store';
 import { SettingRow, SettingsSection } from './setting-row';
@@ -26,6 +34,18 @@ const BACKGROUND_HELP: Record<BackgroundMode, string> = {
   solid: 'A plain color.',
 };
 
+const GLASS_OPTIONS = [
+  { value: 'liquid', label: 'Liquid' },
+  { value: 'simple', label: 'Simple' },
+  { value: 'off', label: 'Off' },
+] as const satisfies readonly { value: GlassEffect; label: string }[];
+
+const GLASS_HELP: Record<GlassEffect, string> = {
+  liquid: 'Glass bends the background at its edges, with a bright rim and shine.',
+  simple: 'Plain blurred glass.',
+  off: 'Solid panels. Uses the least power.',
+};
+
 const ICON_SIZE_OPTIONS = [
   { value: 'small', label: 'Small' },
   { value: 'medium', label: 'Medium' },
@@ -33,8 +53,9 @@ const ICON_SIZE_OPTIONS = [
 ] as const satisfies readonly { value: DockIconSize; label: string }[];
 
 function AppearanceSection() {
-  const { theme, backgroundMode, update } = useSettings();
+  const { theme, backgroundMode, glassEffect, liquidStrength, update } = useSettings();
   const effectFailed = useWindowEffect((state) => state.status === 'failed');
+  const liquidUnavailable = useGlassSupport((state) => state.liquidUnavailable);
 
   return (
     <SettingsSection title="Appearance">
@@ -71,6 +92,46 @@ function AppearanceSection() {
       )}
 
       {backgroundMode === 'wallpaper' && <WallpaperOptions />}
+
+      <SettingRow label="Glass effect" description={GLASS_HELP[glassEffect]}>
+        {() => (
+          <SegmentedControl
+            label="Glass effect"
+            value={glassEffect}
+            options={GLASS_OPTIONS}
+            onChange={(value) => {
+              update({ glassEffect: value });
+            }}
+          />
+        )}
+      </SettingRow>
+
+      {glassEffect === 'liquid' && liquidUnavailable && (
+        <p role="status" className="py-2 text-small text-fg-secondary">
+          Liquid glass is not available on this computer, so simple glass is shown instead.
+        </p>
+      )}
+
+      {glassEffect === 'liquid' && (
+        <SettingRow label="Strength" description="How strongly the edges bend the background.">
+          {(labelId) => (
+            <>
+              <Slider
+                aria-labelledby={labelId}
+                min={LIQUID_STRENGTH_RANGE.min}
+                max={LIQUID_STRENGTH_RANGE.max}
+                value={liquidStrength}
+                onValueChange={(value) => {
+                  update({ liquidStrength: value });
+                }}
+              />
+              <span className="w-8 text-right text-small text-fg-muted tabular-nums">
+                {liquidStrength}
+              </span>
+            </>
+          )}
+        </SettingRow>
+      )}
     </SettingsSection>
   );
 }

@@ -20,6 +20,22 @@
   /* Layer over the see-through window (Background: Transparent) */
   --tint: rgba(21, 23, 28, 0.55);
 
+  /* Solid panels (Glass effect: Off) */
+  --panel-solid: #23262d;
+  --panel-solid-strong: #2b2e36;
+
+  /* Liquid Glass: fill, bright rim, soft rim, dark bottom edge, inner glow, specular shine */
+  --lg-fill: rgba(20, 22, 28, 0.16);
+  --lg-fill-strong: rgba(26, 29, 36, 0.5);
+  --lg-hairline: rgba(0, 0, 0, 0.2);
+  --lg-edge: rgba(255, 255, 255, 0.26);
+  --lg-rim-light: rgba(255, 255, 255, 0.62);
+  --lg-rim-soft: rgba(255, 255, 255, 0.14);
+  --lg-rim-dark: rgba(0, 0, 0, 0.4);
+  --lg-glow: rgba(255, 255, 255, 0.08);
+  --lg-shine: rgba(255, 255, 255, 0.15);
+  --lg-input-dark: rgba(0, 0, 0, 0.32);
+
   /* Placeholder wallpaper until real images are added (decision 27) */
   --wallpaper-default:
     radial-gradient(ellipse 80% 60% at 15% 0%, #3d3a70 0%, transparent 60%),
@@ -42,6 +58,20 @@
   --input-bg: rgba(0, 0, 0, 0.04);
 
   --tint: rgba(238, 240, 243, 0.55);
+
+  --panel-solid: #ffffff;
+  --panel-solid-strong: #ffffff;
+
+  --lg-fill: rgba(255, 255, 255, 0.4);
+  --lg-fill-strong: rgba(255, 255, 255, 0.5);
+  --lg-hairline: rgba(0, 0, 0, 0.09);
+  --lg-edge: rgba(255, 255, 255, 0.95);
+  --lg-rim-light: rgba(255, 255, 255, 1);
+  --lg-rim-soft: rgba(255, 255, 255, 0.6);
+  --lg-rim-dark: rgba(0, 0, 0, 0.16);
+  --lg-glow: rgba(255, 255, 255, 0.5);
+  --lg-shine: rgba(255, 255, 255, 0.75);
+  --lg-input-dark: rgba(0, 0, 0, 0.16);
 
   --wallpaper-default:
     radial-gradient(ellipse 80% 60% at 15% 0%, #d9defc 0%, transparent 60%),
@@ -81,4 +111,72 @@
   /* Motion */
   --duration-fast: 150ms;
   --duration-normal: 200ms;
+}
+
+/*
+ * Glass effect modes (Settings → Appearance → Glass effect). Set data-glass="liquid" | "simple" |
+ * "off" on <html> (or on any wrapper to preview a mode inside it). These are inherited custom
+ * properties, so the nearest wrapper wins and several modes can sit side by side.
+ * Without data-glass the glass is "simple", exactly as before.
+ */
+[data-glass='simple'] {
+  --glass-mode: simple;
+  --g-border-w: 0.5px;
+  --g-bg: var(--glass);
+  --g-bg-strong: var(--glass-strong);
+  --g-image: none;
+  --g-shadow: none;
+  --g-post: blur(var(--glass-blur));
+  --g-input-shadow: none;
+  --g-input-post: blur(0px);
+  --g-tile-image: none;
+  --g-tile-shadow: none;
+  --g-tile-hover: none;
+}
+
+[data-glass='off'] {
+  --glass-mode: off;
+  --g-border-w: 0.5px;
+  --g-bg: var(--panel-solid);
+  --g-bg-strong: var(--panel-solid-strong);
+  --g-image: none;
+  --g-shadow: none;
+  --g-post: blur(0px);
+  --g-input-shadow: none;
+  --g-input-post: blur(0px);
+  --g-tile-image: none;
+  --g-tile-shadow: none;
+  --g-tile-hover: none;
+}
+
+[data-glass='liquid'] {
+  --glass-mode: liquid;
+  /* The edge is drawn by --g-shadow (one cohesive ring), so there is no separate border */
+  --g-border-w: 0px;
+  --g-bg: var(--lg-fill);
+  --g-bg-strong: var(--lg-fill-strong);
+  /* specular shine: a soft highlight from the top-left, and a gentle sheen across the top */
+  --g-image:
+    radial-gradient(140% 100% at 0% 0%, var(--lg-shine) 0%, transparent 55%),
+    linear-gradient(180deg, var(--lg-glow) 0%, transparent 45%);
+  /*
+   * A quiet edge, all in whole pixels so it is even at any display scale: a faint 1px
+   * hairline, a soft darker bottom edge, and an inner glow. No bright white outline.
+   */
+  --g-shadow:
+    inset 0 0 0 1px var(--lg-hairline), inset 0 -6px 10px -6px var(--lg-rim-dark),
+    inset 0 0 20px 0 var(--lg-glow);
+  /* the displacement filter (per element) comes first; then blur and a color boost */
+  --g-post: blur(calc(var(--glass-blur) * 0.3)) saturate(1.5) brightness(1.05);
+  --g-input-shadow:
+    inset 0 0 0 1px var(--lg-hairline), inset 0 2px 3px 0 var(--lg-input-dark),
+    inset 0 -1px 0 0 var(--lg-rim-soft);
+  --g-input-post: blur(6px) saturate(1.5);
+  /* pastel tiles keep their solid color; rim and shine go on top */
+  --g-tile-image:
+    radial-gradient(130% 90% at 0% 0%, rgb(255 255 255 / 0.55) 0%, transparent 58%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.2) 0%, transparent 42%);
+  --g-tile-shadow:
+    inset 0 -6px 10px -6px rgb(0 0 0 / 0.22), inset 0 0 18px 0 rgb(255 255 255 / 0.2);
+  --g-tile-hover: brightness(1.07) saturate(1.12);
 }

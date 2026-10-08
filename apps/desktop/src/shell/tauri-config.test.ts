@@ -32,8 +32,8 @@ describe('Tauri window configuration', () => {
     expect(window?.transparent).toBe(true);
   });
 
-  it('has no window shadow, which can leave artifacts on transparent windows', () => {
-    expect(config.app.windows[0]?.shadow).toBe(false);
+  it('has the window shadow on, so Windows 11 rounds the corners of the Acrylic', () => {
+    expect(config.app.windows[0]?.shadow).toBe(true);
   });
 
   it('allows the page to set and clear window effects', () => {

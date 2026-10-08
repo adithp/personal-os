@@ -139,17 +139,21 @@ describe('Appearance → Background', () => {
   it('says when Transparent is not available and the wallpaper is shown instead', async () => {
     await openSettings();
     // Outside the desktop app the see-through effect cannot be applied.
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Transparent is not available on this computer, so the wallpaper is shown instead.',
-    );
+    expect(
+      await screen.findByText(
+        'Transparent is not available on this computer, so the wallpaper is shown instead.',
+      ),
+    ).toBeInTheDocument();
     expect(useSettings.getState().backgroundMode).toBe('transparent');
   });
 
   it('does not show that note when the effect works or another mode is chosen', async () => {
     const { user } = await openSettings();
-    await screen.findByRole('status');
+    const note =
+      'Transparent is not available on this computer, so the wallpaper is shown instead.';
+    await screen.findByText(note);
     await user.click(radio('Background', 'Solid'));
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByText(note)).not.toBeInTheDocument();
   });
 });
 

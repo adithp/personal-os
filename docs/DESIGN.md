@@ -29,12 +29,48 @@ The window background has three modes. Setting: Appearance → Background = Tran
 | Wallpaper | A built-in gradient (dark for dark mode, light for light mode) or an uploaded image. Glass panels blur it with the blur setting. |
 | Solid | The solid bg color. |
 
+- The window has rounded corners (8 px, the same as Windows 11's own window rounding; the window shadow is on so Windows rounds the Acrylic too) and goes square when maximized.
 - Transparent mode uses a transparent Tauri window with the Windows Acrylic effect (Mica as the fallback when Acrylic is not available). Acrylic can make dragging and resizing the window less smooth on some Windows 10 and 11 builds.
 - Tint layer (the tint token in section 1): dark mode rgba(21,23,28,0.55), light mode rgba(238,240,243,0.55). It is the bg color at 55% opacity.
 - Glass cards, tiles, the dock, and the title bar keep their normal style on top of every mode.
 - Blur strength (0–40 px, default 24) and the image choice (built-in gradient or upload) are shown only for Wallpaper. Blur is the backdrop-filter blur of glass panels.
 - If the Acrylic effect is not supported or fails, the app falls back to Wallpaper mode automatically for that session. The saved choice stays Transparent.
 - Saved settings from before this change (Wallpaper On/Off) migrate safely: Off becomes Solid, anything else becomes the default Transparent.
+
+## 2b. Liquid Glass
+Glass panels can look like Apple's Liquid Glass. Setting: Appearance → Glass effect = Liquid (default), Simple, or Off. Liquid also has a Strength slider (0–100, default 50).
+
+| Effect | What panels look like |
+|---|---|
+| Liquid | The background bends near the edges of the glass, with a bright rim, shine, inner glow, and a boosted blur. |
+| Simple | The plain blurred glass described in sections 1 to 6. |
+| Off | Solid panels (theme panel color), no blur. The lowest power use. |
+
+What Liquid adds, on top of the normal glass look:
+- **Edge refraction:** an SVG feDisplacementMap used through backdrop-filter, so the background is pulled inward along the rounded edges (a lens-like rim) and is untouched in the flat middle. The strength slider sets how far it bends (0 to 36 px at the very edge; default about 18 px).
+- **Quiet edge:** no white outline. A faint 1 px dark hairline, a soft darker edge at the bottom, and an inner glow. Everything is drawn in whole pixels, so the edge is even at 100%, 125%, and 150% display scaling.
+- **Inner glow and specular shine:** a faint glow inside the edge and a soft highlight from the top-left corner.
+- **Blur and color boost:** the glass blur setting scaled down (about 30%) plus a saturation and brightness boost of what is behind.
+
+Where it is used:
+- Glass cards, the assistant card, the dock, the command palette, tooltips, activity items, secondary buttons, icon buttons, segmented controls, the login card, and the dashboard search bar.
+- Inputs become glass wells (dark inner top edge, light rim at the bottom).
+- Window buttons turn into a small Liquid glass pill on hover (Close stays red).
+- Pastel module tiles, dock icons, and icon squares keep their solid colors but get the rim light and shine on top. A hovered tile or dock icon brightens slightly.
+- Not used: the title bar itself (transparent) and small short-lived elements such as tooltips, which get the edge and shine but no refraction.
+
+Fit with the backgrounds and themes:
+- Works in dark and light mode with their own rim, glow, and fill values (tokens named lg-*), and in all three background modes.
+- Refraction can only bend what the page itself draws behind a panel (the wallpaper, other panels, the tint). In Transparent mode the blurred Windows desktop is added by Windows underneath the whole window, so it cannot be refracted; there the glass shows the rim, shine, glow, and boosted blur, and bends the tint and other panels.
+
+How it works (no WebGL, no page screenshots, no extra library):
+- Each glass element gets an SVG filter whose displacement map is a small image drawn on a canvas for its size (sizes are rounded to 8 px, 96 px for the dock, so many elements share one filter).
+- The mode is set with data-glass="liquid" | "simple" | "off" on the page root; the look comes from inherited CSS variables, so any wrapper can preview a mode (the UI gallery shows all three side by side).
+- Tokens: panel-solid and lg-fill, lg-rim-light, lg-rim-soft, lg-rim-dark, lg-glow, lg-shine in both themes (packages/ui/src/styles/tokens.css).
+
+Fallback and limits:
+- If the browser cannot apply an SVG filter to a backdrop (only Chromium, which includes WebView2, can) or cannot draw the maps, the app shows Simple automatically. The saved choice stays Liquid and Settings explains it.
+- Settings are saved on this device with the other appearance settings.
 
 ## 3. Module colors
 Every module has one pastel color used everywhere: dock icon, dashboard tile, page header accent, graph node color, and activity feed avatar. Text and icons on these colors are always #1C1C1C.
@@ -66,7 +102,7 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 - Spacing scale: 4, 8, 12, 16, 24, 32.
 - Radius: tiles and glass cards 16, dock 18, dock icons 10, buttons and inputs 10, chips 8.
 - Borders: 0.5 px using glass-border.
-- No drop shadows on cards; depth comes from glass and blur.
+- No drop shadows on cards; depth comes from glass and blur (Liquid Glass adds inner highlights only, see section 2b).
 
 ## 6. Components
 ### Tile (dashboard widget, colored)
@@ -126,12 +162,11 @@ The window is frameless. The title bar is not a separate bar: it is fully transp
 Two columns under the title bar: a main column and a wider right column (280 px).
 
 Main column, top to bottom:
-- Top row: greeting (22) with date (11) on the left; glass search bar with "Ctrl K" hint on the right.
+- Greeting (22) with the date (11) under it.
+- Search field: one wide glass field the full width of the column, with a magnifier on the left and a "Ctrl K" hint on the right. Click it, press Enter, or just type: the command palette opens with what you typed, and the field itself stays empty.
 - Assistant card: glass, full width of the main column, lavender sparkle icon, 1–2 line daily summary, input "Ask or tell me what to do", lavender send button.
-- Two wide tiles: Today's tasks (yellow) and Important emails (Mail blue).
-- Three small tiles: Money (mint), Streak (lime), Projects (pink).
-- Dashboard tiles and the assistant card use the compact size (12 px padding, 28 px big number) so the whole main column fits the 1100×700 minimum window without scrolling.
-- Quick actions: title "Quick actions" (13), then four glass buttons in one row: New task, New note, Log expense, New event. Each has a 22 px rounded icon square in its module color (Tasks yellow, Notes peach, Money mint, Calendar orange) with a dark icon.
+- Card grid: three columns, two rows, every card exactly the same size (equal rows, so no card is a short wide strip). Row one: Today's tasks (yellow), Important emails (Mail blue), Money (mint). Row two: Streak (lime), Projects (pink), and the Quick actions card.
+- Quick actions card: a glass card the size of a tile with the title "Quick actions" and four glass buttons in a 2 by 2 grid: New task, New note, Log expense, New event. Each has a 22 px rounded icon square in its module color (Tasks yellow, Notes peach, Money mint, Calendar orange) with a dark icon. The note line under the buttons always keeps its space, so the card never changes size when you click.
 
 Right column, top to bottom, all glass cards:
 - Mini calendar: month name with previous and next arrows, weekday header starting Monday, today highlighted with the lavender accent, a small orange dot under days that have events. Clicking a day opens the Calendar page.
@@ -140,7 +175,8 @@ Right column, top to bottom, all glass cards:
 
 Fit and scrolling:
 - The title bar overlays the top (content starts 40 px down) and the dock floats over the bottom (the page area keeps 80 px of bottom padding), so nothing sits under them.
-- The page itself never scrolls. If the content is taller than the window (for example at the 1100×700 minimum), the main column and the right column scroll independently.
+- The page itself never scrolls. At the 1100×700 minimum the whole main column fits without scrolling; the right column scrolls on its own. If the window is ever too short, each column scrolls independently.
+- The compact tile size (Tile compact) still exists in packages/ui for crowded screens but the dashboard uses the normal tile size.
 
 ## 9. Keyboard
 - Ctrl K: global search and command palette.

@@ -6,6 +6,16 @@ body,
   height: 100%;
 }
 
+/* Rounded window corners (matches Windows 11's own 8px window rounding); square when maximized.
+   clip-path also clips the fixed background layer. */
+.window-frame {
+  clip-path: inset(0 round 8px);
+}
+
+.window-frame[data-maximized='true'] {
+  clip-path: none;
+}
+
 body {
   overflow: hidden;
   user-select: none;

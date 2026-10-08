@@ -1,6 +1,6 @@
 import type { ModuleId } from '@personal-os/shared';
 import { MODULES } from '@personal-os/shared';
-import { MODULE_ICONS, moduleColorVar } from '@personal-os/ui';
+import { GlassCard, MODULE_ICONS, moduleColorVar } from '@personal-os/ui';
 import { useState } from 'react';
 
 interface QuickAction {
@@ -17,16 +17,24 @@ const ACTIONS: readonly QuickAction[] = [
   { label: 'New event', module: 'calendar', noteStart: 'Calendar arrives' },
 ];
 
-/** Four shortcuts. Until the modules exist, each says in which step it arrives. */
+/**
+ * Four shortcuts in a glass card the same size as a tile. Until the modules exist, each one says
+ * in which step it arrives (the note line always keeps its space so the card never changes size).
+ */
 export function QuickActions() {
   const [note, setNote] = useState<string | undefined>();
 
   return (
-    <section aria-labelledby="quick-actions-title" className="flex flex-col gap-2">
-      <h2 id="quick-actions-title" className="text-card font-medium text-fg">
+    <GlassCard
+      role="region"
+      aria-labelledby="quick-actions-title"
+      padding="compact"
+      className="flex flex-col gap-2"
+    >
+      <h2 id="quick-actions-title" className="text-tile-title font-medium text-fg">
         Quick actions
       </h2>
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid flex-1 grid-cols-2 gap-2">
         {ACTIONS.map(({ label, module, noteStart }) => {
           const Icon = MODULE_ICONS[module];
           return (
@@ -36,12 +44,12 @@ export function QuickActions() {
               onClick={() => {
                 setNote(`${noteStart} in step ${String(MODULES[module].roadmapStep)}`);
               }}
-              className="flex h-10 items-center gap-2 rounded-control glass px-3 text-body font-medium text-fg focus-ring transition-colors duration-150 ease-out hover:bg-input"
+              className="flex min-h-9 items-center gap-1.5 rounded-control glass px-2 text-tile-title font-medium text-fg focus-ring transition-colors duration-150 ease-out hover:bg-input"
             >
               <span
                 data-module={module}
                 aria-hidden
-                className="flex size-[22px] shrink-0 items-center justify-center rounded-[7px] text-on-tile"
+                className="flex size-[22px] shrink-0 items-center justify-center rounded-[7px] liquid-tile text-on-tile"
                 style={{ backgroundColor: moduleColorVar(module) }}
               >
                 <Icon size={14} stroke={2} />
@@ -51,11 +59,9 @@ export function QuickActions() {
           );
         })}
       </div>
-      {note && (
-        <p role="status" className="text-small text-fg-muted">
-          {note}
-        </p>
-      )}
-    </section>
+      <p role="status" className="h-4 truncate text-small text-fg-muted">
+        {note}
+      </p>
+    </GlassCard>
   );
 }

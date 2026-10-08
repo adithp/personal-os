@@ -7,7 +7,7 @@ export function Input({ className, type = 'text', ...props }: ComponentProps<'in
     <input
       type={type}
       className={cx(
-        'h-[34px] w-full rounded-control border-[0.5px] border-transparent bg-input px-3 text-body text-fg',
+        'h-[34px] w-full rounded-control border-[0.5px] border-transparent bg-input px-3 text-body text-fg liquid-input',
         'focus-ring transition-colors duration-150 ease-out focus-visible:border-accent',
         'disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-danger',
         className,

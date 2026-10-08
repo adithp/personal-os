@@ -2,10 +2,12 @@ import type { AppSettings, DockIconSize } from '@personal-os/shared';
 import {
   BACKGROUND_MODES,
   DEFAULT_SETTINGS,
+  GLASS_EFFECTS,
   DOCK_ICON_SIZES,
   THEME_MODES,
   WALLPAPER_SOURCES,
   clampBlur,
+  clampLiquidStrength,
   isWallpaperFileName,
 } from '@personal-os/shared';
 import { create } from 'zustand';
@@ -41,6 +43,8 @@ export function sanitizeSettings(raw: unknown): AppSettings {
   const saved = isRecord(raw) ? raw : {};
   const {
     theme,
+    glassEffect,
+    liquidStrength,
     blurPx,
     wallpaperSource,
     wallpaperFile,
@@ -51,6 +55,12 @@ export function sanitizeSettings(raw: unknown): AppSettings {
   return {
     theme: THEME_MODES.find((mode) => mode === theme) ?? DEFAULT_SETTINGS.theme,
     backgroundMode: backgroundModeFrom(saved),
+    glassEffect:
+      GLASS_EFFECTS.find((effect) => effect === glassEffect) ?? DEFAULT_SETTINGS.glassEffect,
+    liquidStrength:
+      typeof liquidStrength === 'number'
+        ? clampLiquidStrength(liquidStrength)
+        : DEFAULT_SETTINGS.liquidStrength,
     blurPx: typeof blurPx === 'number' ? clampBlur(blurPx) : DEFAULT_SETTINGS.blurPx,
     wallpaperSource:
       WALLPAPER_SOURCES.find((source) => source === wallpaperSource) ??
@@ -86,6 +96,8 @@ export const useSettings = create<SettingsState>()(
       partialize: (state): AppSettings => ({
         theme: state.theme,
         backgroundMode: state.backgroundMode,
+        glassEffect: state.glassEffect,
+        liquidStrength: state.liquidStrength,
         blurPx: state.blurPx,
         wallpaperSource: state.wallpaperSource,
         wallpaperFile: state.wallpaperFile,

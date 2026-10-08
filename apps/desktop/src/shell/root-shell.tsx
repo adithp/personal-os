@@ -1,7 +1,8 @@
-import { useApplyTheme } from '@personal-os/ui';
+import { useApplyTheme, useLiquidGlass } from '@personal-os/ui';
 import { Outlet } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { useWallpaperUrl } from '../modules/settings/use-wallpaper-url';
+import { useGlassSupport } from '../store/glass-support-store';
 import { useSettings } from '../store/settings-store';
 import { Background } from './background';
 import { TitleBar } from './title-bar';
@@ -15,6 +16,12 @@ export function RootShell() {
 
   useApplyTheme(settings.theme);
   const background = useBackground(settings.backgroundMode);
+  const glass = useLiquidGlass(settings.glassEffect, settings.liquidStrength);
+  const setLiquidUnavailable = useGlassSupport((state) => state.setLiquidUnavailable);
+
+  useEffect(() => {
+    setLiquidUnavailable(glass.unavailable);
+  }, [glass.unavailable, setLiquidUnavailable]);
   const imageUrl = useWallpaperUrl(
     settings.wallpaperSource === 'custom' ? settings.wallpaperFile : null,
   );
@@ -29,7 +36,10 @@ export function RootShell() {
   }, [settings.blurPx]);
 
   return (
-    <div className="flex h-full flex-col">
+    <div
+      className="window-frame flex h-full flex-col"
+      data-maximized={appWindow.maximized ? 'true' : undefined}
+    >
       <Background mode={background} imageUrl={imageUrl} />
       <TitleBar
         maximized={appWindow.maximized}

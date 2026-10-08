@@ -18,6 +18,8 @@ describe('sanitizeSettings', () => {
     const saved = {
       theme: 'light',
       backgroundMode: 'wallpaper',
+      glassEffect: 'simple',
+      liquidStrength: 80,
       blurPx: 10,
       wallpaperSource: 'custom',
       wallpaperFile: 'wallpaper-1760000000000.png',
@@ -191,5 +193,36 @@ describe('useSettings', () => {
     useSettings.getState().update({ theme: 'dark', blurPx: 3, backgroundMode: 'solid' });
     useSettings.getState().reset();
     expect(useSettings.getState()).toMatchObject(DEFAULT_SETTINGS);
+  });
+});
+
+describe('Liquid Glass settings', () => {
+  it('defaults to Liquid at medium strength, including for settings saved before it existed', () => {
+    expect(sanitizeSettings({})).toMatchObject({ glassEffect: 'liquid', liquidStrength: 50 });
+    expect(sanitizeSettings({ theme: 'dark', backgroundMode: 'solid' })).toMatchObject({
+      glassEffect: 'liquid',
+      liquidStrength: 50,
+    });
+  });
+
+  it.each(['liquid', 'simple', 'off'])('keeps the glass effect %s', (glassEffect) => {
+    expect(sanitizeSettings({ glassEffect }).glassEffect).toBe(glassEffect);
+  });
+
+  it('replaces an unknown glass effect and clamps the strength', () => {
+    expect(sanitizeSettings({ glassEffect: 'crystal' }).glassEffect).toBe('liquid');
+    expect(sanitizeSettings({ liquidStrength: 900 }).liquidStrength).toBe(100);
+    expect(sanitizeSettings({ liquidStrength: -4 }).liquidStrength).toBe(0);
+    expect(sanitizeSettings({ liquidStrength: 'strong' }).liquidStrength).toBe(50);
+  });
+
+  it('saves and reloads them', async () => {
+    useSettings.getState().update({ glassEffect: 'off', liquidStrength: 20 });
+    const saved = localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '';
+    expect(saved).toContain('"glassEffect":"off"');
+    useSettings.getState().reset();
+    localStorage.setItem(SETTINGS_STORAGE_KEY, saved);
+    await useSettings.persist.rehydrate();
+    expect(useSettings.getState()).toMatchObject({ glassEffect: 'off', liquidStrength: 20 });
   });
 });

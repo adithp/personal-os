@@ -11,6 +11,13 @@ export type BackgroundMode = (typeof BACKGROUND_MODES)[number];
 /** Glass blur strength limits in px, used in Wallpaper mode (docs/DESIGN.md section 2). */
 export const BLUR_RANGE = { min: 0, max: 40 } as const;
 
+/** How glass panels look (docs/DESIGN.md "Liquid Glass"): refracting, plain blur, or solid. */
+export const GLASS_EFFECTS = ['liquid', 'simple', 'off'] as const;
+export type GlassEffect = (typeof GLASS_EFFECTS)[number];
+
+/** Liquid Glass refraction strength, 0 (none) to 100 (strongest). */
+export const LIQUID_STRENGTH_RANGE = { min: 0, max: 100 } as const;
+
 /** Image for Wallpaper mode: the built-in gradient or an image the user uploaded. */
 export const WALLPAPER_SOURCES = ['builtin', 'custom'] as const;
 export type WallpaperSource = (typeof WALLPAPER_SOURCES)[number];
@@ -44,6 +51,9 @@ export function isWallpaperExtension(extension: string | undefined): boolean {
 export interface AppSettings {
   theme: ThemeMode;
   backgroundMode: BackgroundMode;
+  glassEffect: GlassEffect;
+  /** Refraction amount for the Liquid glass effect. */
+  liquidStrength: number;
   blurPx: number;
   wallpaperSource: WallpaperSource;
   /** File name inside WALLPAPER_DIR, or null when nothing is uploaded. */
@@ -56,6 +66,8 @@ export interface AppSettings {
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   backgroundMode: 'transparent',
+  glassEffect: 'liquid',
+  liquidStrength: 50,
   blurPx: 24,
   wallpaperSource: 'builtin',
   wallpaperFile: null,
@@ -63,6 +75,14 @@ export const DEFAULT_SETTINGS: AppSettings = {
   dockMagnification: true,
   dockIconSize: 'medium',
 };
+
+export function clampLiquidStrength(value: number): number {
+  if (Number.isNaN(value)) return DEFAULT_SETTINGS.liquidStrength;
+  return Math.min(
+    LIQUID_STRENGTH_RANGE.max,
+    Math.max(LIQUID_STRENGTH_RANGE.min, Math.round(value)),
+  );
+}
 
 export function clampBlur(value: number): number {
   if (Number.isNaN(value)) return DEFAULT_SETTINGS.blurPx;

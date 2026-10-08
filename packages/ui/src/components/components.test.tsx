@@ -192,6 +192,7 @@ describe('Tooltip', () => {
 
     await user.hover(screen.getByRole('button'));
     expect(screen.getByRole('tooltip')).toHaveTextContent('Tasks');
+    expect(screen.getByRole('tooltip')).toHaveAttribute('data-liquid-skip');
     expect(screen.getByRole('button')).toHaveAccessibleDescription('Tasks');
 
     await user.unhover(screen.getByRole('button'));
@@ -210,5 +211,36 @@ describe('Tooltip', () => {
 
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+});
+
+describe('Liquid Glass classes on components', () => {
+  it('gives pastel tiles and avatars the rim-and-shine surface', () => {
+    render(
+      <>
+        <Tile module="tasks" title="Tasks" value="1" />
+        <ModuleAvatar module="mail" />
+      </>,
+    );
+    expect(screen.getByRole('region', { name: 'Tasks' })).toHaveClass('liquid-tile');
+    expect(document.querySelector('[data-module="mail"]')).toHaveClass('liquid-tile');
+  });
+
+  it('makes inputs glass wells', () => {
+    render(<Input aria-label="Field" />);
+    expect(screen.getByRole('textbox', { name: 'Field' })).toHaveClass('liquid-input');
+  });
+
+  it('uses the glass utilities for cards and secondary buttons, so every mode applies', () => {
+    render(
+      <>
+        <GlassCard data-testid="card">x</GlassCard>
+        <Button variant="secondary">Cancel</Button>
+        <IconButton aria-label="Icon" icon={<span />} />
+      </>,
+    );
+    expect(screen.getByTestId('card')).toHaveClass('glass');
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveClass('glass');
+    expect(screen.getByRole('button', { name: 'Icon' })).toHaveClass('glass');
   });
 });

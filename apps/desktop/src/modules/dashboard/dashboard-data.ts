@@ -8,7 +8,7 @@ import type { UpcomingEvent } from './upcoming-card';
  */
 export const DASHBOARD_DATA = {
   summary: 'You have 4 tasks due today and a client call at 3:00 PM.',
-  tasks: { done: 3, total: 7, nextTitle: 'Submit DBMS assignment', nextDue: '5:00 PM' },
+  tasks: { done: 3, total: 7, nextTitle: 'Submit DBMS assignment', nextDue: 'Due 5:00 PM' },
   emails: {
     needReply: 3,
     topSubjects: ['Website feedback – need your reply', 'Invoice #204 question'],

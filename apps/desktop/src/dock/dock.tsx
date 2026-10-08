@@ -41,7 +41,7 @@ function DockIcon({ id, size, magnification, mouseX, active, onOpen }: DockIconP
           onClick={() => {
             onOpen(id);
           }}
-          className="flex items-center justify-center rounded-dock-icon text-on-tile focus-ring"
+          className="flex items-center justify-center rounded-dock-icon liquid-tile text-on-tile focus-ring"
           style={{ width: px, height: px, backgroundColor: moduleColorVar(id) }}
         >
           <Icon size="55%" stroke={1.75} aria-hidden />
@@ -91,6 +91,7 @@ export function Dock({ activeModule, onNavigate, iconSize, magnification, autoHi
       }}
     >
       <div
+        data-liquid-step="96"
         className="flex items-end gap-1.5 rounded-dock glass-strong px-2.5 pb-3"
         style={{ height }}
       >

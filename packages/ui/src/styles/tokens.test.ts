@@ -107,3 +107,138 @@ describe('readability', () => {
     expect(contrastRatio('#1C1C1C', '#EEF0F3')).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+describe('Liquid Glass tokens and modes', () => {
+  const LIQUID_TOKENS = [
+    '--panel-solid',
+    '--panel-solid-strong',
+    '--lg-fill',
+    '--lg-fill-strong',
+    '--lg-hairline',
+    '--lg-edge',
+    '--lg-rim-light',
+    '--lg-rim-soft',
+    '--lg-rim-dark',
+    '--lg-glow',
+    '--lg-shine',
+    '--lg-input-dark',
+  ];
+
+  it.each(LIQUID_TOKENS)('%s is defined for both dark and light', (token) => {
+    expect(darkVars?.has(token), `dark ${token}`).toBe(true);
+    expect(lightVars?.has(token), `light ${token}`).toBe(true);
+  });
+
+  it('has a brighter rim and glow in light mode', () => {
+    expect(darkVars?.get('--lg-rim-light')).not.toBe(lightVars?.get('--lg-rim-light'));
+    expect(normalizeColor(lightVars?.get('--lg-rim-light') ?? '')).toBe('rgba(255,255,255,1)');
+  });
+
+  const modes = ['simple', 'off', 'liquid'].map(
+    (mode) => [mode, css.get(`[data-glass='${mode}']`)] as const,
+  );
+
+  it.each(modes)('the %s mode block exists', (_mode, vars) => {
+    expect(vars).toBeDefined();
+  });
+
+  it('defines exactly the same variables in all three modes, so switching never leaves one unset', () => {
+    const names = modes.map(([, vars]) => [...(vars?.keys() ?? [])].sort());
+    expect(names[0]?.length).toBeGreaterThan(8);
+    expect(names[1]).toEqual(names[0]);
+    expect(names[2]).toEqual(names[0]);
+  });
+
+  it('marks each mode with --glass-mode for the Off style query', () => {
+    expect(css.get("[data-glass='off']")?.get('--glass-mode')).toBe('off');
+    expect(css.get("[data-glass='liquid']")?.get('--glass-mode')).toBe('liquid');
+    expect(css.get("[data-glass='simple']")?.get('--glass-mode')).toBe('simple');
+  });
+
+  it('Simple is the plain blur glass that was used before (no rim, shine, or glow)', () => {
+    const simple = css.get("[data-glass='simple']");
+    expect(simple?.get('--g-bg')).toBe('var(--glass)');
+    expect(simple?.get('--g-shadow')).toBe('none');
+    expect(simple?.get('--g-image')).toBe('none');
+    expect(simple?.get('--g-post')).toBe('blur(var(--glass-blur))');
+    expect(simple?.get('--g-tile-shadow')).toBe('none');
+  });
+
+  it('Off uses solid panels with no blur', () => {
+    const off = css.get("[data-glass='off']");
+    expect(off?.get('--g-bg')).toBe('var(--panel-solid)');
+    expect(off?.get('--g-bg-strong')).toBe('var(--panel-solid-strong)');
+    expect(off?.get('--g-post')).toBe('blur(0px)');
+    expect(off?.get('--g-shadow')).toBe('none');
+  });
+
+  it('Liquid draws a quiet edge: a faint hairline, a dark bottom, and an inner glow, with no white ring', () => {
+    const shadow = css.get("[data-glass='liquid']")?.get('--g-shadow') ?? '';
+    expect(shadow).toContain('inset 0 0 0 1px var(--lg-hairline)');
+    expect(shadow).not.toContain('--lg-rim-light');
+    expect(shadow).not.toContain('--lg-edge');
+    expect(shadow).toContain('var(--lg-rim-dark)');
+    expect(shadow).toContain('inset 0 0 20px 0 var(--lg-glow)');
+  });
+
+  it('Liquid uses whole pixels only for its edge, so it is even at 125% and 150% display scaling', () => {
+    const liquid = css.get("[data-glass='liquid']");
+    for (const name of ['--g-shadow', '--g-tile-shadow', '--g-input-shadow']) {
+      const insets = (liquid?.get(name) ?? '').match(/inset [^,]+/g) ?? [];
+      expect(insets.length).toBeGreaterThan(1);
+      for (const inset of insets) {
+        expect(inset, `${name}: ${inset}`).not.toMatch(/\d+\.\d+px/);
+      }
+    }
+  });
+
+  it('Liquid has no separate border (the edge ring replaces it); Simple and Off keep the 0.5px border', () => {
+    expect(css.get("[data-glass='liquid']")?.get('--g-border-w')).toBe('0px');
+    expect(css.get("[data-glass='simple']")?.get('--g-border-w')).toBe('0.5px');
+    expect(css.get("[data-glass='off']")?.get('--g-border-w')).toBe('0.5px');
+  });
+
+  it('Liquid has a specular shine and boosts the background color with blur and saturation', () => {
+    const liquid = css.get("[data-glass='liquid']");
+    expect(liquid?.get('--g-image')).toContain('var(--lg-shine)');
+    expect(liquid?.get('--g-post')).toContain('blur(');
+    expect(liquid?.get('--g-post')).toContain('saturate(');
+  });
+
+  it('Liquid puts rim and shine on solid pastel tiles without changing their color', () => {
+    const liquid = css.get("[data-glass='liquid']");
+    expect(liquid?.get('--g-tile-shadow')).not.toContain('255 255 255 / 0.85');
+    expect(liquid?.get('--g-tile-image')).toContain('radial-gradient');
+    expect(liquid?.has('--g-tile-bg')).toBe(false);
+  });
+
+  describe('the utilities', () => {
+    const utilities = readRepoFile('packages/ui/src/styles/index.css');
+
+    it('send the per-element refraction filter first, then the mode blur', () => {
+      expect(utilities).toContain(
+        'backdrop-filter: var(--lg-filter, blur(0px)) var(--g-post, blur(var(--glass-blur)));',
+      );
+    });
+
+    it.each(['glass', 'glass-strong', 'liquid-tile', 'liquid-input', 'liquid-hover'])(
+      'define %s',
+      (name) => {
+        expect(utilities).toContain(`@utility ${name} {`);
+      },
+    );
+
+    it('fall back to the old plain glass when no mode is set', () => {
+      expect(utilities).toContain('background-color: var(--g-bg, var(--glass));');
+      expect(utilities).toContain('border: var(--g-border-w, 0.5px) solid var(--glass-border);');
+      expect(utilities).toContain('background-color: var(--g-bg-strong, var(--glass-strong));');
+    });
+
+    it('remove the backdrop effect completely in Off mode', () => {
+      expect(utilities).toContain('@container style(--glass-mode: off)');
+      const block = utilities.slice(utilities.indexOf('@container style(--glass-mode: off)'));
+      expect(block).toContain('backdrop-filter: none;');
+      expect(block).toContain('.glass-strong');
+    });
+  });
+});

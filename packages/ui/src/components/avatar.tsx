@@ -14,7 +14,7 @@ export function ModuleAvatar({ module, className }: ModuleAvatarProps) {
     <span
       data-module={module}
       className={cx(
-        'inline-flex size-[26px] shrink-0 items-center justify-center rounded-full text-on-tile',
+        'inline-flex size-[26px] shrink-0 items-center justify-center rounded-full liquid-tile text-on-tile',
         className,
       )}
       style={{ backgroundColor: moduleColorVar(module) }}

@@ -15,7 +15,7 @@ function WindowButton({ className, ...props }: ComponentProps<'button'>) {
     <button
       type="button"
       className={cx(
-        'flex h-7 w-9 items-center justify-center rounded-[8px] text-fg-secondary focus-ring transition-colors duration-150 ease-out hover:bg-glass hover:text-fg',
+        'flex h-7 w-9 items-center justify-center rounded-[8px] liquid-hover text-fg-secondary focus-ring transition-colors duration-150 ease-out hover:text-fg',
         className,
       )}
       {...props}
@@ -47,7 +47,7 @@ export function TitleBar({ maximized, onMinimize, onToggleMaximize, onClose }: T
         <WindowButton
           aria-label="Close"
           onClick={onClose}
-          className="hover:bg-window-close hover:text-white"
+          className="hover:bg-window-close! hover:text-white"
         >
           <IconX size={16} stroke={1.75} aria-hidden />
         </WindowButton>

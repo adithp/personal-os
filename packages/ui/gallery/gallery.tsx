@@ -1,5 +1,5 @@
-import type { ThemeMode } from '@personal-os/shared';
-import { MODULE_IDS, MODULES, THEME_MODES } from '@personal-os/shared';
+import type { GlassEffect, ThemeMode } from '@personal-os/shared';
+import { GLASS_EFFECTS, MODULE_IDS, MODULES, THEME_MODES } from '@personal-os/shared';
 import { IconPlus, IconSearch, IconSend, IconSparkles, IconTrash } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
@@ -20,7 +20,9 @@ import {
   cx,
   moduleColorVar,
   useApplyTheme,
+  useLiquidGlass,
 } from '../src';
+import { LiquidGlassComparison } from './liquid-glass-demo';
 
 const THEME_LABELS: Record<ThemeMode, string> = { dark: 'Dark', light: 'Light', system: 'System' };
 
@@ -106,7 +108,10 @@ export function Gallery() {
   const [wallpaper, setWallpaper] = useState(true);
   const [blur, setBlur] = useState(24);
   const [opened, setOpened] = useState<string | null>(null);
+  const [glass, setGlass] = useState<GlassEffect>('liquid');
+  const [strength, setStrength] = useState(50);
   const theme = useApplyTheme(mode);
+  const liquid = useLiquidGlass(glass, strength);
 
   return (
     <div className="min-h-screen" style={{ ['--glass-blur' as string]: `${String(blur)}px` }}>
@@ -142,6 +147,36 @@ export function Gallery() {
             ))}
           </div>
 
+          <SegmentedControl
+            label="Glass effect"
+            value={glass}
+            onChange={setGlass}
+            options={GLASS_EFFECTS.map((effect) => ({
+              value: effect,
+              label: `${effect.slice(0, 1).toUpperCase()}${effect.slice(1)}`,
+            }))}
+          />
+
+          {glass === 'liquid' && (
+            <label className="flex items-center gap-2 text-body text-fg">
+              Strength
+              <Slider
+                value={strength}
+                min={0}
+                max={100}
+                onValueChange={setStrength}
+                aria-label="Liquid strength"
+              />
+              <span className="w-8 text-fg-muted tabular-nums">{strength}</span>
+            </label>
+          )}
+
+          {liquid.unavailable && (
+            <span role="status" className="text-small text-fg-secondary">
+              Liquid is not available here, showing Simple.
+            </span>
+          )}
+
           <label className="flex items-center gap-2 text-body text-fg">
             <input
               type="checkbox"
@@ -169,6 +204,10 @@ export function Gallery() {
             <span className="w-10 text-fg-muted tabular-nums">{blur} px</span>
           </label>
         </GlassCard>
+
+        <Section title="Liquid Glass: side by side">
+          <LiquidGlassComparison />
+        </Section>
 
         <Section title="Theme tokens">
           <div className="grid grid-cols-5 gap-3">

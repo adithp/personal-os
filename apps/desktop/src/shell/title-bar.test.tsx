@@ -67,7 +67,7 @@ describe('TitleBar', () => {
     setup();
     for (const label of ['Minimize', 'Maximize', 'Close']) {
       const button = screen.getByRole('button', { name: label });
-      expect(button).toHaveClass('text-fg-secondary', 'rounded-[8px]', 'hover:bg-glass');
+      expect(button).toHaveClass('text-fg-secondary', 'rounded-[8px]', 'liquid-hover');
       expect(button.className).not.toMatch(/(^|\s)bg-/);
     }
   });
@@ -75,7 +75,7 @@ describe('TitleBar', () => {
   it('turns Close red with a white icon on hover', () => {
     setup();
     expect(screen.getByRole('button', { name: 'Close' })).toHaveClass(
-      'hover:bg-window-close',
+      'hover:bg-window-close!',
       'hover:text-white',
     );
   });

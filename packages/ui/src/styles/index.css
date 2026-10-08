@@ -69,16 +69,60 @@
 }
 
 /* Glass surfaces: 0.5 px border, blur, no shadow */
+/*
+ * Glass surfaces. What they look like depends on the glass effect mode (see tokens.css):
+ * Liquid adds refraction, rim, shine and glow; Simple is plain blur; Off is a solid panel.
+ * --lg-filter is the per-element SVG refraction filter set by the Liquid Glass engine.
+ */
 @utility glass {
-  background-color: var(--glass);
-  border: 0.5px solid var(--glass-border);
-  backdrop-filter: blur(var(--glass-blur));
+  background-color: var(--g-bg, var(--glass));
+  background-image: var(--g-image, none);
+  border: var(--g-border-w, 0.5px) solid var(--glass-border);
+  box-shadow: var(--g-shadow, none);
+  backdrop-filter: var(--lg-filter, blur(0px)) var(--g-post, blur(var(--glass-blur)));
 }
 
 @utility glass-strong {
-  background-color: var(--glass-strong);
-  border: 0.5px solid var(--glass-border);
-  backdrop-filter: blur(var(--glass-blur));
+  background-color: var(--g-bg-strong, var(--glass-strong));
+  background-image: var(--g-image, none);
+  border: var(--g-border-w, 0.5px) solid var(--glass-border);
+  box-shadow: var(--g-shadow, none);
+  backdrop-filter: var(--lg-filter, blur(0px)) var(--g-post, blur(var(--glass-blur)));
+}
+
+/* Solid pastel surface (tiles, dock icons): rim highlight and shine on top in Liquid mode */
+@utility liquid-tile {
+  background-image: var(--g-tile-image, none);
+  box-shadow: var(--g-tile-shadow, none);
+  &:hover {
+    filter: var(--g-tile-hover, none);
+  }
+}
+
+/* Text input: a glass well. Dark inner edge on top, light rim at the bottom (Liquid mode) */
+@utility liquid-input {
+  box-shadow: var(--g-input-shadow, none);
+  backdrop-filter: var(--lg-filter, blur(0px)) var(--g-input-post, blur(0px));
+}
+
+/* Small controls that are plain until hovered, then turn into a glass pill (window buttons) */
+@utility liquid-hover {
+  &:hover {
+    background-color: var(--g-bg, var(--glass));
+    background-image: var(--g-image, none);
+    box-shadow: var(--g-shadow, none);
+    backdrop-filter: var(--lg-filter, blur(0px)) var(--g-post, blur(var(--glass-blur)));
+  }
+}
+
+/* Glass effect "Off" means no backdrop effect at all (the panels are solid) */
+@container style(--glass-mode: off) {
+  .glass,
+  .glass-strong,
+  .liquid-input,
+  .liquid-hover:hover {
+    backdrop-filter: none;
+  }
 }
 
 @utility focus-ring {

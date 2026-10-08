@@ -18,7 +18,7 @@ vi.mock('@tauri-apps/api/window', async (importOriginal) => ({
 beforeEach(() => {
   localStorage.clear();
   useSettings.getState().reset();
-  usePalette.setState({ open: false });
+  usePalette.setState({ open: false, query: '' });
   vi.stubGlobal(
     'matchMedia',
     vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })),
@@ -65,8 +65,9 @@ describe('opening and closing', () => {
 
   it('the dashboard search bar opens it too', async () => {
     const { user } = await openApp('/');
-    await user.click(screen.getByRole('button', { name: 'Search' }));
+    await user.click(screen.getByRole('searchbox', { name: 'Search' }));
     expect(palette()).toBeInTheDocument();
+    expect(within(palette()).getByPlaceholderText('Type a command…')).toHaveValue('');
   });
 
   it('opens from any screen, even while typing in a field', async () => {
@@ -94,6 +95,49 @@ describe('opening and closing', () => {
     });
     await user.keyboard(ctrl('k'));
     expect(within(palette()).getByPlaceholderText('Type a command…')).toHaveValue('');
+  });
+});
+
+describe('the dashboard search field', () => {
+  const field = () => screen.getByRole('searchbox', { name: 'Search' });
+  const input = () => within(palette()).getByPlaceholderText('Type a command…');
+
+  it('opens the palette with the text you typed, and stays empty itself', async () => {
+    const { user } = await openApp('/');
+    await user.type(field(), 'tasks');
+    expect(palette()).toBeInTheDocument();
+    expect(input()).toHaveValue('tasks');
+    expect(within(palette()).getByRole('option', { name: /Open Tasks/ })).toBeInTheDocument();
+    expect(within(palette()).queryByRole('option', { name: /Open Money/ })).not.toBeInTheDocument();
+    // The page behind an open palette is hidden from screen readers, hence hidden: true
+    expect(screen.getByRole('searchbox', { name: 'Search', hidden: true })).toHaveValue('');
+  });
+
+  it('opens on Enter, even with nothing typed', async () => {
+    const { user } = await openApp('/');
+    field().focus();
+    await user.keyboard('{Enter}');
+    expect(palette()).toBeInTheDocument();
+  });
+
+  it('runs a command typed there', async () => {
+    const { user, router } = await openApp('/');
+    await user.type(field(), 'habits');
+    await user.keyboard('{Enter}');
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/habits');
+    });
+  });
+
+  it('starts empty again after the palette is closed', async () => {
+    const { user } = await openApp('/');
+    await user.type(field(), 'tasks');
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(queryPalette()).not.toBeInTheDocument();
+    });
+    await user.keyboard(ctrl('k'));
+    expect(input()).toHaveValue('');
   });
 });
 

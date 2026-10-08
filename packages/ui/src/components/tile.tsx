@@ -44,7 +44,7 @@ export function Tile({
     <section
       aria-label={title}
       className={cx(
-        'flex flex-col rounded-tile text-on-tile',
+        'flex flex-col rounded-tile liquid-tile text-on-tile',
         compact ? 'gap-2 p-3' : 'gap-3 p-4',
         'transition-transform duration-200 ease-out hover:-translate-y-0.5 motion-reduce:transition-none',
         className,
