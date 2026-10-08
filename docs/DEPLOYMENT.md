@@ -1,5 +1,17 @@
 # Deployment
 
+## 0. Current server: AWS (Oracle is the planned long-term home)
+Oracle Cloud had no free ARM capacity when I tried (Mumbai, October 2026), so the server runs on AWS first, paid for with the AWS free-plan credits (6 months). When the credits end, or Oracle capacity opens up, the same Docker setup moves to the other host. The server holds no data of its own (everything is in Supabase), so a move means redeploying the image.
+
+Setup log (one line per step, newest last; no secrets here):
+- 2026-10-07: Oracle instance form filled in (A1.Flex, Ubuntu 24.04) but creation failed for lack of capacity; switched to AWS.
+- 2026-10-08: private GitHub repository created (adithp/personal-os); both branches pushed. CI workflow (.github/workflows/ci.yml) runs lint, tests, and build on every push and passed.
+- 2026-10-08: AWS EC2 instance running and reachable over SSH; Elastic IP attached.
+- 2026-10-08: DuckDNS name adith-os.duckdns.org created and points at the Elastic IP (checked with nslookup).
+- Next: install Docker, get the code onto the server, create the two .env files on the server, docker compose up, health check, then the deploy workflow.
+
+AWS rules for this server: security group allows TCP 80 and 443 from anywhere (UDP 443 for HTTP/3) and TCP 22 from my IP only; port 3000 is never opened. Budget alert of about $5 in AWS Billing. Check that the account is on the Free plan and note the end date of the credits in the calendar.
+
 ## 1. Oracle Cloud server
 - Account: Oracle Cloud Free Tier (https://www.oracle.com/cloud/free/), home region Mumbai (Hyderabad only if Mumbai has no ARM capacity at signup).
 - Upgrade the account to Pay As You Go and stay inside Always Free limits, so idle instances are not reclaimed. Budget alert at ₹1.
