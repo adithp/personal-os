@@ -289,7 +289,7 @@ export function MyTasksPage() {
 
         <div ref={listRoot} className="flex flex-col gap-5">
           {!data.isPending && !data.isError && !empty && view === 'board' ? (
-            <BoardView tasks={shown} now={now} />
+            <BoardView tasks={shown} now={now} manualSort={ui.sort === 'manual'} />
           ) : null}
           {!data.isPending && !data.isError && !empty && view !== 'board'
             ? groups.map((group) => (

@@ -1,6 +1,7 @@
 import type { Task } from '@personal-os/shared';
 import { cx, ProgressBar } from '@personal-os/ui';
 import { IconRepeat, IconTrash } from '@tabler/icons-react';
+import type { CSSProperties, ReactNode } from 'react';
 import { BlockedBadge } from '../shared/blocked-badge';
 import { DueLabel } from '../shared/due-label';
 import { TaskCheckbox } from '../shared/task-checkbox';
@@ -19,8 +20,20 @@ export interface TaskItemContext {
   onDelete: (task: Task) => void;
 }
 
+/** Drag support for a card or row: whoever makes it sortable (dnd-kit useSortable) fills this in. */
+export interface TaskItemDrag {
+  setNodeRef: (element: HTMLElement | null) => void;
+  /** The transform and transition from dnd-kit. */
+  style?: CSSProperties;
+  /** A DragHandle with the sortable's attributes and listeners spread onto it. */
+  handle: ReactNode;
+  /** This item is the one being dragged (it stays behind as a faint placeholder). */
+  dragging?: boolean;
+}
+
 export interface TaskItemProps {
   task: Task;
+  drag?: TaskItemDrag;
   /** Unique on the page (a task can be in two tag groups). */
   itemKey: string;
   context: TaskItemContext;
@@ -51,19 +64,23 @@ const subtaskPercent = (task: Task) =>
 
 /** A glass card: checkbox and title, one tag, subtask progress, and a quiet footer. */
 export function TaskCard(props: TaskItemProps) {
-  const { task, context } = props;
+  const { task, context, drag } = props;
   const { selected, attrs } = itemProps(props);
   const done = task.status === 'done';
   return (
     <li
       {...attrs}
+      ref={drag?.setNodeRef}
+      style={drag?.style}
       className={cx(
-        'group flex min-w-0 cursor-pointer flex-col gap-2 rounded-card glass p-3 focus-ring',
+        'group relative flex min-w-0 cursor-pointer flex-col gap-2 rounded-card glass p-3 focus-ring',
         'transition-[transform,opacity] duration-150 ease-out hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0',
         selected && 'ring-1 ring-accent',
         done && 'opacity-60',
+        drag?.dragging && 'opacity-40',
       )}
     >
+      {drag ? <span className="absolute top-1.5 right-1">{drag.handle}</span> : null}
       <div className="flex items-start gap-2">
         <TaskCheckbox
           tabIndex={-1}
@@ -119,19 +136,23 @@ export function TaskCard(props: TaskItemProps) {
 
 /** A compact row for List view. */
 export function TaskRow(props: TaskItemProps) {
-  const { task, context } = props;
+  const { task, context, drag } = props;
   const { selected, attrs } = itemProps(props);
   const done = task.status === 'done';
   return (
     <li
       {...attrs}
+      ref={drag?.setNodeRef}
+      style={drag?.style}
       className={cx(
         'group flex min-w-0 cursor-pointer items-center gap-3 rounded-control px-3 py-2 focus-ring',
         'transition-colors duration-150 ease-out hover:bg-input',
         selected && 'bg-input',
         done && 'opacity-60',
+        drag?.dragging && 'opacity-40',
       )}
     >
+      {drag?.handle}
       <TaskCheckbox
         tabIndex={-1}
         className="mt-px"
