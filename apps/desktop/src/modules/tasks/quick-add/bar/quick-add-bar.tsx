@@ -1,5 +1,4 @@
-import { Input } from '@personal-os/ui';
-import { IconPlus } from '@tabler/icons-react';
+import { IconArrowRight, IconPlus } from '@tabler/icons-react';
 import { useState, type Ref, type SyntheticEvent } from 'react';
 import { useTaskActions } from '../../tasks-queries';
 
@@ -34,25 +33,48 @@ export function QuickAddBar({ autoFocus = false, inputRef }: QuickAddBarProps) {
     );
   };
 
+  const empty = title.trim() === '';
+
   return (
-    <form onSubmit={add} className="relative">
-      <Input
+    <form
+      onSubmit={add}
+      // A glass command bar: soft border, a thin inner highlight, and a quiet accent edge on focus
+      className="flex h-10 items-center gap-2.5 rounded-[16px] glass pr-1.5 pl-2 shadow-[inset_0_1px_0_color-mix(in_srgb,var(--text-primary)_8%,transparent)] transition-colors duration-150 ease-out focus-within:border-accent"
+    >
+      <span
+        aria-hidden
+        className="flex size-6 shrink-0 items-center justify-center rounded-[8px] bg-input text-fg-secondary"
+      >
+        <IconPlus size={14} stroke={2} />
+      </span>
+      <input
         ref={inputRef}
+        type="text"
         aria-label="New task"
-        placeholder="Add a task"
+        placeholder="Add a task…"
         autoComplete="off"
         autoFocus={autoFocus}
         value={title}
-        className="h-10 pl-9"
+        className="h-full min-w-0 flex-1 bg-transparent text-body text-fg outline-none placeholder:text-fg-muted"
         onChange={(event) => {
           setTitle(event.target.value);
         }}
       />
-      <IconPlus
-        size={16}
-        className="pointer-events-none absolute top-1/2 left-3 z-10 -translate-y-1/2 text-fg-muted"
-        aria-hidden
-      />
+      <button
+        type="submit"
+        aria-label="Add task"
+        disabled={empty}
+        className="flex size-7 shrink-0 items-center justify-center rounded-[9px] border-[0.5px] text-on-tile focus-ring transition-[filter,opacity,box-shadow] duration-150 ease-out enabled:hover:brightness-110 enabled:active:brightness-95 disabled:cursor-default disabled:opacity-45"
+        style={{
+          backgroundImage:
+            'linear-gradient(145deg, color-mix(in srgb, var(--accent) 100%, white 22%), var(--accent) 55%, color-mix(in srgb, var(--accent) 78%, black 22%))',
+          borderColor: 'color-mix(in srgb, var(--accent) 60%, white 40%)',
+          boxShadow:
+            '0 2px 10px color-mix(in srgb, var(--accent) 38%, transparent), inset 0 1px 0 color-mix(in srgb, white 45%, transparent)',
+        }}
+      >
+        <IconArrowRight size={15} stroke={2.25} aria-hidden />
+      </button>
     </form>
   );
 }

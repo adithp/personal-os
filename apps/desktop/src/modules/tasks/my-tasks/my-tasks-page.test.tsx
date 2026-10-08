@@ -682,7 +682,7 @@ describe('quick add on this page', () => {
     await openMyTasks();
     await screen.findByText(/No tasks yet/);
     expect(addBox()).toHaveFocus();
-    expect(addBox()).toHaveAttribute('placeholder', 'Add a task');
+    expect(addBox()).toHaveAttribute('placeholder', 'Add a task…');
   });
 
   it('adds a task that appears in its section', async () => {

@@ -22,7 +22,7 @@ describe('the quick add bar', () => {
   it('has a placeholder, an accessible name, and is focused when My tasks opens', async () => {
     await openMyTasks();
     const box = await screen.findByRole('textbox', { name: 'New task' });
-    expect(box).toHaveAttribute('placeholder', 'Add a task');
+    expect(box).toHaveAttribute('placeholder', 'Add a task…');
     expect(box).toHaveFocus();
   });
 
@@ -68,5 +68,23 @@ describe('the quick add bar', () => {
     await waitFor(() => {
       expect(addBox()).toHaveValue('x');
     });
+  });
+});
+
+describe('the quick add bar submit button', () => {
+  it('is a labelled button that is off until there is text, and adds the task when clicked', async () => {
+    const { user, fake } = await openMyTasks();
+    await screen.findByText(/No tasks yet/);
+    const button = screen.getByRole('button', { name: 'Add task' });
+    expect(button).toBeDisabled();
+    await user.type(addBox(), 'Pay rent');
+    expect(button).toBeEnabled();
+    await user.click(button);
+    await waitFor(() => {
+      expect(titles()).toEqual(['Pay rent']);
+    });
+    expect(fake.calls.filter((call) => call.method === 'POST')).toHaveLength(1);
+    expect(addBox()).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Add task' })).toBeDisabled();
   });
 });
