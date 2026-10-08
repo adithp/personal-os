@@ -36,18 +36,28 @@ const body = (code: string, message: string): ErrorBody => ({ error: { code, mes
  * and `params`; none of that is logged. The database's own message (the cause, such as
  * 'column "x" does not exist') and its code are kept, which is what diagnoses the problem.
  */
-export function serializeError(error: unknown): Record<string, unknown> {
-  if (!(error instanceof Error)) return { message: 'non-error thrown' };
+export interface ErrorLog {
+  [key: string]: unknown;
+  type: string;
+  message: string;
+  stack: string;
+  code?: string;
+}
+
+export function serializeError(error: unknown): ErrorLog {
+  if (!(error instanceof Error)) return { type: 'unknown', message: 'non-error thrown', stack: '' };
   const cause = error.cause instanceof Error ? error.cause : undefined;
   if (error.message.startsWith('Failed query:')) {
     const code = cause && (cause as Error & { code?: unknown }).code;
     return {
       type: error.name,
       message: `Database query failed: ${cause?.message ?? 'unknown database error'}`,
+      // The outer stack repeats the query text, so only the database error's own stack is kept
+      stack: cause?.stack ?? '',
       ...(typeof code === 'string' ? { code } : {}),
     };
   }
-  return { type: error.name, message: error.message, stack: error.stack };
+  return { type: error.name, message: error.message, stack: error.stack ?? '' };
 }
 
 /**

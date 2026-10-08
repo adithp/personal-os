@@ -354,6 +354,6 @@ describe('database errors in the log', () => {
   });
 
   it('handles things that are not errors', () => {
-    expect(serializeError('oops')).toEqual({ message: 'non-error thrown' });
+    expect(serializeError('oops')).toMatchObject({ message: 'non-error thrown' });
   });
 });
