@@ -1,0 +1,71 @@
+{
+  "_comment": "Which docs describe which code. scripts/docs-check.mjs fails a commit that changes a matching path when none of the mapped docs changed. Globs: ** any folders, * any name part, {module} the module folder name (it is filled into the docs patterns too). Bypass with a line '[docs-ok] <reason>' in the commit message.",
+  "ignore": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.test.mjs",
+    "pnpm-lock.yaml",
+    "**/routeTree.gen.ts",
+    "**/drizzle/meta/**",
+    "docs/**",
+    ".claude/**"
+  ],
+  "entries": [
+    {
+      "name": "API routes",
+      "why": "Routes, their shapes and errors are described in the API doc.",
+      "paths": ["apps/server/src/routes/**"],
+      "docs": ["docs/API.md"]
+    },
+    {
+      "name": "Database schema and migrations",
+      "why": "Tables, columns, rules, and migration files are described in the database doc.",
+      "paths": ["packages/db/src/schema/**", "packages/db/drizzle/**"],
+      "docs": ["docs/DATABASE.md"]
+    },
+    {
+      "name": "Server actions",
+      "why": "The action list, permission levels, and registry rules are in the AI system doc.",
+      "paths": ["apps/server/src/actions/**", "packages/shared/src/actions.ts"],
+      "docs": ["docs/AI_SYSTEM.md"]
+    },
+    {
+      "name": "Design system and desktop shell",
+      "why": "Tokens, components, backgrounds, the dock, and the title bar are in the design doc.",
+      "paths": ["packages/ui/**", "apps/desktop/src/shell/**"],
+      "docs": ["docs/DESIGN.md"]
+    },
+    {
+      "name": "Desktop module",
+      "why": "Each module's screens, rules, and actions are in its feature doc.",
+      "paths": ["apps/desktop/src/modules/{module}/**"],
+      "docs": ["docs/features/{module}.md", "docs/features/{module}-*.md"]
+    },
+    {
+      "name": "Deployment and environment",
+      "why": "Servers, containers, scripts, workflows, and environment variables are in the deployment or security doc.",
+      "paths": [
+        "infra/**",
+        "**/Dockerfile",
+        ".dockerignore",
+        ".env.example",
+        ".github/workflows/**",
+        ".githooks/**"
+      ],
+      "docs": ["docs/DEPLOYMENT.md", "docs/SECURITY.md"]
+    },
+    {
+      "name": "Desktop app configuration",
+      "why": "The window, CSP, and permissions are security and deployment facts.",
+      "paths": ["apps/desktop/src-tauri/tauri.conf.json", "apps/desktop/src-tauri/capabilities/**"],
+      "docs": ["docs/SECURITY.md", "docs/DEPLOYMENT.md"]
+    },
+    {
+      "name": "Dependencies",
+      "why": "The tech stack table lists every library we use.",
+      "paths": ["package.json", "apps/*/package.json", "packages/*/package.json"],
+      "dependenciesOnly": true,
+      "docs": ["docs/ARCHITECTURE.md"]
+    }
+  ]
+}

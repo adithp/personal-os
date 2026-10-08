@@ -1,0 +1,4 @@
+#!/bin/sh
+# Blocks a commit that changes code without updating the docs mapped in docs/doc-map.json.
+# Skip with a line "[docs-ok] <reason>" in the commit message. Turned on by: pnpm hooks:install
+exec node scripts/docs-check.mjs --staged --commit-msg-file "$1"

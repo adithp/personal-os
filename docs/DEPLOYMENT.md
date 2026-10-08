@@ -76,5 +76,10 @@ AWS rules for this server: security group allows TCP 80 and 443 from anywhere (U
 ## 7. Coding tools access
 - Claude Code and other coding tools point to http://<server-tailscale-ip>:20128/v1 with the coding key.
 
+## 7b. Git hooks and the docs check
+- The repo has a commit-msg hook (.githooks/commit-msg) that runs `pnpm docs:check`: a commit that changes code listed in docs/doc-map.json must also change its docs, or carry a line `[docs-ok] <reason>` in the message.
+- `pnpm install` turns the hook on by itself (the root `prepare` script runs scripts/install-hooks.mjs, which sets `git config core.hooksPath .githooks`). Run `pnpm hooks:install` to do it by hand. The script does nothing and never fails when there is no .git folder, so Docker builds and the AWS server are not affected.
+- CI (.github/workflows/ci.yml) runs the same check over the pushed commits as a backstop.
+
 ## 8. Desktop app
 - Built locally with Tauri (pnpm build:desktop) and installed on my computer.

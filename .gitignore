@@ -32,3 +32,6 @@ desktop.ini
 
 # Parallel agent worktrees
 .claude/worktrees/
+
+# Review diffs for the reviewer agents (deleted after each review)
+.claude/review/

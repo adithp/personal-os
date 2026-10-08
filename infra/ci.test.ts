@@ -29,4 +29,10 @@ describe('CI workflow', () => {
     expect(ci).toMatch(/permissions:\n {2}contents: read/);
     expect(ci).not.toContain('secrets.');
   });
+
+  it('checks that docs match code over the pushed commits, after the build', () => {
+    expect(ci).toContain('node scripts/docs-check.mjs --range');
+    expect(ci.indexOf('pnpm build')).toBeLessThan(ci.indexOf('docs-check.mjs'));
+    expect(ci).toContain('fetch-depth: 0');
+  });
 });

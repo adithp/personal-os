@@ -9,6 +9,7 @@ export default defineConfig({
       'apps/server',
       'apps/desktop',
       'infra',
+      'scripts',
     ],
   },
 });
