@@ -23,5 +23,5 @@
 - Branch per roadmap step: step-1-foundation, step-2-tasks-notes, ...
 - Conventional Commits: feat:, fix:, docs:, refactor:, test:, chore:.
 - Never commit .env files.
-- A commit that changes code listed in docs/doc-map.json must also change its docs, or contain a line "[docs-ok] <reason>" in the message.
+- A commit that changes code listed in docs/doc-map.json must also change its docs, or contain a line "[docs-ok] <reason>" in the message. Changes to docs/ROADMAP.md or docs/decisions/DECISIONS.md need docs/CONTEXT.md (its Current status) to change too; docs/prompts and docs/design/mockups are never checked.
 - Parallel agents: at most 3 at once (see the orchestrate-feature skill).

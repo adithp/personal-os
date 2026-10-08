@@ -53,6 +53,7 @@ const matchesAny = (file, globs) => globs.some((glob) => globToRegex(glob).test(
 /**
  * Finds the code changes whose docs were not touched.
  * files: changed paths (forward slashes). docMap: the parsed docs/doc-map.json.
+ * An entry with includeIgnored also looks at files in the ignore list (used for docs that guard other docs).
  * dependenciesChanged(file): for a package.json, did its dependencies change?
  * Returns one violation per entry (and module): { entry, why, module, files, docs }.
  */
@@ -63,7 +64,7 @@ export function checkChanges({ files, docMap, dependenciesChanged = () => true }
   for (const entry of docMap.entries) {
     const groups = new Map(); // module name ('' for none) -> matching files
     for (const file of files) {
-      if (ignored(file)) continue;
+      if (!entry.includeIgnored && ignored(file)) continue;
       for (const glob of entry.paths) {
         const match = globToRegex(glob).exec(file);
         if (!match) continue;

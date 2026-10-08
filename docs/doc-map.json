@@ -8,7 +8,9 @@
     "**/routeTree.gen.ts",
     "**/drizzle/meta/**",
     "docs/**",
-    ".claude/**"
+    ".claude/**",
+    "docs/design/mockups/**",
+    "docs/prompts/**"
   ],
   "entries": [
     {
@@ -66,6 +68,13 @@
       "paths": ["package.json", "apps/*/package.json", "packages/*/package.json"],
       "dependenciesOnly": true,
       "docs": ["docs/ARCHITECTURE.md"]
+    },
+    {
+      "name": "Roadmap and decisions",
+      "why": "The Current status section of docs/CONTEXT.md must follow the roadmap and the decisions.",
+      "paths": ["docs/ROADMAP.md", "docs/decisions/DECISIONS.md"],
+      "includeIgnored": true,
+      "docs": ["docs/CONTEXT.md"]
     },
     {
       "name": "Repo tooling",

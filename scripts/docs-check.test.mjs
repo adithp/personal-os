@@ -42,6 +42,12 @@ describe('checkChanges', () => {
     expect(check(['README.md', 'LICENSE'])).toEqual([]);
   });
 
+  it('asks for docs/CONTEXT.md when the roadmap or decisions change, but not for mockups or prompts', () => {
+    expect(names(check(['docs/ROADMAP.md']))).toEqual(['Roadmap and decisions']);
+    expect(check(['docs/decisions/DECISIONS.md', 'docs/CONTEXT.md'])).toEqual([]);
+    expect(check(['docs/design/mockups/tasks.html', 'docs/prompts/next.md'])).toEqual([]);
+  });
+
   it('fails a route change without docs/API.md, and names the doc and why', () => {
     const violations = check(['apps/server/src/routes/tasks.ts']);
     expect(names(violations)).toEqual(['API routes']);

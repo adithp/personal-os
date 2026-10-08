@@ -62,6 +62,7 @@ For trivial changes (typos, one-liners), use judgment instead of the full proces
 - After any code change: **docs-sync** (docs must match the code). After any fix that cost a retry: **record-lesson**.
 - Machine, ports, Docker, Supabase, hosting, git: **dev-environment**. Finished feature: **feature-report**.
 - A feature with parallel agents: **/orchestrate-feature <feature>** (only I start it).
+- Discussions: use the **discuss** skill. Full working context: docs/CONTEXT.md.
 
 ## Known pitfalls (the full list is docs/LESSONS.md)
 - Never read, print, or edit .env files (deny rules enforce it). Never paste secrets, tokens, or connection strings anywhere.
