@@ -97,6 +97,7 @@ describe('taskActions', () => {
       'tasks.archive',
       'tasks.unarchive',
       'tasks.complete',
+      'tasks.move',
       'tasks.prioritize',
       'tasks.delete',
       'tasks.restore',

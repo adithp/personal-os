@@ -254,19 +254,17 @@ describe('the view choice', () => {
     expect(useTasksUi.getState().view).toBe('list');
   });
 
-  it('shows Board disabled with a Soon hint until the Board feature is on', async () => {
+  it('offers Board as a view choice now that the Board is built', async () => {
     await openMyTasks(createFakeApi([makeTask({ title: 'One' })]));
     await screen.findByText('One');
-    const board = screen.getByRole('button', { name: /Board/ });
-    expect(board).toBeDisabled();
-    expect(board).toHaveTextContent('Soon');
+    expect(screen.getByRole('radio', { name: 'Board' })).toBeEnabled();
   });
 
-  it('falls back to Cards when a saved Board choice cannot open yet', async () => {
+  it('opens the Board when it was the saved choice', async () => {
     useTasksUi.setState({ view: 'board' });
     await openMyTasks(createFakeApi([makeTask({ title: 'One' })]));
     await screen.findByText('One');
-    expect(screen.getByRole('radio', { name: 'Cards' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Board' })).toBeChecked();
   });
 });
 
