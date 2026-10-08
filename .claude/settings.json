@@ -11,5 +11,6 @@
       "Bash(git log:*)"
     ],
     "deny": ["Read(./.env)", "Read(./**/.env)", "Bash(git push:*)", "Bash(pnpm db:migrate)"]
-  }
+  },
+  "worktree": { "baseRef": "head" }
 }

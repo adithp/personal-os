@@ -1,6 +1,7 @@
 ---
 name: code-reviewer
 description: Reviews changes against the Personal OS docs before they are committed.
+model: sonnet
 tools: Read, Grep, Glob
 ---
 

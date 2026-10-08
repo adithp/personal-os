@@ -29,3 +29,6 @@ desktop.ini
 
 # Local Claude settings
 .claude/settings.local.json
+
+# Parallel agent worktrees
+.claude/worktrees/

@@ -69,3 +69,14 @@ Then write: "Feature complete. Waiting for your check. Reply 'next' to continue 
 ### After my check
 - If I report a problem, fix only that problem, run the checks again, and send a new feature report.
 - Only after I reply "next": tick the item in docs/ROADMAP.md and suggest a commit message.
+
+## Parallel work
+The main session is the orchestrator. It may run at most 3 subagents at once (server-dev, ui-dev, and code-reviewer for review). All use Sonnet, and each works in its own git worktree.
+1. Use parallel agents only for independent units that are big enough to be worth it. Small changes, and anything that needs back-and-forth, stay in the main session.
+2. Contract first. Before starting agents, the orchestrator writes and COMMITS the shared contract: Zod schemas and types in packages/shared, action names with permission levels, the route list and shapes, the database schema with its generated migration, React Query hook signatures, and a page skeleton with empty slots. Worktrees branch from the committed HEAD, so uncommitted work is invisible to agents.
+3. File ownership. Every agent gets a list of the files or folders it owns, and no two agents own the same file. Only the orchestrator touches migrations and the drizzle meta files, packages/shared/src/index.ts, apps/desktop/src/routeTree.gen.ts, ROADMAP.md, DECISIONS.md, other docs, and CLAUDE.md.
+4. Agents cannot ask me anything. Every task message must say: if something is unclear, stop and report questions instead of guessing. The orchestrator collects the questions and asks me.
+5. Merge. The orchestrator merges agent branches one at a time, resolves conflicts, regenerates routeTree.gen.ts, runs pnpm lint, pnpm typecheck and pnpm test on the merged result, and fixes failures. Then it runs code-reviewer and fixes what it finds.
+6. The stop rule still applies: stop only when I can see and test a feature. One report per merged feature.
+7. When I need to run pnpm db:migrate, tell me exactly which migration files are new and what I should see in Supabase afterwards.
+8. Parallel agents use the same plan limits as the main session. Never run more than 3 at once.
