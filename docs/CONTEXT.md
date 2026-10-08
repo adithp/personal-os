@@ -95,7 +95,7 @@ Full product details: `docs/PRD.md`. Build order: `docs/ROADMAP.md`. Decisions w
 
 1. Read this file, `docs/LESSONS.md` and the docs relevant to the topic, and check the real code.
 2. Verify facts that may have changed (libraries, Claude Code features, cloud services) with web search or the official docs, and mention the source.
-3. Give options, trade-offs and one clear recommendation. Ask me for choices that are mine.
+3. Give options, trade-offs and one clear recommendation. Answer from this file and the docs first; ask me only for choices that are mine and not already decided.
 4. For visuals, make an HTML mockup in `docs/design/mockups/` following DESIGN.md, and give me the path.
 5. Record agreed decisions in DECISIONS.md and the docs; update section 5 of this file when the status changes.
 6. **Write the next prompt for the build session** when the discussion leads to building (see section 7).
