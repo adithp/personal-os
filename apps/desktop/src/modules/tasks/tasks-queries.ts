@@ -1,5 +1,6 @@
 import type {
   CreateTaskInput,
+  MoveTaskInput,
   Tag,
   ListTasksInput,
   Task,
@@ -115,6 +116,7 @@ export function applyPatch(
   if (patch.priority !== undefined) next.priority = patch.priority;
   if (patch.dueAt !== undefined) next.dueAt = patch.dueAt;
   if (patch.dueAllDay !== undefined) next.dueAllDay = patch.dueAllDay;
+  if (patch.position !== undefined) next.position = patch.position;
   if (patch.reminderAt !== undefined) next.reminderAt = patch.reminderAt;
   if (patch.tagIds !== undefined) {
     // Tags show at once; one the cache does not know yet appears after the refetch
@@ -262,6 +264,35 @@ export function useTaskActions() {
     onSettled: () => refresh(),
   });
 
+  /**
+   * Drag and drop. `position` is only for showing the move at once (the server works out the real
+   * one). Shows an Undo toast; a refused move rolls back and shows the server's message.
+   */
+  const move = useMutation({
+    mutationFn: ({ input: { id, ...body } }: { input: MoveTaskInput; position?: number }) =>
+      api.request<TaskWriteResult>('POST', `/tasks/${id}/move`, { body }),
+    onMutate: async ({ input, position }) => {
+      await client.cancelQueries({ queryKey: TASKS_KEY });
+      const now = new Date().toISOString();
+      const patch: TaskPatch = {
+        ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.dueAt !== undefined ? { dueAt: input.dueAt } : {}),
+        ...(input.dueAllDay !== undefined ? { dueAllDay: input.dueAllDay } : {}),
+        ...(position !== undefined ? { position } : {}),
+      };
+      return {
+        snapshot: patchEverywhere(client, input.id, (task) => applyPatch(task, patch, now)),
+      };
+    },
+    onSuccess: ({ undo }) => {
+      offerUndo('Task moved.', undo);
+    },
+    onError: (error, _input, context) => {
+      fail(error, context?.snapshot);
+    },
+    onSettled: () => refresh(),
+  });
+
   const archive = useMutation({
     mutationFn: (id: string) => api.request<TaskWriteResult>('POST', `/tasks/${id}/archive`),
     onMutate: async (id) => {
@@ -285,5 +316,5 @@ export function useTaskActions() {
     },
   });
 
-  return { create, update, complete, remove, archive, unarchive };
+  return { create, update, complete, move, remove, archive, unarchive };
 }

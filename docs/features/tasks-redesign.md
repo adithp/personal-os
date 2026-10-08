@@ -26,6 +26,9 @@ This is the approved plan for the Tasks module redesign (Asana-style, dark glass
 ## Contract (committed before agents start; the orchestrator owns it)
 Shared types and actions (`packages/shared/src/tasks.ts`, `tags.ts`), the database schema and migrations, the server stubs, the route tree and route files, the hook signatures (`modules/tasks/tasks-queries.ts`, `tags-queries.ts`), the UI store (`tasks-ui-store.ts`), pure logic with tests (`dates.ts`, `sections.ts`, `filters.ts`, `my-tasks-search.ts`), shared small components (`modules/tasks/shared/`), the mock API for tests (`apps/desktop/src/test/fake-api.ts`), `features.ts`, and the empty slots that agents fill in.
 
+## Feature 2 contract (committed before the agents start)
+`tasks.move` (shared `moveTaskInput`: `status`, `dueAt`, `dueAllDay`, `afterId`, `beforeId`) is a stub that answers 501; `tasks.update` now also accepts `position`, and `applyChange` in `actions/tasks.ts` is exported for the move to reuse. On the desktop: `modules/tasks/drag/` has `position.ts` (positionBetween), `resolve-drop.ts` (resolveDrop: Today keeps a time or makes the task all-day, Upcoming asks for a date, Overdue refuses, No date only reorders, Completed completes, a done task dragged out reopens; reordering needs Manual sort), `drop-ids.ts`, and `dnd.ts` (sensors and spoken announcements); `shared/drag-handle.tsx`; `useTaskActions().move`; and the mock API route. The Board stays off (`TASK_FEATURES.board`) until its view is merged.
+
 ## Build order and ownership
 Ownership is per feature: within one feature no two agents own the same file. Only the orchestrator edits migrations, `packages/shared/src/index.ts`, route files and `routeTree.gen.ts`, `features.ts`, `fake-api.ts`, docs, `ROADMAP.md`, `DECISIONS.md`, `CLAUDE.md`.
 

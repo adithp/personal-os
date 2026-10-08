@@ -22,7 +22,7 @@ export interface TaskDetailPanelProps {
 
 const STATUS_OPTIONS = [
   { value: 'todo', label: 'To do' },
-  { value: 'doing', label: 'Doing' },
+  { value: 'doing', label: 'In progress' },
   { value: 'done', label: 'Done' },
 ] as const;
 

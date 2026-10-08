@@ -51,6 +51,7 @@ Responses:
 | POST | /tasks/:id/archive | Archive a task (returns the task and an undo) |
 | POST | /tasks/:id/unarchive | Bring an archived task back |
 | POST | /tasks/:id/complete | Mark a task done (returns the task and an undo) |
+| POST | /tasks/:id/move | Drag and drop: body `status`, `dueAt`, `dueAllDay`, `afterId` (task just above), `beforeId` (task just below), at least one; returns the task and an undo. Not built yet (answers 501 until the Feature 2 server work is merged) |
 | POST | /undo | Run the `undo` returned by a write: body `{ "action": "tasks.restore", "input": { "id": "..." } }`. Only write and destructive actions can be run this way; anything else answers 400 cannot_undo |
 | GET | /me | The signed-in user from the token: {id, email, role}. Used to check that login works end to end |
 | GET | /links?entityId= | Links for an entity (backlinks, project items) |

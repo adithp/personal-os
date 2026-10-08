@@ -163,11 +163,11 @@ describe('TaskDetailPanel: status and priority', () => {
     const fake = createFakeApi([task]);
     const { user } = await openLoaded(fake, task.id);
     expect(screen.getByRole('radio', { name: 'To do' })).toBeChecked();
-    await user.click(screen.getByRole('radio', { name: 'Doing' }));
+    await user.click(screen.getByRole('radio', { name: 'In progress' }));
     await waitFor(() => {
       expect(lastPatch(fake)).toEqual({ status: 'doing' });
     });
-    expect(screen.getByRole('radio', { name: 'Doing' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'In progress' })).toBeChecked();
     await user.click(screen.getByRole('radio', { name: 'Done' }));
     await waitFor(() => {
       expect(lastPatch(fake)).toEqual({ status: 'done' });

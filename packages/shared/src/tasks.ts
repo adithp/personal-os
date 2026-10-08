@@ -91,6 +91,8 @@ const editableFields = {
   reminderAt: isoTime.nullable().optional(),
   /** Replaces the task's tags with exactly these. */
   tagIds: tagIds.optional(),
+  /** Where the task sits in the manual order (smaller is higher). tasks.move works this out. */
+  position: z.number().optional(),
 };
 
 export const EDITABLE_TASK_FIELDS = Object.keys(editableFields) as (keyof typeof editableFields)[];
@@ -139,6 +141,31 @@ export const listTasksInput = z.object({
 });
 export type ListTasksInput = z.input<typeof listTasksInput>;
 
+/**
+ * Move a task (drag and drop). `afterId` is the task that will sit just above it and `beforeId`
+ * the one just below it, in the manual order; the server works out the position between them.
+ * The status and the due date may change in the same move (dropping on a column or a section).
+ */
+export const moveTaskInput = z
+  .object({
+    id: taskId,
+    status: taskStatusSchema.optional(),
+    dueAt: isoTime.nullable().optional(),
+    dueAllDay: z.boolean().optional(),
+    afterId: z.uuid().optional(),
+    beforeId: z.uuid().optional(),
+  })
+  .refine(
+    (input) =>
+      input.status !== undefined ||
+      input.dueAt !== undefined ||
+      input.dueAllDay !== undefined ||
+      input.afterId !== undefined ||
+      input.beforeId !== undefined,
+    { message: 'Nothing to move' },
+  );
+export type MoveTaskInput = z.infer<typeof moveTaskInput>;
+
 export const taskIdInput = z.object({ id: taskId });
 export const prioritizeTaskInput = z.object({ id: taskId, priority: taskPrioritySchema });
 
@@ -185,6 +212,12 @@ export const taskActions = {
     description: 'Mark a task done.',
     permission: 'write',
     input: taskIdInput,
+  }),
+  move: defineAction({
+    name: 'tasks.move',
+    description: 'Move a task: change its place in the order, its status, or its due date.',
+    permission: 'write',
+    input: moveTaskInput,
   }),
   prioritize: defineAction({
     name: 'tasks.prioritize',

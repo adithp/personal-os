@@ -26,7 +26,7 @@ import { assertNotBlocked, loadBlockers } from './task-dependencies';
 import { implement, type ActionOutcome } from './registry';
 
 /** Gap between positions. Moving a task later puts it between its neighbours. */
-const POSITION_STEP = 1024;
+export const POSITION_STEP = 1024;
 
 const IST_MS = (5 * 60 + 30) * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -194,7 +194,7 @@ function orderFor(sort: string, order: 'asc' | 'desc'): SQL[] {
   return [main, asc(tasks.position), asc(tasks.createdAt)];
 }
 
-interface Patch {
+export interface Patch {
   title?: string;
   description?: string | null;
   status?: TaskStatus;
@@ -203,10 +203,11 @@ interface Patch {
   dueAllDay?: boolean;
   reminderAt?: string | null;
   tagIds?: string[];
+  position?: number;
 }
 
 /** Applies a change to one task and works out how to put it back. */
-async function applyChange(
+export async function applyChange(
   scope: UserScope,
   id: string,
   patch: Patch,
@@ -246,6 +247,7 @@ async function applyChange(
       description: patch.description,
     });
     change('priority', patch.priority, current.priority, { priority: patch.priority });
+    change('position', patch.position, current.position, { position: patch.position });
     change('dueAt', dueAtChange, iso(current.dueAt), {
       dueAt: dueAtChange ? new Date(dueAtChange) : null,
     });

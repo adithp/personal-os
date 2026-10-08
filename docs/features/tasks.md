@@ -4,8 +4,8 @@
 Manage daily tasks and long-term goals.
 
 ## Screens
-- My tasks page with a quick-add bar (title only for now), Filter, Sort, and Group menus, and two views: Cards (default) and List. Tasks are grouped into Overdue, Today, Upcoming, No date, and Completed (last 7 days, "Show more"). Drag to reorder and the Board (kanban) view are planned (Feature 2); Board shows as a disabled "Soon" button.
-- Task detail panel (340 px): title, status (To do, Doing, Done), priority, due (date and time, or date only with an All day switch), reminder, repeat and blocked by (placeholders, "Not available yet", until Feature 3), tags, subtasks (one level), notes, Archive or Unarchive, Delete.
+- My tasks page with a quick-add bar (title only for now), Filter, Sort, and Group menus, and two views: Cards (default) and List. Tasks are grouped into Overdue, Today, Upcoming, No date, and Completed (last 7 days, "Show more"). Drag to reorder and the Board (kanban) view are being built (Feature 2); Board shows as a disabled "Soon" button until then.
+- Task detail panel (340 px): title, status (To do, In progress, Done), priority, due (date and time, or date only with an All day switch), reminder, repeat and blocked by (placeholders, "Not available yet", until Feature 3), tags, subtasks (one level), notes, Archive or Unarchive, Delete.
 - Archive: an "Archived" filter in the list view, plus archive and restore actions. There is no separate archive screen.
 - Calendar view (Schedule-X) and the planning view (today, this week, this month) belong to the Calendar module (Step 4), not Step 2.
 
@@ -25,7 +25,7 @@ Project link and category come in Step 5 (tags cover grouping until then).
 - Deleting a task is a soft delete. Complete, delete, and archive show an Undo toast ("Task completed.", "Task deleted.", "Task archived."); moves will too once drag and drop exists. Reopening and unarchiving do not.
 - Due dates read "Today, 5:00 PM", "Tomorrow", "Yesterday", "Mon, 13 Oct" (with the year when it is not this year); an all-day task shows no time. Overdue (red) means an earlier India day; a task due today at a time that has passed shows only its time in red.
 - The UI calls GET /tasks, GET /tasks/:id, POST /tasks, PATCH /tasks/:id, POST /tasks/:id/complete, DELETE /tasks/:id, POST /tasks/:id/archive, POST /tasks/:id/unarchive, and POST /undo; priority changes go through PATCH.
-- Wording: the status "doing" is called "Doing" in the detail panel and "In progress" on cards and in the filter menu.
+- Wording: the stored status "doing" is shown as "In progress" everywhere (detail panel, cards, filter menu).
 
 ## Actions
 tasks.list, tasks.get, tasks.create, tasks.update, tasks.archive, tasks.unarchive, tasks.complete, tasks.delete, tasks.prioritize, tasks.restore; tags.list, tags.create, tags.update

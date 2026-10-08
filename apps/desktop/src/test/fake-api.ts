@@ -2,6 +2,7 @@ import type { Tag, Task, UndoDescriptor } from '@personal-os/shared';
 import { nextTagColor } from '@personal-os/shared';
 import { vi } from 'vitest';
 import { ApiError, type ApiClient, type RequestOptions } from '../api/api-client';
+import { positionBetween } from '../modules/tasks/drag/position';
 
 let counter = 0;
 const idFor = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -169,13 +170,22 @@ export function createFakeApi(initial: Task[] = [], initialTags: Tag[] = []) {
       return { item: view(task), undo: { action: 'tasks.delete', input: { id: task.id } } };
     }
 
-    const one = /^\/tasks\/([^/]+)(?:\/(complete|archive|unarchive))?$/.exec(path);
+    const one = /^\/tasks\/([^/]+)(?:\/(complete|archive|unarchive|move))?$/.exec(path);
     if (one) {
       const id = one[1] ?? '';
       const verb = one[2];
       if (method === 'GET' && !verb) return { item: view(find(id)) };
       if (method === 'PATCH' && !verb) return patchTask(id, body);
       if (method === 'POST' && verb === 'complete') return patchTask(id, { status: 'done' });
+      if (method === 'POST' && verb === 'move') {
+        // The place between the neighbours (afterId above, beforeId below); the rest is a plain update
+        const { afterId, beforeId, ...rest } = body;
+        const above = typeof afterId === 'string' ? find(afterId).position : undefined;
+        const below = typeof beforeId === 'string' ? find(beforeId).position : undefined;
+        const position =
+          above === undefined && below === undefined ? undefined : positionBetween(above, below);
+        return patchTask(id, { ...rest, ...(position === undefined ? {} : { position }) });
+      }
       if (method === 'POST' && verb === 'archive') {
         const current = find(id);
         store.set(id, { ...current, archivedAt: new Date().toISOString() });
