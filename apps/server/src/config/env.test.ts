@@ -80,6 +80,16 @@ describe('loadEnv', () => {
     expect(loadEnv(valid).DATABASE_URL).toBe(DATABASE_URL);
   });
 
+  it('refuses the Supabase direct connection (IPv6 only) and says to use the session pooler', () => {
+    const direct = 'postgresql://postgres:secret@db.abcdefghij.supabase.co:5432/postgres';
+    expect(() => loadEnv({ ...valid, DATABASE_URL: direct })).toThrow(/session pooler/);
+    try {
+      loadEnv({ ...valid, DATABASE_URL: direct });
+    } catch (error) {
+      expect((error as EnvError).message).not.toContain('secret');
+    }
+  });
+
   it('rejects an unknown NODE_ENV or log level', () => {
     expect(() => loadEnv({ ...valid, NODE_ENV: 'staging' })).toThrow(EnvError);
     expect(() => loadEnv({ ...valid, LOG_LEVEL: 'loud' })).toThrow(EnvError);

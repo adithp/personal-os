@@ -27,6 +27,10 @@ export const serverEnvSchema = z.object({
     .string()
     .trim()
     .regex(/^postgres(ql)?:\/\//, 'must be a postgresql:// address')
+    .refine(
+      (value) => !/@db\.[a-z0-9]+\.supabase\.co[:/]/i.test(value),
+      'is the Supabase direct connection (IPv6 only): use the session pooler address instead',
+    )
     .refine(notExample, 'still has the example value from .env.example'),
   /** Comma-separated list of allowed browser origins. Defaults to the desktop app. */
   CORS_ORIGINS: z.string().optional(),
