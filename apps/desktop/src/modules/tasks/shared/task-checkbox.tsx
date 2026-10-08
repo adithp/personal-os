@@ -5,11 +5,13 @@ import { IconCheck } from '@tabler/icons-react';
 export interface TaskCheckboxProps {
   task: Pick<Task, 'title' | 'status'>;
   onToggle: () => void;
+  /** -1 when a parent (a card or row) is already the Tab stop. */
+  tabIndex?: number;
   className?: string;
 }
 
 /** The round checkbox: yellow check when done. Tab to it, then Space to complete or reopen. */
-export function TaskCheckbox({ task, onToggle, className }: TaskCheckboxProps) {
+export function TaskCheckbox({ task, onToggle, tabIndex, className }: TaskCheckboxProps) {
   const done = task.status === 'done';
   return (
     <button
@@ -17,6 +19,7 @@ export function TaskCheckbox({ task, onToggle, className }: TaskCheckboxProps) {
       role="checkbox"
       aria-checked={done}
       aria-label={`${done ? 'Reopen' : 'Complete'}: ${task.title}`}
+      tabIndex={tabIndex}
       onClick={(event) => {
         event.stopPropagation();
         onToggle();

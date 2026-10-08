@@ -1,8 +1,9 @@
 import type { Task } from '@personal-os/shared';
-import { cx, moduleColorVar, ProgressBar } from '@personal-os/ui';
-import { IconCheck, IconRepeat, IconTrash } from '@tabler/icons-react';
+import { cx, ProgressBar } from '@personal-os/ui';
+import { IconRepeat, IconTrash } from '@tabler/icons-react';
 import { BlockedBadge } from '../shared/blocked-badge';
 import { DueLabel } from '../shared/due-label';
+import { TaskCheckbox } from '../shared/task-checkbox';
 import { PriorityFlag } from '../shared/priority-flag';
 import { TagChips } from '../shared/tag-chip';
 
@@ -23,31 +24,6 @@ export interface TaskItemProps {
   /** Unique on the page (a task can be in two tag groups). */
   itemKey: string;
   context: TaskItemContext;
-}
-
-/** The round checkbox. Same look as the shared one, but not a Tab stop: the card is. */
-function Check({ task, onToggle }: { task: Task; onToggle: () => void }) {
-  const done = task.status === 'done';
-  return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={done}
-      aria-label={`${done ? 'Reopen' : 'Complete'}: ${task.title}`}
-      tabIndex={-1}
-      onClick={(event) => {
-        event.stopPropagation();
-        onToggle();
-      }}
-      className={cx(
-        'mt-px flex size-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] focus-ring transition-colors duration-150 ease-out',
-        done ? 'border-transparent text-on-tile' : 'border-fg-muted hover:border-fg',
-      )}
-      style={done ? { backgroundColor: moduleColorVar('tasks') } : undefined}
-    >
-      {done ? <IconCheck size={12} stroke={2.5} aria-hidden /> : null}
-    </button>
-  );
 }
 
 function itemProps({ task, itemKey, context }: TaskItemProps) {
@@ -89,7 +65,9 @@ export function TaskCard(props: TaskItemProps) {
       )}
     >
       <div className="flex items-start gap-2">
-        <Check
+        <TaskCheckbox
+          tabIndex={-1}
+          className="mt-px"
           task={task}
           onToggle={() => {
             context.onToggle(task);
@@ -154,7 +132,9 @@ export function TaskRow(props: TaskItemProps) {
         done && 'opacity-60',
       )}
     >
-      <Check
+      <TaskCheckbox
+        tabIndex={-1}
+        className="mt-px"
         task={task}
         onToggle={() => {
           context.onToggle(task);

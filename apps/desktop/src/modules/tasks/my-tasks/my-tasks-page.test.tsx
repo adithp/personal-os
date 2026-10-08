@@ -485,7 +485,7 @@ describe('Filter, Sort, and Group', () => {
     expect(sort).toHaveFocus();
 
     await user.click(sort);
-    await user.click(screen.getByText('My tasks'));
+    await user.click(screen.getByRole('heading', { name: 'My tasks' }));
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
