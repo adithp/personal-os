@@ -31,3 +31,21 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: userEvent waits on real timers unless advanceTimers is given
 - Fix: userEvent.setup({ advanceTimers: (ms) => { vi.advanceTimersByTime(ms); } }) and vi.useRealTimers() in afterEach
 - Prevention: documented, testing-patterns pitfalls
+
+### 2026-10-09: HttpError has statusCode, not status
+- Symptom: toMatchObject({ status: 404 }) failed in a server test
+- Cause: The HttpError class stores the number in statusCode
+- Fix: Assert statusCode (and code)
+- Prevention: documented, testing-patterns pitfalls
+
+### 2026-10-09: dnd-kit adds a role=status live region, so bare role queries for toasts find several elements
+- Symptom: findByRole(status) found more than one element once drag and drop existed
+- Cause: dnd-kit renders a hidden live region with role status
+- Fix: Find toasts by their text (the findToast helper in my-tasks/test-utils.ts searches status and alert)
+- Prevention: documented, testing-patterns pitfalls
+
+### 2026-10-09: Keyboard dragging in jsdom needs mocked layout
+- Symptom: A keyboard drag did nothing or started over the wrong area
+- Cause: sortableKeyboardCoordinates reads element rects and jsdom returns zeros; with a DragOverlay dnd-kit measures the overlay node, so it needs the lifted card rect too
+- Fix: Mock getBoundingClientRect for columns, cards and the [data-drag-overlay] element (see board-view.test.tsx and drag-drop.test.tsx)
+- Prevention: documented, testing-patterns pitfalls

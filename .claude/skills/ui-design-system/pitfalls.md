@@ -31,3 +31,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: Calling Date.now() in a hook body
 - Fix: Compute it once in a useState initializer (or outside render)
 - Prevention: guarded, eslint react-hooks rules in eslint.config.js
+
+### 2026-10-09: dnd-kit gives focus back to the handle after a keyboard drop
+- Symptom: Focus jumped away from the date picker opened by a drop, and a moved card could not be refocused
+- Cause: dnd-kit restoreFocus runs after a frame, and a card that changes section gets a new sortable id
+- Fix: accessibility.restoreFocus is false and the page keeps focus itself (my-tasks/tasks-dnd.tsx)
+- Prevention: documented, ui-design-system pitfalls

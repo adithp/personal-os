@@ -158,6 +158,13 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 - Round checkbox 18 px with a 1.5 px border, module yellow with a check when done.
 - Task card: glass, radius 16, padding 12, in a grid of columns at least 180 px wide, lifts 2 px on hover (not with reduced motion), lavender ring when selected, 60% opacity when done. Priority flag colors: Urgent danger red, High Calendar orange, Medium Tasks yellow, Low none. Tag chips: radius 8, height 20, dark text on the tag color. Blocked badge: input-colored chip with a lock icon. Overdue due text uses the danger color.
 
+### Board and drag and drop (Tasks)
+- Board: three glass columns (To do, In progress, Done), each with its name and count; the cards are the normal task cards. An empty column says "Nothing here". While dragging, a quiet accent line shows where the card will land and the other cards do not shift.
+- Drag handle: a small grip at the top right of a card (left of a row), invisible until the card is hovered or focused; the cursor is a grab hand.
+- While dragging, the dragged card stays behind at 40% opacity and a copy follows the pointer. A section that can receive the drop gets a thin accent ring; Overdue never does.
+- The Upcoming date picker is a small glass popup with a date field (starts on tomorrow), Move and Cancel.
+- One quiet line of small muted text, "Sort is not Manual, so reordering is off.", shows when Sort is not Manual.
+
 ### Login screen
 - A centered glass card (max 384 px) with a 48 px lavender sparkle square, the title "Sign in", Email and Password fields, and a full-width primary button. Without Supabase settings it shows a card "The app is not configured" listing the missing variables. It sits inside the same background and title bar.
 

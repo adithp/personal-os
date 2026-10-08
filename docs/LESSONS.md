@@ -46,3 +46,7 @@ Every time something cost a retry or a fix, we record it here so it never happen
 | 2026-10-09 | time-and-money | Typing a year in a date-time box passes through invalid years | guarded | task-detail tests (draft saved on blur or Enter) |
 | 2026-10-08 | docs-sync | Docs drifted from the code (hosting moved from Oracle to AWS in some files only) | guarded | scripts/docs-check.mjs, docs/doc-map.json, .githooks/commit-msg, CI |
 | 2026-10-09 | dev-environment | Python in a bash heredoc turns a doubled backslash n into a real newline inside strings | documented | dev-environment pitfalls |
+| 2026-10-09 | testing-patterns | HttpError has statusCode, not status | documented | testing-patterns pitfalls |
+| 2026-10-09 | testing-patterns | dnd-kit adds a role=status live region, so bare role queries for toasts find several elements | documented | testing-patterns pitfalls; my-tasks/test-utils.ts findToast |
+| 2026-10-09 | testing-patterns | Keyboard dragging in jsdom needs mocked layout | documented | testing-patterns pitfalls |
+| 2026-10-09 | ui-design-system | dnd-kit gives focus back to the handle after a keyboard drop | documented | ui-design-system pitfalls; my-tasks/tasks-dnd.tsx |
