@@ -31,6 +31,26 @@ interface ErrorBody {
 const body = (code: string, message: string): ErrorBody => ({ error: { code, message } });
 
 /**
+ * How an error is written to the log. A failed database query (drizzle's DrizzleQueryError) carries
+ * the whole SQL text and its parameters (task titles, ids, filter values) in `message`, `query`,
+ * and `params`; none of that is logged. The database's own message (the cause, such as
+ * 'column "x" does not exist') and its code are kept, which is what diagnoses the problem.
+ */
+export function serializeError(error: unknown): Record<string, unknown> {
+  if (!(error instanceof Error)) return { message: 'non-error thrown' };
+  const cause = error.cause instanceof Error ? error.cause : undefined;
+  if (error.message.startsWith('Failed query:')) {
+    const code = cause && (cause as Error & { code?: unknown }).code;
+    return {
+      type: error.name,
+      message: `Database query failed: ${cause?.message ?? 'unknown database error'}`,
+      ...(typeof code === 'string' ? { code } : {}),
+    };
+  }
+  return { type: error.name, message: error.message, stack: error.stack };
+}
+
+/**
  * Builds the server. All routes live under /api/v1 (Caddy does not rewrite paths).
  * Logs never contain tokens: the Authorization and cookie headers are redacted and only the
  * path (no query string) of a request is logged.
@@ -51,6 +71,7 @@ export function buildApp({
         censor: '[redacted]',
       },
       serializers: {
+        err: serializeError,
         req: (request: { method: string; url: string; ip?: string }) => ({
           method: request.method,
           url: request.url.split('?')[0],

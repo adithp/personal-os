@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { Writable } from 'node:stream';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { buildApp } from './app';
+import { buildApp, serializeError } from './app';
 import { loadEnv } from './config/env';
 import { HttpError } from './lib/http-error';
 import {
@@ -318,5 +318,42 @@ describe('logging never contains secrets', () => {
       expect(response.body).not.toContain('internal detail');
     });
     expect(logs).toContain('request failed');
+  });
+});
+
+describe('database errors in the log', () => {
+  const failedQuery = () =>
+    Object.assign(
+      new Error(
+        'Failed query: insert into "tasks" ("title") values ($1)\nparams: Secret task title',
+      ),
+      {
+        name: 'DrizzleQueryError',
+        query: 'insert into "tasks" ("title") values ($1)',
+        params: ['Secret task title'],
+        cause: Object.assign(new Error('column "due_all_day" does not exist'), { code: '42703' }),
+      },
+    );
+
+  it('keeps the database message and code but drops the SQL text and its parameters', () => {
+    const logged = serializeError(failedQuery());
+    const text = JSON.stringify(logged);
+    expect(text).not.toContain('Secret task title');
+    expect(text).not.toContain('insert into');
+    expect(logged).toMatchObject({
+      type: 'DrizzleQueryError',
+      message: 'Database query failed: column "due_all_day" does not exist',
+      code: '42703',
+    });
+  });
+
+  it('keeps other errors readable, with their stack', () => {
+    const logged = serializeError(new TypeError('bad thing'));
+    expect(logged).toMatchObject({ type: 'TypeError', message: 'bad thing' });
+    expect(typeof logged.stack).toBe('string');
+  });
+
+  it('handles things that are not errors', () => {
+    expect(serializeError('oops')).toEqual({ message: 'non-error thrown' });
   });
 });
