@@ -17,10 +17,10 @@ Work on one step at a time. Use each step daily before starting the next.
 - [x] i. Infra: docker-compose (caddy, server), Caddyfile, server Dockerfile, backup script, DuckDNS script
 
 ### Manual setup (me)
-- [ ] Oracle account and server
+- [x] Server: AWS EC2 for now (Oracle Cloud later), running with Caddy and HTTPS
 - [ ] Tailscale
-- [ ] DuckDNS
-- [ ] Supabase project and account
+- [x] DuckDNS (adith-os.duckdns.org)
+- [x] Supabase project and account
 - [ ] Google Cloud project
 
 ## Step 2 – Tasks and notes
