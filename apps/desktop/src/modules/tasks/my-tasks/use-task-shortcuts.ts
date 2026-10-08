@@ -22,6 +22,8 @@ const TYPING = 'input, textarea, select, [contenteditable]:not([contenteditable=
 const POPUPS =
   '[role="menu"], [role="dialog"], [role="alertdialog"], [role="listbox"], [role="complementary"]';
 
+const HANDLE = '[data-drag-handle]';
+
 /** True when the key press happened somewhere typing or a popup owns the keyboard. */
 function ownedElsewhere(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest(`${TYPING}, ${POPUPS}`) !== null;
@@ -76,6 +78,8 @@ export function useTaskShortcuts(handlers: TaskShortcutHandlers): void {
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (usePalette.getState().open) return;
       if (ownedElsewhere(event.target)) return;
+      // The drag handle owns its keys (Space lifts and drops, arrows move, Esc cancels)
+      if (event.target instanceof Element && event.target.closest(HANDLE) !== null) return;
 
       const { rootRef, grid, getTask, focusAdd, onToggle, onOpen, onDelete, onEscape, onHelp } =
         latest.current;

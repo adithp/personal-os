@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { usePalette } from '../../../store/palette-store';
@@ -63,5 +63,15 @@ export const itemOf = (title: string): HTMLElement => {
   if (!found) throw new Error(`No task item titled "${title}"`);
   return found;
 };
+
+/** The toast with this text. (dnd-kit also keeps a hidden role "status" for spoken announcements.) */
+export const findToast = (text: string): Promise<HTMLElement> =>
+  waitFor(() => {
+    const toast = [...screen.queryAllByRole('status'), ...screen.queryAllByRole('alert')].find(
+      (el) => el.textContent.includes(text),
+    );
+    if (!toast) throw new Error(`No toast with "${text}"`);
+    return toast;
+  });
 
 export const addBox = () => screen.getByRole('textbox', { name: 'New task' });

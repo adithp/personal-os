@@ -6,6 +6,7 @@ import { createFakeApi, makeTask } from '../../../test/fake-api';
 import { useTasksUi } from '../tasks-ui-store';
 import {
   addBox,
+  findToast,
   itemOf,
   items,
   openMyTasks,
@@ -206,7 +207,7 @@ describe('Space, Enter, Delete, Escape', () => {
     await waitFor(() => {
       expect(titles()).toEqual(['Two', 'Three']);
     });
-    expect((await screen.findByRole('status')).textContent).toContain('Task completed.');
+    await findToast('Task completed.');
     await waitFor(() => {
       expect(itemOf('Two')).toHaveFocus();
     });
@@ -241,8 +242,7 @@ describe('Space, Enter, Delete, Escape', () => {
     await waitFor(() => {
       expect(titles()).toEqual(['One', 'Three']);
     });
-    const toast = await screen.findByRole('status');
-    expect(toast).toHaveTextContent('Task deleted.');
+    const toast = await findToast('Task deleted.');
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     await waitFor(() => {
       expect(itemOf('Three')).toHaveFocus();
@@ -324,11 +324,14 @@ describe('the shortcut help', () => {
       'Complete or reopen',
       'Open details',
       'Delete',
+      'Lift or drop (on the drag handle)',
+      'Move a lifted task',
+      'Cancel a lift',
       'Close',
       'Show this help',
     ]);
     for (const key of ['N', 'Space', 'Enter', 'Delete', 'Esc', '?']) {
-      expect(within(dialog).getByLabelText(key)).toBeInTheDocument();
+      expect(within(dialog).getAllByLabelText(key).length).toBeGreaterThan(0);
     }
     // Other shortcuts are paused while the popup is open
     await user.keyboard('n');
