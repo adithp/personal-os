@@ -38,7 +38,9 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await t.db.execute(sql`truncate table links, tasks, entities, auth.users cascade`);
+  await t.db.execute(
+    sql`truncate table entity_tags, tags, links, tasks, entities, auth.users cascade`,
+  );
   await createTestUser(t.db, USER_ID);
   await createTestUser(t.db, OTHER_USER_ID);
   app = buildApp({ env, verifier: keys.verifier, db: t.db });
@@ -79,6 +81,8 @@ describe('login is required on every task route', () => {
     ['PATCH', '/tasks/8d3a4c55-0b2e-4e0e-9a56-5f4d0a1b2c3d'],
     ['POST', '/tasks/8d3a4c55-0b2e-4e0e-9a56-5f4d0a1b2c3d/complete'],
     ['DELETE', '/tasks/8d3a4c55-0b2e-4e0e-9a56-5f4d0a1b2c3d'],
+    ['POST', '/tasks/8d3a4c55-0b2e-4e0e-9a56-5f4d0a1b2c3d/archive'],
+    ['POST', '/tasks/8d3a4c55-0b2e-4e0e-9a56-5f4d0a1b2c3d/unarchive'],
     ['POST', '/undo'],
   ];
 
@@ -256,6 +260,76 @@ describe('DELETE /tasks/:id and POST /undo', () => {
       input: { id: 'nope' },
     });
     expect(response.statusCode).toBe(400);
+  });
+});
+
+describe('archive, tags, and subtasks over HTTP', () => {
+  it('archives and unarchives, with undo, and filters the list', async () => {
+    const { item } = await createTask('x');
+    const archived = await call('POST', `/tasks/${item.id}/archive`);
+    expect(archived.statusCode).toBe(200);
+    const body = archived.json<Written & { item: { archivedAt: string | null } }>();
+    expect(body.item.archivedAt).not.toBeNull();
+    expect(body.undo).toEqual({ action: 'tasks.unarchive', input: { id: item.id } });
+    expect((await call('GET', '/tasks')).json<{ items: Item[] }>().items).toEqual([]);
+    expect(
+      (await call('GET', '/tasks?archived=true')).json<{ items: Item[] }>().items,
+    ).toHaveLength(1);
+
+    await call('POST', '/undo', alice, body.undo);
+    expect((await call('GET', '/tasks')).json<{ items: Item[] }>().items).toHaveLength(1);
+    const back = await call('POST', `/tasks/${item.id}/unarchive`);
+    expect(back.statusCode).toBe(200);
+    expect(back.json<Written>().undo).toBeNull();
+  });
+
+  it('archive answers 404 for another user’s task and 400 for a bad id', async () => {
+    const bobs = await createTask('Bobs', bob);
+    expect((await call('POST', `/tasks/${bobs.item.id}/archive`)).statusCode).toBe(404);
+    expect((await call('POST', `/tasks/${bobs.item.id}/unarchive`)).statusCode).toBe(404);
+    expect((await call('POST', '/tasks/nope/archive')).statusCode).toBe(400);
+  });
+
+  it('creates a task with tags and a subtask, and filters from the query string', async () => {
+    const tagResponse = await call('POST', '/tags', alice, { name: 'work' });
+    const tagId = tagResponse.json<{ item: { id: string } }>().item.id;
+    const parent = await createTask('parent', alice, { tagIds: [tagId] });
+    await createTask('child', alice, { parentTaskId: parent.item.id, priority: 1 });
+    const top = (await call('GET', '/tasks')).json<{
+      items: (Item & { tags: { name: string }[]; subtaskCount: number })[];
+    }>().items;
+    expect(top).toHaveLength(1);
+    expect(top[0]).toMatchObject({ subtaskCount: 1, tags: [{ name: 'work' }] });
+    const children = await call('GET', `/tasks?parent=${parent.item.id}`);
+    expect(children.json<{ items: Item[] }>().items.map((task) => task.title)).toEqual(['child']);
+    const tagged = await call('GET', `/tasks?tagId=${tagId}&priority=4`);
+    expect(tagged.json<{ items: Item[] }>().items).toHaveLength(1);
+  });
+
+  it('answers 404 for another user’s tag and 400 for a subtask of a subtask', async () => {
+    const bobsTag = (await call('POST', '/tags', bob, { name: 'secret' })).json<{
+      item: { id: string };
+    }>().item.id;
+    const refused = await call('POST', '/tasks', alice, { title: 'x', tagIds: [bobsTag] });
+    expect(refused.statusCode).toBe(404);
+    expect(refused.json()).toEqual({ error: { code: 'not_found', message: 'Tag not found' } });
+    const parent = await createTask('p');
+    const child = await createTask('c', alice, { parentTaskId: parent.item.id });
+    const deep = await call('POST', '/tasks', alice, { title: 'd', parentTaskId: child.item.id });
+    expect(deep.statusCode).toBe(400);
+    expect(deep.json()).toMatchObject({ error: { code: 'validation_error' } });
+  });
+
+  it('keeps all-day dates and refuses all-day without a date', async () => {
+    const ok = await call('POST', '/tasks', alice, {
+      title: 'x',
+      dueAt: '2025-10-06T18:30:00.000Z',
+      dueAllDay: true,
+    });
+    expect(ok.json<{ item: { dueAllDay: boolean } }>().item.dueAllDay).toBe(true);
+    const bad = await createTask('y');
+    const patched = await call('PATCH', `/tasks/${bad.item.id}`, alice, { dueAllDay: true });
+    expect(patched.statusCode).toBe(400);
   });
 });
 

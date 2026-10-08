@@ -37,6 +37,18 @@ export function taskRoutes(app: FastifyInstance, options: ActionRouteOptions): v
     return { item: data, undo: undo ?? null };
   });
 
+  app.post('/tasks/:id/archive', async (request) => {
+    const { id } = idParams.parse(request.params);
+    const { data, undo } = await run(request, 'tasks.archive', { id });
+    return { item: data, undo: undo ?? null };
+  });
+
+  app.post('/tasks/:id/unarchive', async (request) => {
+    const { id } = idParams.parse(request.params);
+    const { data, undo } = await run(request, 'tasks.unarchive', { id });
+    return { item: data, undo: undo ?? null };
+  });
+
   // Soft delete: the task can be restored with the returned undo.
   app.delete('/tasks/:id', async (request) => {
     const { id } = idParams.parse(request.params);

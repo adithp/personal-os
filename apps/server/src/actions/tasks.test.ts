@@ -34,7 +34,9 @@ afterAll(async () => {
 
 beforeEach(async () => {
   events = [];
-  await t.db.execute(sql`truncate table links, tasks, entities, auth.users cascade`);
+  await t.db.execute(
+    sql`truncate table entity_tags, tags, links, tasks, entities, auth.users cascade`,
+  );
   await createTestUser(t.db, ALICE);
   await createTestUser(t.db, BOB);
 });
@@ -500,5 +502,369 @@ describe('permission behaviour', () => {
     ]);
     const outcome = await fragile.run(alice(), 'tasks.create', { title: 'Still works' });
     expect(outcome.data).toMatchObject({ title: 'Still works' });
+  });
+});
+
+// ---- Tasks redesign (Feature 1): tags, subtasks, all-day, archive, filters ----
+
+interface Full extends Item {
+  tags: { id: string; name: string; color: string }[];
+  subtaskCount: number;
+  subtasksDone: number;
+  blockedBy: unknown[];
+  dueAllDay: boolean;
+  parentTaskId: string | null;
+  archivedAt: string | null;
+}
+
+const fullList = async (ctx: ActionContext, input: Record<string, unknown> = {}) =>
+  (await registry.run(ctx, 'tasks.list', input)).data as Full[];
+const titles = (items: { title: string }[]) => items.map((item) => item.title);
+const getFull = async (ctx: ActionContext, id: string) =>
+  (await registry.run(ctx, 'tasks.get', { id })).data as Full;
+const MISSING = '8d3a4c55-0b2e-4e0e-9a56-5f4d0a1b2c3d';
+
+async function tag(ctx: ActionContext, name: string, color?: string) {
+  return (await registry.run(ctx, 'tags.create', { name, color })).data as { id: string };
+}
+
+async function httpError(promise: Promise<unknown>) {
+  const error = await failure(promise);
+  expect(error).toBeInstanceOf(HttpError);
+  return error as HttpError;
+}
+
+describe('task tags', () => {
+  it('returns the tags of every task, ordered by name, in a list and in get', async () => {
+    const work = await tag(alice(), 'work');
+    const home = await tag(alice(), 'Home');
+    const { task: one } = await create(alice(), { title: 'one', tagIds: [work.id, home.id] });
+    const { task: two } = await create(alice(), { title: 'two' });
+    const items = await fullList(alice());
+    expect(items.find((item) => item.id === one.id)?.tags.map((x) => x.name)).toEqual([
+      'Home',
+      'work',
+    ]);
+    expect(items.find((item) => item.id === two.id)?.tags).toEqual([]);
+    expect((await getFull(alice(), one.id)).tags.map((x) => x.name)).toEqual(['Home', 'work']);
+  });
+
+  it('does not return a deleted tag', async () => {
+    const work = await tag(alice(), 'work');
+    const { task } = await create(alice(), { title: 'one', tagIds: [work.id] });
+    await t.db.execute(sql`update tags set deleted_at = now()`);
+    expect((await getFull(alice(), task.id)).tags).toEqual([]);
+  });
+
+  it('refuses another user’s tag, a missing tag, or a deleted tag when creating', async () => {
+    const bobsTag = await tag(bob(), 'secret');
+    for (const id of [bobsTag.id, MISSING]) {
+      const error = await httpError(
+        registry.run(alice(), 'tasks.create', { title: 'x', tagIds: [id] }),
+      );
+      expect(error.statusCode).toBe(404);
+      expect(error.message).toBe('Tag not found');
+    }
+    expect(await t.db.select().from(tasks)).toHaveLength(0);
+    const mine = await tag(alice(), 'mine');
+    await t.db.execute(sql`update tags set deleted_at = now() where id = ${mine.id}`);
+    const error = await httpError(
+      registry.run(alice(), 'tasks.create', { title: 'x', tagIds: [mine.id] }),
+    );
+    expect(error.statusCode).toBe(404);
+  });
+
+  it('refuses another user’s tag when updating and changes nothing', async () => {
+    const bobsTag = await tag(bob(), 'secret');
+    const mine = await tag(alice(), 'mine');
+    const { task } = await create(alice(), { title: 'x', tagIds: [mine.id] });
+    const error = await httpError(
+      registry.run(alice(), 'tasks.update', { id: task.id, tagIds: [bobsTag.id] }),
+    );
+    expect(error.statusCode).toBe(404);
+    expect((await getFull(alice(), task.id)).tags.map((x) => x.id)).toEqual([mine.id]);
+  });
+
+  it('never shows another user’s tagged tasks', async () => {
+    const bobsTag = await tag(bob(), 'secret');
+    await create(bob(), { title: 'bobs', tagIds: [bobsTag.id] });
+    expect(await fullList(alice())).toHaveLength(0);
+    expect((await fullList(bob()))[0]?.tags.map((x) => x.id)).toEqual([bobsTag.id]);
+  });
+
+  it('counts a repeated tag id once', async () => {
+    const work = await tag(alice(), 'work');
+    const { task } = await create(alice(), { title: 'x', tagIds: [work.id, work.id] });
+    expect((await getFull(alice(), task.id)).tags).toHaveLength(1);
+  });
+
+  it('update replaces the tags and the undo puts the old set back', async () => {
+    const a = await tag(alice(), 'a');
+    const b = await tag(alice(), 'b');
+    const { task } = await create(alice(), { title: 'x', tagIds: [a.id] });
+    const changed = await registry.run(alice(), 'tasks.update', { id: task.id, tagIds: [b.id] });
+    expect((changed.data as Full).tags.map((x) => x.id)).toEqual([b.id]);
+    await registry.run(alice(), changed.undo?.action ?? '', changed.undo?.input);
+    expect((await getFull(alice(), task.id)).tags.map((x) => x.id)).toEqual([a.id]);
+    const cleared = await registry.run(alice(), 'tasks.update', { id: task.id, tagIds: [] });
+    expect((cleared.data as Full).tags).toEqual([]);
+    await registry.run(alice(), cleared.undo?.action ?? '', cleared.undo?.input);
+    expect((await getFull(alice(), task.id)).tags).toHaveLength(1);
+  });
+
+  it('the same tags again change nothing', async () => {
+    const a = await tag(alice(), 'a');
+    const { task } = await create(alice(), { title: 'x', tagIds: [a.id] });
+    const result = await registry.run(alice(), 'tasks.update', { id: task.id, tagIds: [a.id] });
+    expect(result.undo).toBeNull();
+  });
+});
+
+describe('subtasks and counts', () => {
+  it('counts live subtasks and done ones, and a subtask itself has 0', async () => {
+    const { task: parent } = await create(alice(), { title: 'parent' });
+    const { task: s1 } = await create(alice(), { title: 's1', parentTaskId: parent.id });
+    const { task: s2 } = await create(alice(), { title: 's2', parentTaskId: parent.id });
+    await create(alice(), { title: 's3', parentTaskId: parent.id });
+    await registry.run(alice(), 'tasks.complete', { id: s1.id });
+    await registry.run(alice(), 'tasks.delete', { id: s2.id });
+    expect(await getFull(alice(), parent.id)).toMatchObject({ subtaskCount: 2, subtasksDone: 1 });
+    expect(await getFull(alice(), s1.id)).toMatchObject({
+      subtaskCount: 0,
+      subtasksDone: 0,
+      parentTaskId: parent.id,
+    });
+  });
+
+  it('allows one level only', async () => {
+    const { task: parent } = await create(alice(), { title: 'parent' });
+    const { task: sub } = await create(alice(), { title: 'sub', parentTaskId: parent.id });
+    const error = await httpError(
+      registry.run(alice(), 'tasks.create', { title: 'deep', parentTaskId: sub.id }),
+    );
+    expect(error).toMatchObject({ statusCode: 400, code: 'validation_error' });
+    expect(error.message).toBe('Subtasks go one level deep only');
+  });
+
+  it('needs a parent that exists, is the user’s own, and is not deleted', async () => {
+    const { task: bobs } = await create(bob(), { title: 'bobs' });
+    const { task: gone } = await create(alice(), { title: 'gone' });
+    await registry.run(alice(), 'tasks.delete', { id: gone.id });
+    for (const parentTaskId of [bobs.id, gone.id, MISSING]) {
+      const error = await httpError(
+        registry.run(alice(), 'tasks.create', { title: 'x', parentTaskId }),
+      );
+      expect(error.statusCode).toBe(404);
+    }
+  });
+
+  it('puts subtasks at the end of their siblings', async () => {
+    const { task: parent } = await create(alice(), { title: 'parent' });
+    await create(alice(), { title: 'other' });
+    const { task: a } = await create(alice(), { title: 'a', parentTaskId: parent.id });
+    const { task: b } = await create(alice(), { title: 'b', parentTaskId: parent.id });
+    expect(a.position).toBe(1024);
+    expect(b.position).toBeGreaterThan(a.position);
+    expect(titles(await list(alice(), { parent: parent.id }))).toEqual(['a', 'b']);
+  });
+
+  it('hides subtasks from the default list and shows them with parent', async () => {
+    const { task: parent } = await create(alice(), { title: 'parent' });
+    await create(alice(), { title: 'sub', parentTaskId: parent.id });
+    expect(titles(await list(alice()))).toEqual(['parent']);
+    expect(titles(await list(alice(), { parent: 'none' }))).toEqual(['parent']);
+    expect(titles(await list(alice(), { parent: parent.id }))).toEqual(['sub']);
+  });
+
+  it('another user cannot list the subtasks of my task', async () => {
+    const { task: parent } = await create(alice(), { title: 'parent' });
+    await create(alice(), { title: 'sub', parentTaskId: parent.id });
+    expect(await list(bob(), { parent: parent.id })).toEqual([]);
+  });
+
+  it('deleting a parent does not touch its subtasks', async () => {
+    const { task: parent } = await create(alice(), { title: 'parent' });
+    const { task: sub } = await create(alice(), { title: 'sub', parentTaskId: parent.id });
+    await registry.run(alice(), 'tasks.delete', { id: parent.id });
+    const row = (await t.db.select().from(tasks)).find((r) => r.id === sub.id);
+    expect(row?.deletedAt).toBeNull();
+  });
+});
+
+describe('all-day dates', () => {
+  it('saves dueAllDay on create and refuses it without a date', async () => {
+    const { task } = await create(alice(), {
+      title: 'x',
+      dueAt: '2025-10-06T18:30:00.000Z',
+      dueAllDay: true,
+    });
+    expect(task).toMatchObject({ dueAllDay: true });
+    expect(
+      await failure(registry.run(alice(), 'tasks.create', { title: 'x', dueAllDay: true })),
+    ).toBeInstanceOf(ZodError);
+  });
+
+  it('update needs a date in the final state', async () => {
+    const { task } = await create(alice(), { title: 'x' });
+    const error = await httpError(
+      registry.run(alice(), 'tasks.update', { id: task.id, dueAllDay: true }),
+    );
+    expect(error).toMatchObject({ statusCode: 400, code: 'validation_error' });
+    const ok = await registry.run(alice(), 'tasks.update', {
+      id: task.id,
+      dueAllDay: true,
+      dueAt: '2025-10-06T18:30:00.000Z',
+    });
+    expect(ok.data).toMatchObject({ dueAllDay: true });
+  });
+
+  it('clearing the date of an all-day task clears the flag, and undo restores both', async () => {
+    const { task } = await create(alice(), {
+      title: 'x',
+      dueAt: '2025-10-06T18:30:00.000Z',
+      dueAllDay: true,
+    });
+    const cleared = await registry.run(alice(), 'tasks.update', { id: task.id, dueAt: null });
+    expect(cleared.data).toMatchObject({ dueAt: null, dueAllDay: false });
+    await registry.run(alice(), cleared.undo?.action ?? '', cleared.undo?.input);
+    expect(await getFull(alice(), task.id)).toMatchObject({
+      dueAt: '2025-10-06T18:30:00.000Z',
+      dueAllDay: true,
+    });
+  });
+
+  it('undo of a full edit restores dueAt, dueAllDay and tags', async () => {
+    const a = await tag(alice(), 'a');
+    const { task } = await create(alice(), { title: 'x', tagIds: [a.id] });
+    const changed = await registry.run(alice(), 'tasks.update', {
+      id: task.id,
+      dueAt: '2025-10-06T18:30:00.000Z',
+      dueAllDay: true,
+      tagIds: [],
+    });
+    await registry.run(alice(), changed.undo?.action ?? '', changed.undo?.input);
+    const got = await getFull(alice(), task.id);
+    expect(got).toMatchObject({ dueAt: null, dueAllDay: false });
+    expect(got.tags.map((x) => x.id)).toEqual([a.id]);
+  });
+});
+
+describe('archive and unarchive', () => {
+  it('archives one task only, hides it, and undo brings it back', async () => {
+    const { task: parent } = await create(alice(), { title: 'parent' });
+    const { task: sub } = await create(alice(), { title: 'sub', parentTaskId: parent.id });
+    await create(alice(), { title: 'other' });
+    const result = await registry.run(alice(), 'tasks.archive', { id: parent.id });
+    expect((result.data as Full).archivedAt).not.toBeNull();
+    expect(result.undo).toEqual({ action: 'tasks.unarchive', input: { id: parent.id } });
+    expect(titles(await list(alice()))).toEqual(['other']);
+    expect(titles(await list(alice(), { archived: true }))).toEqual(['parent']);
+    expect((await getFull(alice(), sub.id)).archivedAt).toBeNull();
+
+    const back = await registry.run(alice(), result.undo?.action ?? '', result.undo?.input);
+    expect((back.data as Full).archivedAt).toBeNull();
+    expect(back.undo).toEqual({ action: 'tasks.archive', input: { id: parent.id } });
+    expect(titles(await list(alice()))).toEqual(['parent', 'other']);
+  });
+
+  it('archiving twice or unarchiving an active task changes nothing', async () => {
+    const { task } = await create(alice(), { title: 'x' });
+    expect((await registry.run(alice(), 'tasks.unarchive', { id: task.id })).undo).toBeNull();
+    await registry.run(alice(), 'tasks.archive', { id: task.id });
+    expect((await registry.run(alice(), 'tasks.archive', { id: task.id })).undo).toBeNull();
+  });
+
+  it('cannot touch another user’s task, and refuses a bad id', async () => {
+    const { task } = await create(bob(), { title: 'bobs' });
+    for (const action of ['tasks.archive', 'tasks.unarchive']) {
+      expect((await httpError(registry.run(alice(), action, { id: task.id }))).statusCode).toBe(
+        404,
+      );
+    }
+    expect(await failure(registry.run(alice(), 'tasks.archive', { id: 'x' }))).toBeInstanceOf(
+      ZodError,
+    );
+    expect((await getFull(bob(), task.id)).archivedAt).toBeNull();
+  });
+
+  it('has write permission', () => {
+    expect(registry.permissionOf('tasks.archive')).toBe('write');
+    expect(registry.permissionOf('tasks.unarchive')).toBe('write');
+  });
+});
+
+describe('tasks.list filters', () => {
+  it('filters by priority (one or many)', async () => {
+    await create(alice(), { title: 'p1', priority: 1 });
+    await create(alice(), { title: 'p2', priority: 2 });
+    await create(alice(), { title: 'p3', priority: 3 });
+    expect(titles(await list(alice(), { priority: 1 }))).toEqual(['p1']);
+    expect(titles(await list(alice(), { priority: ['1', '3'] }))).toEqual(['p1', 'p3']);
+  });
+
+  it('filters by any of several tags, and never by another user’s tag', async () => {
+    const a = await tag(alice(), 'a');
+    const b = await tag(alice(), 'b');
+    const bobsTag = await tag(bob(), 'c');
+    await create(alice(), { title: 'ta', tagIds: [a.id] });
+    await create(alice(), { title: 'tb', tagIds: [b.id] });
+    await create(alice(), { title: 'none' });
+    await create(bob(), { title: 'bobs', tagIds: [bobsTag.id] });
+    expect(titles(await list(alice(), { tagId: a.id }))).toEqual(['ta']);
+    expect(titles(await list(alice(), { tagId: [a.id, b.id] }))).toEqual(['ta', 'tb']);
+    expect(await list(alice(), { tagId: bobsTag.id })).toEqual([]);
+  });
+
+  it('filters by due range (start inclusive, end exclusive) and noDate', async () => {
+    await create(alice(), { title: 'd1', dueAt: '2025-10-01T00:00:00.000Z' });
+    await create(alice(), { title: 'd2', dueAt: '2025-10-02T00:00:00.000Z' });
+    await create(alice(), { title: 'd3', dueAt: '2025-10-03T00:00:00.000Z' });
+    await create(alice(), { title: 'nodate' });
+    const range = await list(alice(), {
+      dueFrom: '2025-10-01T00:00:00.000Z',
+      dueTo: '2025-10-03T00:00:00.000Z',
+      sort: 'dueAt',
+    });
+    expect(titles(range)).toEqual(['d1', 'd2']);
+    expect(titles(await list(alice(), { dueFrom: '2025-10-03T00:00:00.000Z' }))).toEqual(['d3']);
+    expect(titles(await list(alice(), { noDate: true }))).toEqual(['nodate']);
+    expect(titles(await list(alice(), { noDate: 'true' }))).toEqual(['nodate']);
+    expect(titles(await list(alice(), { noDate: false }))).toHaveLength(4);
+  });
+
+  it('filters by completion time', async () => {
+    const { task: a } = await create(alice(), { title: 'old', status: 'done' });
+    await create(alice(), { title: 'new', status: 'done' });
+    await create(alice(), { title: 'open' });
+    await t.db.execute(
+      sql`update tasks set completed_at = '2025-01-01T00:00:00Z' where id = ${a.id}`,
+    );
+    const after = await list(alice(), { completedAfter: '2025-06-01T00:00:00.000Z' });
+    expect(titles(after)).toEqual(['new']);
+    const before = await list(alice(), { completedBefore: '2025-06-01T00:00:00.000Z' });
+    expect(titles(before)).toEqual(['old']);
+  });
+
+  it('hides archived tasks by default and shows only them with archived', async () => {
+    const { task } = await create(alice(), { title: 'old' });
+    await create(alice(), { title: 'live' });
+    await registry.run(alice(), 'tasks.archive', { id: task.id });
+    expect(titles(await list(alice()))).toEqual(['live']);
+    expect(titles(await list(alice(), { archived: 'true' }))).toEqual(['old']);
+  });
+
+  it('refuses bad new filters', async () => {
+    for (const input of [{ priority: 9 }, { tagId: 'x' }, { dueFrom: 'soon' }, { parent: 'x' }]) {
+      expect(await failure(registry.run(alice(), 'tasks.list', input))).toBeInstanceOf(ZodError);
+    }
+  });
+});
+
+describe('tasks.complete with the Feature 3 stubs', () => {
+  it('still completes a task that has a recurrence rule', async () => {
+    const { task } = await create(alice(), { title: 'weekly' });
+    await t.db.execute(sql`update tasks set recurrence_rule = 'FREQ=WEEKLY' where id = ${task.id}`);
+    const done = await registry.run(alice(), 'tasks.complete', { id: task.id });
+    expect(done.data).toMatchObject({ status: 'done' });
   });
 });
