@@ -17,7 +17,9 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await t.db.execute(sql`truncate table links, tasks, entities, auth.users cascade`);
+  await t.db.execute(
+    sql`truncate table entity_tags, tags, links, tasks, entities, auth.users cascade`,
+  );
   await createTestUser(t.db, ALICE);
   await createTestUser(t.db, BOB);
 });

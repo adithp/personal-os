@@ -1,26 +1,45 @@
-import type { Task, UndoDescriptor } from '@personal-os/shared';
+import type { Tag, Task, UndoDescriptor } from '@personal-os/shared';
+import { nextTagColor } from '@personal-os/shared';
 import { vi } from 'vitest';
 import { ApiError, type ApiClient, type RequestOptions } from '../api/api-client';
 
 let counter = 0;
+const idFor = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
 /** A task with sensible defaults; ids look like real uuids. */
 export function makeTask(overrides: Partial<Task> = {}): Task {
   counter += 1;
-  const id = `00000000-0000-4000-8000-${String(counter).padStart(12, '0')}`;
   return {
-    id,
+    id: idFor(counter),
     title: `Task ${String(counter)}`,
     description: null,
     status: 'todo',
     priority: 4,
     dueAt: null,
+    dueAllDay: false,
     reminderAt: null,
     recurrenceRule: null,
     parentTaskId: null,
     position: counter * 1024,
     completedAt: null,
     archivedAt: null,
+    createdAt: '2025-10-01T00:00:00.000Z',
+    updatedAt: '2025-10-01T00:00:00.000Z',
+    tags: [],
+    subtaskCount: 0,
+    subtasksDone: 0,
+    blockedBy: [],
+    ...overrides,
+  };
+}
+
+/** A tag with defaults. */
+export function makeTag(overrides: Partial<Tag> = {}): Tag {
+  counter += 1;
+  return {
+    id: idFor(counter),
+    name: `tag${String(counter)}`,
+    color: '#F7D96B',
     createdAt: '2025-10-01T00:00:00.000Z',
     updatedAt: '2025-10-01T00:00:00.000Z',
     ...overrides,
@@ -31,78 +50,203 @@ export interface Call {
   method: string;
   path: string;
   body: unknown;
+  query?: RequestOptions['query'];
 }
 
+const asArray = (value: unknown): string[] =>
+  value === undefined ? [] : (Array.isArray(value) ? value : [value]).map(String);
+
 /**
- * A stand-in for the backend that keeps tasks in memory and follows the same rules as the real
- * routes (soft delete, undo descriptors, completedAt). Tests read `calls` and `tasks`.
+ * A stand-in for the backend that keeps tasks and tags in memory and follows the same rules as the
+ * real routes: soft delete, archive, subtasks (one level), tags, counts, filters, undo descriptors,
+ * and completedAt. Tests read `calls` and `tasks`. (Dependencies and recurrence arrive in Feature 3.)
  */
-export function createFakeApi(initial: Task[] = []) {
-  const tasks = new Map<string, Task>(initial.map((task) => [task.id, task]));
+export function createFakeApi(initial: Task[] = [], initialTags: Tag[] = []) {
+  const store = new Map<string, Task>(initial.map((task) => [task.id, task]));
+  const tagStore = new Map<string, Tag>(initialTags.map((tag) => [tag.id, tag]));
   const deleted = new Set<string>();
   const calls: Call[] = [];
   let failure: ApiError | null = null;
   let delayMs = 0;
 
-  const live = () => [...tasks.values()].filter((task) => !deleted.has(task.id));
+  const liveTasks = () => [...store.values()].filter((task) => !deleted.has(task.id));
+
+  /** The task as the API returns it: with its subtask counts. */
+  const view = (task: Task): Task => {
+    const children = liveTasks().filter((child) => child.parentTaskId === task.id);
+    return {
+      ...task,
+      subtaskCount: children.length,
+      subtasksDone: children.filter((child) => child.status === 'done').length,
+    };
+  };
+
   const find = (id: string) => {
-    const task = tasks.get(id);
+    const task = store.get(id);
     if (!task || deleted.has(id)) throw new ApiError(404, 'not_found', 'Task not found');
     return task;
   };
+
+  const tagRefs = (ids: unknown): Task['tags'] =>
+    asArray(ids).flatMap((id) => {
+      const tag = tagStore.get(id);
+      return tag ? [{ id: tag.id, name: tag.name, color: tag.color }] : [];
+    });
 
   const patchTask = (id: string, patch: Record<string, unknown>) => {
     const current = find(id);
     const previous: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(patch)) {
       if (key === 'id' || value === undefined) continue;
-      previous[key] = (current as unknown as Record<string, unknown>)[key];
+      previous[key] =
+        key === 'tagIds'
+          ? current.tags.map((tag) => tag.id)
+          : (current as unknown as Record<string, unknown>)[key];
     }
-    const next = { ...current, ...patch, id };
+    const { tagIds, ...rest } = patch;
+    const next = { ...current, ...rest, id };
+    if (tagIds !== undefined) next.tags = tagRefs(tagIds);
     if (typeof patch.status === 'string' && patch.status !== current.status) {
-      next.completedAt = patch.status === 'done' ? '2025-10-07T00:00:00.000Z' : null;
+      next.completedAt = patch.status === 'done' ? new Date().toISOString() : null;
     }
-    tasks.set(id, next);
+    store.set(id, next);
     const undo: UndoDescriptor = { action: 'tasks.update', input: { id, ...previous } };
-    return { item: next, undo };
+    return { item: view(next), undo };
+  };
+
+  const list = (query: RequestOptions['query'] = {}) => {
+    const statuses = asArray(query.status);
+    const priorities = asArray(query.priority).map(Number);
+    const tagIds = asArray(query.tagId);
+    const parent = query.parent === undefined ? 'none' : String(query.parent);
+    const archived = query.archived === true || query.archived === 'true';
+    const noDate = query.noDate === true || query.noDate === 'true';
+    const after = query.completedAfter ? Date.parse(String(query.completedAfter)) : null;
+    const before = query.completedBefore ? Date.parse(String(query.completedBefore)) : null;
+    const from = query.dueFrom ? Date.parse(String(query.dueFrom)) : null;
+    const to = query.dueTo ? Date.parse(String(query.dueTo)) : null;
+    const limit = query.limit === undefined ? 500 : Number(query.limit);
+
+    return liveTasks()
+      .filter((task) => {
+        if (parent === 'none' ? task.parentTaskId !== null : task.parentTaskId !== parent) {
+          return false;
+        }
+        if (archived !== (task.archivedAt !== null)) return false;
+        if (statuses.length && !statuses.includes(task.status)) return false;
+        if (priorities.length && !priorities.includes(task.priority)) return false;
+        if (tagIds.length && !task.tags.some((tag) => tagIds.includes(tag.id))) return false;
+        if (noDate && task.dueAt !== null) return false;
+        if (from !== null && (task.dueAt === null || Date.parse(task.dueAt) < from)) return false;
+        if (to !== null && (task.dueAt === null || Date.parse(task.dueAt) >= to)) return false;
+        const done = task.completedAt ? Date.parse(task.completedAt) : null;
+        if (after !== null && (done === null || done < after)) return false;
+        if (before !== null && (done === null || done >= before)) return false;
+        return true;
+      })
+      .sort((a, b) => a.position - b.position)
+      .slice(0, limit)
+      .map(view);
   };
 
   const handle = (method: string, path: string, options: RequestOptions): unknown => {
     const body = (options.body ?? {}) as Record<string, unknown>;
-    if (method === 'GET' && path === '/tasks') {
-      return { items: live().sort((a, b) => a.position - b.position) };
-    }
+
+    if (method === 'GET' && path === '/tasks') return { items: list(options.query) };
+
     if (method === 'POST' && path === '/tasks') {
       const title = typeof body.title === 'string' ? body.title.trim() : '';
       if (title === '') throw new ApiError(400, 'validation_error', 'Title is required');
-      const task = makeTask({ ...(body as Partial<Task>), title });
-      tasks.set(task.id, task);
-      return { item: task, undo: { action: 'tasks.delete', input: { id: task.id } } };
+      if (typeof body.parentTaskId === 'string') {
+        const parent = find(body.parentTaskId);
+        if (parent.parentTaskId !== null) {
+          throw new ApiError(400, 'validation_error', 'Subtasks go one level deep only');
+        }
+      }
+      const { tagIds, ...rest } = body;
+      const task = makeTask({ ...(rest as Partial<Task>), title, tags: tagRefs(tagIds) });
+      store.set(task.id, task);
+      return { item: view(task), undo: { action: 'tasks.delete', input: { id: task.id } } };
     }
-    const one = /^\/tasks\/([^/]+)(\/complete)?$/.exec(path);
+
+    const one = /^\/tasks\/([^/]+)(?:\/(complete|archive|unarchive))?$/.exec(path);
     if (one) {
       const id = one[1] ?? '';
-      if (method === 'GET') return { item: find(id) };
-      if (method === 'PATCH') return patchTask(id, body);
-      if (method === 'POST' && one[2]) return patchTask(id, { status: 'done' });
-      if (method === 'DELETE') {
-        const item = find(id);
+      const verb = one[2];
+      if (method === 'GET' && !verb) return { item: view(find(id)) };
+      if (method === 'PATCH' && !verb) return patchTask(id, body);
+      if (method === 'POST' && verb === 'complete') return patchTask(id, { status: 'done' });
+      if (method === 'POST' && verb === 'archive') {
+        const current = find(id);
+        store.set(id, { ...current, archivedAt: new Date().toISOString() });
+        return { item: view(find(id)), undo: { action: 'tasks.unarchive', input: { id } } };
+      }
+      if (method === 'POST' && verb === 'unarchive') {
+        const current = find(id);
+        store.set(id, { ...current, archivedAt: null });
+        return { item: view(find(id)), undo: { action: 'tasks.archive', input: { id } } };
+      }
+      if (method === 'DELETE' && !verb) {
+        const item = view(find(id));
         deleted.add(id);
         return { item, undo: { action: 'tasks.restore', input: { id } } };
       }
     }
+
+    if (method === 'GET' && path === '/tags') return { items: [...tagStore.values()] };
+    if (method === 'POST' && path === '/tags') {
+      const name = typeof body.name === 'string' ? body.name.trim() : '';
+      if (name === '' || /[\s#]/.test(name)) {
+        throw new ApiError(400, 'validation_error', 'A tag name has no spaces or # characters');
+      }
+      const existing = [...tagStore.values()].find(
+        (tag) => tag.name.toLowerCase() === name.toLowerCase(),
+      );
+      if (existing) return { item: existing, undo: null };
+      const tag = makeTag({
+        name,
+        color: typeof body.color === 'string' ? body.color : nextTagColor(tagStore.size),
+      });
+      tagStore.set(tag.id, tag);
+      return { item: tag, undo: null };
+    }
+    const tagRoute = /^\/tags\/([^/]+)$/.exec(path);
+    if (method === 'PATCH' && tagRoute) {
+      const tag = tagStore.get(tagRoute[1] ?? '');
+      if (!tag) throw new ApiError(404, 'not_found', 'Tag not found');
+      const next = { ...tag, ...(body as Partial<Tag>), id: tag.id };
+      tagStore.set(tag.id, next);
+      // tasks carry their tags' names and colors
+      for (const [id, task] of store) {
+        store.set(id, {
+          ...task,
+          tags: task.tags.map((ref) =>
+            ref.id === next.id ? { id: next.id, name: next.name, color: next.color } : ref,
+          ),
+        });
+      }
+      return {
+        item: next,
+        undo: { action: 'tags.update', input: { id: tag.id, name: tag.name, color: tag.color } },
+      };
+    }
+
     if (method === 'POST' && path === '/undo') {
       const { action, input } = body as { action: string; input: Record<string, unknown> };
       const id = String(input.id);
       if (action === 'tasks.update') return patchTask(id, input);
       if (action === 'tasks.restore') {
         deleted.delete(id);
-        return { item: find(id), undo: null };
+        return { item: view(find(id)), undo: null };
       }
       if (action === 'tasks.delete') {
-        const item = find(id);
+        const item = view(find(id));
         deleted.add(id);
         return { item, undo: null };
+      }
+      if (action === 'tasks.archive' || action === 'tasks.unarchive') {
+        const verb = action === 'tasks.archive' ? 'archive' : 'unarchive';
+        return handle('POST', `/tasks/${id}/${verb}`, {});
       }
     }
     throw new ApiError(404, 'not_found', 'Route not found');
@@ -110,7 +254,7 @@ export function createFakeApi(initial: Task[] = []) {
 
   const request = vi.fn(
     async <T>(method: string, path: string, options: RequestOptions = {}): Promise<T> => {
-      calls.push({ method, path, body: options.body });
+      calls.push({ method, path, body: options.body, query: options.query });
       if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
       if (failure) {
         const error = failure;
@@ -127,7 +271,12 @@ export function createFakeApi(initial: Task[] = []) {
     api,
     request,
     calls,
-    tasks: live,
+    /** The live tasks, in position order, as the API would return them (with counts). */
+    tasks: () =>
+      liveTasks()
+        .sort((a, b) => a.position - b.position)
+        .map(view),
+    tags: () => [...tagStore.values()],
     /** The next call fails with this error (only once). */
     failNext: (status: number, code: string, message: string) => {
       failure = new ApiError(status, code, message);

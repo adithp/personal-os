@@ -1,0 +1,35 @@
+# Tasks redesign (Step 2): layout, build plan, and file ownership
+
+This is the approved plan for the Tasks module redesign (Asana-style, dark glass, minimal). Liquid Glass is not part of it. The parallel-agent rules are in CLAUDE.md ("Parallel work").
+
+## Screens
+- **Inner side panel** (inside the Tasks page; the bottom dock stays the main navigation): Overview, My tasks, Inbox (count), Reporting, Goals, Portfolios (disabled, "Soon", Step 5), and a Favorites list with a + button. Collapsible. Inbox, Reporting, Goals and the Favorites + button are disabled with "Soon" until their feature is built (`modules/tasks/features.ts`).
+- **Overview** (opens from the dock and Ctrl 2): greeting with the date and "7 open · 2 overdue", a collapsible "Tasks due soon" card (5 open tasks, overdue first, then today, then upcoming), and a Favorites section (hidden until Feature 5).
+- **My tasks**: header with Cards (default) | List | Board (saved on this device), Filter / Sort / Group, a quick add bar. Sections: Overdue, Today, Upcoming, No date, Completed (collapsed, last 7 days, "Show more"). Defaults: Group = due, Sort = manual. Overdue is by India calendar day. When Sort is not manual, drag-to-reorder is off with a hint.
+- **Detail panel** on the right: status, priority, due (date, time, or all-day), reminder, repeat, tags, blocked by, subtasks (one level), notes, Archive, Delete.
+
+## Decisions (answers recorded)
+- Due dates may be all-day: `tasks.due_all_day` (default false); an all-day task stores the start of that day in India time and shows the date only. Dropping on Today keeps an existing time, otherwise makes it all-day.
+- Subtasks appear only inside their parent. Completing all subtasks does not complete the parent.
+- Tags: auto color from the module palette in a cycle; recolor from a chip's menu; a card shows the first tag plus "+N".
+- Favorites are stored on the server (`task_favorites`, Feature 5). Goals use the `links` table with a new `goal` entity type (Feature 8).
+- Keyboard (only on the Tasks page, not in a text box, no Ctrl combinations): N new task, Space complete, Enter open details, Delete delete (undo toast), Esc close, arrows move, ? shortcut help.
+
+## Contract (committed before agents start; the orchestrator owns it)
+Shared types and actions (`packages/shared/src/tasks.ts`, `tags.ts`), the database schema and migrations, the server stubs, the route tree and route files, the hook signatures (`modules/tasks/tasks-queries.ts`, `tags-queries.ts`), the UI store (`tasks-ui-store.ts`), pure logic with tests (`dates.ts`, `sections.ts`, `filters.ts`, `my-tasks-search.ts`), shared small components (`modules/tasks/shared/`), the mock API for tests (`apps/desktop/src/test/fake-api.ts`), `features.ts`, and the empty slots that agents fill in.
+
+## Build order and ownership
+Ownership is per feature: within one feature no two agents own the same file. Only the orchestrator edits migrations, `packages/shared/src/index.ts`, route files and `routeTree.gen.ts`, `features.ts`, `fake-api.ts`, docs, `ROADMAP.md`, `DECISIONS.md`, `CLAUDE.md`.
+
+| Feature | Agents (max 3 at once) and the files each owns |
+|---|---|
+| 1. Side panel, Overview, My tasks (Cards and List), detail panel, subtasks, tags, archive | Wave 1: `server-dev` owns `apps/server/src/actions/tasks.ts`, `actions/tags.ts`, `routes/tasks.ts`, `routes/tags.ts` and their tests. `ui-dev` A owns `modules/tasks/shell/**` and `overview/**`. `ui-dev` B owns `modules/tasks/my-tasks/**` and `quick-add/bar/**`. Wave 2: `ui-dev` C owns `modules/tasks/detail/**`. Then `code-reviewer`. |
+| 2. Board view and drag and drop | `server-dev`: `actions/task-moves.ts`, `routes/task-moves.ts` and tests. `ui-dev` A: `modules/tasks/board/**`. `ui-dev` B: `modules/tasks/my-tasks/**` (adds drag handles, sortable, section drops, date picker). Contract adds `resolveDrop()`, the dnd-kit setup, and stub files. |
+| 3. Dependencies and recurring tasks | `server-dev` 1: `actions/task-dependencies.ts`, `routes/task-dependencies.ts` and tests. `server-dev` 2: `actions/recurrence.ts` and tests. `ui-dev`: `modules/tasks/detail/**` (repeat and blocked-by rows). `tasks.ts` already calls `loadBlockers`, `assertNotBlocked`, `spawnNextOccurrence`, so no agent edits it. A refused move into Done shows the server's message through the normal error toast. |
+| 4. Quick add | `server-dev` owns `actions/tags.ts`, `actions/tasks.ts`, `routes/tasks.ts` and tests (create takes tag names, find or create). `ui-dev` A: `modules/tasks/quick-add/parse.ts` and tests. `ui-dev` B: `modules/tasks/quick-add/bar/**`. |
+| 5. Favorites | `server-dev`: `actions/favorites.ts`, `routes/favorites.ts`, plus `actions/tags.ts`, `routes/tags.ts` and their tests (tag rename and delete). `ui-dev` A: `modules/tasks/favorites/**` (the side panel list and Overview tiles are slot files already imported by the shell and Overview). `ui-dev` B: `modules/tasks/manage-tags/**`. |
+| 6. Inbox | Main session only. |
+| 7. Reporting | `server-dev`: `actions/task-report.ts`, `routes/task-report.ts` and tests. `ui-dev`: `modules/tasks/reporting/**`. |
+| 8. Goals | `server-dev`: `actions/goals.ts`, `routes/goals.ts` and tests. `ui-dev` A: `modules/tasks/goals/list/**`. `ui-dev` B: `modules/tasks/goals/detail/**`. |
+
+Libraries: `@dnd-kit/core` 6.3.1, `@dnd-kit/sortable` 10.0.0, `@dnd-kit/utilities` 3.2.2 (Feature 2); `rrule` 2.8.1 (Feature 3); `chrono-node` 2.10.2 (Feature 4); `echarts` 6.1.0 (Feature 7).

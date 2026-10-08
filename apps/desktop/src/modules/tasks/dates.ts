@@ -23,8 +23,28 @@ export function fromIstInput(value: string): string | null {
 }
 
 /** The India calendar day of a time, as whole days since 1970 (for comparing days). */
-function istDay(ms: number): number {
+export function istDay(ms: number): number {
   return Math.floor((ms + IST_MS) / DAY_MS);
+}
+
+/** "2025-10-07": the India calendar date of a UTC time, for a date box. */
+export function toIstDate(iso: string | null): string {
+  return toIstInput(iso).slice(0, 10);
+}
+
+/** "2025-10-07" -> the start of that day in India time as UTC ISO (2025-10-06T18:30:00.000Z). */
+export function fromIstDate(date: string): string | null {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? fromIstInput(`${date}T00:00`) : null;
+}
+
+/** The start of the India calendar day that contains this time, as UTC ISO. */
+export function startOfIstDay(ms: number): string {
+  return new Date(istDay(ms) * DAY_MS - IST_MS).toISOString();
+}
+
+/** Start of the day that is `days` after the India day containing `ms`, as UTC ISO. */
+export function istDayStartPlus(ms: number, days: number): string {
+  return new Date((istDay(ms) + days) * DAY_MS - IST_MS).toISOString();
 }
 
 const time = new Intl.DateTimeFormat('en-IN', {
@@ -51,25 +71,34 @@ const clock = (ms: number) =>
 
 export interface DueLabel {
   text: string;
+  /** The due DAY is before today (India time). A task due today is never overdue. */
   overdue: boolean;
+  /** Due today at a time that has already passed: show the time in red. */
+  timePassed: boolean;
 }
 
 /**
  * Short text for a due date: "Today, 5:00 PM", "Tomorrow, 9:00 AM", "Yesterday, ...", "Mon, 13 Oct",
- * or with the year when it is not this year. Overdue means the time has passed.
+ * or with the year when it is not this year. An all-day task shows no time ("Today", "Tomorrow").
+ * Overdue is by day (docs/features/tasks.md): due on an earlier India day than today.
  */
-export function dueLabel(iso: string, now: Date, done = false): DueLabel {
+export function dueLabel(iso: string, now: Date, done = false, allDay = false): DueLabel {
   const ms = Date.parse(iso);
   const offset = istDay(ms) - istDay(now.getTime());
   const at = clock(ms);
+  const withTime = (day: string) => (allDay ? day : `${day}, ${at}`);
   let text: string;
-  if (offset === 0) text = `Today, ${at}`;
-  else if (offset === 1) text = `Tomorrow, ${at}`;
-  else if (offset === -1) text = `Yesterday, ${at}`;
+  if (offset === 0) text = withTime('Today');
+  else if (offset === 1) text = withTime('Tomorrow');
+  else if (offset === -1) text = withTime('Yesterday');
   else {
     const sameYear =
       new Date(ms + IST_MS).getUTCFullYear() === new Date(now.getTime() + IST_MS).getUTCFullYear();
     text = (sameYear ? dayMonth : dayMonthYear).format(ms);
   }
-  return { text, overdue: !done && ms < now.getTime() };
+  return {
+    text,
+    overdue: !done && offset < 0,
+    timePassed: !done && !allDay && offset === 0 && ms < now.getTime(),
+  };
 }

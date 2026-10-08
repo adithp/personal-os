@@ -1,6 +1,7 @@
 import { TASK_STATUSES } from '@personal-os/shared';
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
   doublePrecision,
   foreignKey,
@@ -32,6 +33,8 @@ export const tasks = pgTable(
     /** 1 is the most urgent, 4 the least. */
     priority: smallint('priority').notNull().default(4),
     dueAt: timestamp('due_at', { withTimezone: true }),
+    /** True: only the date counts. dueAt is then the start of that day in India time. */
+    dueAllDay: boolean('due_all_day').notNull().default(false),
     /** Only saved for now; notifications arrive with the reminder job. */
     reminderAt: timestamp('reminder_at', { withTimezone: true }),
     /** RRULE text, e.g. FREQ=WEEKLY;BYDAY=MO. */

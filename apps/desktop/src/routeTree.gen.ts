@@ -23,6 +23,11 @@ import { Route as AppNotesRouteImport } from './routes/_app/notes'
 import { Route as AppProjectsRouteImport } from './routes/_app/projects'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppTasksRouteImport } from './routes/_app/tasks'
+import { Route as AppTasksIndexRouteImport } from './routes/_app/tasks/index'
+import { Route as AppTasksGoalsRouteImport } from './routes/_app/tasks/goals'
+import { Route as AppTasksInboxRouteImport } from './routes/_app/tasks/inbox'
+import { Route as AppTasksMyTasksRouteImport } from './routes/_app/tasks/my-tasks'
+import { Route as AppTasksReportingRouteImport } from './routes/_app/tasks/reporting'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -93,6 +98,31 @@ const AppTasksRoute = AppTasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => AppRoute,
 } as any)
+const AppTasksIndexRoute = AppTasksIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppTasksRoute,
+} as any)
+const AppTasksGoalsRoute = AppTasksGoalsRouteImport.update({
+  id: '/goals',
+  path: '/goals',
+  getParentRoute: () => AppTasksRoute,
+} as any)
+const AppTasksInboxRoute = AppTasksInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => AppTasksRoute,
+} as any)
+const AppTasksMyTasksRoute = AppTasksMyTasksRouteImport.update({
+  id: '/my-tasks',
+  path: '/my-tasks',
+  getParentRoute: () => AppTasksRoute,
+} as any)
+const AppTasksReportingRoute = AppTasksReportingRouteImport.update({
+  id: '/reporting',
+  path: '/reporting',
+  getParentRoute: () => AppTasksRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -107,7 +137,12 @@ export interface FileRoutesByFullPath {
   '/notes': typeof AppNotesRoute
   '/projects': typeof AppProjectsRoute
   '/settings': typeof AppSettingsRoute
-  '/tasks': typeof AppTasksRoute
+  '/tasks': typeof AppTasksRouteWithChildren
+  '/tasks/goals': typeof AppTasksGoalsRoute
+  '/tasks/inbox': typeof AppTasksInboxRoute
+  '/tasks/my-tasks': typeof AppTasksMyTasksRoute
+  '/tasks/reporting': typeof AppTasksReportingRoute
+  '/tasks/': typeof AppTasksIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -121,8 +156,12 @@ export interface FileRoutesByTo {
   '/notes': typeof AppNotesRoute
   '/projects': typeof AppProjectsRoute
   '/settings': typeof AppSettingsRoute
-  '/tasks': typeof AppTasksRoute
   '/': typeof AppIndexRoute
+  '/tasks/goals': typeof AppTasksGoalsRoute
+  '/tasks/inbox': typeof AppTasksInboxRoute
+  '/tasks/my-tasks': typeof AppTasksMyTasksRoute
+  '/tasks/reporting': typeof AppTasksReportingRoute
+  '/tasks': typeof AppTasksIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -138,8 +177,13 @@ export interface FileRoutesById {
   '/_app/notes': typeof AppNotesRoute
   '/_app/projects': typeof AppProjectsRoute
   '/_app/settings': typeof AppSettingsRoute
-  '/_app/tasks': typeof AppTasksRoute
+  '/_app/tasks': typeof AppTasksRouteWithChildren
   '/_app/': typeof AppIndexRoute
+  '/_app/tasks/goals': typeof AppTasksGoalsRoute
+  '/_app/tasks/inbox': typeof AppTasksInboxRoute
+  '/_app/tasks/my-tasks': typeof AppTasksMyTasksRoute
+  '/_app/tasks/reporting': typeof AppTasksReportingRoute
+  '/_app/tasks/': typeof AppTasksIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -157,6 +201,11 @@ export interface FileRouteTypes {
     | '/projects'
     | '/settings'
     | '/tasks'
+    | '/tasks/goals'
+    | '/tasks/inbox'
+    | '/tasks/my-tasks'
+    | '/tasks/reporting'
+    | '/tasks/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -170,8 +219,12 @@ export interface FileRouteTypes {
     | '/notes'
     | '/projects'
     | '/settings'
-    | '/tasks'
     | '/'
+    | '/tasks/goals'
+    | '/tasks/inbox'
+    | '/tasks/my-tasks'
+    | '/tasks/reporting'
+    | '/tasks'
   id:
     | '__root__'
     | '/_app'
@@ -188,6 +241,11 @@ export interface FileRouteTypes {
     | '/_app/settings'
     | '/_app/tasks'
     | '/_app/'
+    | '/_app/tasks/goals'
+    | '/_app/tasks/inbox'
+    | '/_app/tasks/my-tasks'
+    | '/_app/tasks/reporting'
+    | '/_app/tasks/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -295,8 +353,63 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTasksRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/tasks/': {
+      id: '/_app/tasks/'
+      path: '/'
+      fullPath: '/tasks/'
+      preLoaderRoute: typeof AppTasksIndexRouteImport
+      parentRoute: typeof AppTasksRoute
+    }
+    '/_app/tasks/goals': {
+      id: '/_app/tasks/goals'
+      path: '/goals'
+      fullPath: '/tasks/goals'
+      preLoaderRoute: typeof AppTasksGoalsRouteImport
+      parentRoute: typeof AppTasksRoute
+    }
+    '/_app/tasks/inbox': {
+      id: '/_app/tasks/inbox'
+      path: '/inbox'
+      fullPath: '/tasks/inbox'
+      preLoaderRoute: typeof AppTasksInboxRouteImport
+      parentRoute: typeof AppTasksRoute
+    }
+    '/_app/tasks/my-tasks': {
+      id: '/_app/tasks/my-tasks'
+      path: '/my-tasks'
+      fullPath: '/tasks/my-tasks'
+      preLoaderRoute: typeof AppTasksMyTasksRouteImport
+      parentRoute: typeof AppTasksRoute
+    }
+    '/_app/tasks/reporting': {
+      id: '/_app/tasks/reporting'
+      path: '/reporting'
+      fullPath: '/tasks/reporting'
+      preLoaderRoute: typeof AppTasksReportingRouteImport
+      parentRoute: typeof AppTasksRoute
+    }
   }
 }
+
+interface AppTasksRouteChildren {
+  AppTasksGoalsRoute: typeof AppTasksGoalsRoute
+  AppTasksInboxRoute: typeof AppTasksInboxRoute
+  AppTasksMyTasksRoute: typeof AppTasksMyTasksRoute
+  AppTasksReportingRoute: typeof AppTasksReportingRoute
+  AppTasksIndexRoute: typeof AppTasksIndexRoute
+}
+
+const AppTasksRouteChildren: AppTasksRouteChildren = {
+  AppTasksGoalsRoute: AppTasksGoalsRoute,
+  AppTasksInboxRoute: AppTasksInboxRoute,
+  AppTasksMyTasksRoute: AppTasksMyTasksRoute,
+  AppTasksReportingRoute: AppTasksReportingRoute,
+  AppTasksIndexRoute: AppTasksIndexRoute,
+}
+
+const AppTasksRouteWithChildren = AppTasksRoute._addFileChildren(
+  AppTasksRouteChildren,
+)
 
 interface AppRouteChildren {
   AppAssistantRoute: typeof AppAssistantRoute
@@ -309,7 +422,7 @@ interface AppRouteChildren {
   AppNotesRoute: typeof AppNotesRoute
   AppProjectsRoute: typeof AppProjectsRoute
   AppSettingsRoute: typeof AppSettingsRoute
-  AppTasksRoute: typeof AppTasksRoute
+  AppTasksRoute: typeof AppTasksRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
 }
 
@@ -324,7 +437,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppNotesRoute: AppNotesRoute,
   AppProjectsRoute: AppProjectsRoute,
   AppSettingsRoute: AppSettingsRoute,
-  AppTasksRoute: AppTasksRoute,
+  AppTasksRoute: AppTasksRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
 }
 

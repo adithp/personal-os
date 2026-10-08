@@ -29,6 +29,20 @@
       "when": 1791479103308,
       "tag": "0003_tasks_updated_at_trigger",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791483422477,
+      "tag": "0004_tags_and_all_day",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791483424690,
+      "tag": "0005_tags_updated_at_trigger",
+      "breakpoints": true
     }
   ]
 }

@@ -3,26 +3,25 @@ import { MODULES } from '@personal-os/shared';
 import { GlassCard, MODULE_ICONS, moduleColorVar } from '@personal-os/ui';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { modulePath } from '../../shell/module-paths';
 
 interface QuickAction {
   label: string;
   module: ModuleId;
   /** Start of the "arrive in step N" note, with the right verb for the module name. */
   noteStart: string;
-  /** Modules that already exist open their page instead of showing the note. */
-  opens?: boolean;
+  /** Where an action that already exists goes, instead of showing the note. */
+  opens?: '/tasks/my-tasks';
 }
 
 const ACTIONS: readonly QuickAction[] = [
-  { label: 'New task', module: 'tasks', noteStart: 'Tasks arrive', opens: true },
+  { label: 'New task', module: 'tasks', noteStart: 'Tasks arrive', opens: '/tasks/my-tasks' },
   { label: 'New note', module: 'notes', noteStart: 'Notes arrive' },
   { label: 'Log expense', module: 'money', noteStart: 'Money arrives' },
   { label: 'New event', module: 'calendar', noteStart: 'Calendar arrives' },
 ];
 
 /**
- * Four shortcuts in a glass card the same size as a tile. New task opens the Tasks page (ready to
+ * Four shortcuts in a glass card the same size as a tile. New task opens My tasks (ready to
  * type). Until the other modules exist, each one says in which step it arrives (the note line
  * always keeps its space so the card never changes size).
  */
@@ -49,7 +48,7 @@ export function QuickActions() {
               type="button"
               onClick={() => {
                 if (opens) {
-                  void navigate({ to: modulePath(module) });
+                  void navigate({ to: opens });
                   return;
                 }
                 setNote(`${noteStart} in step ${String(MODULES[module].roadmapStep)}`);

@@ -13,7 +13,8 @@ Every write route calls the matching action in the action registry.
 Resources: /tasks, /habits, /habit-logs, /notes, /note-folders, /note-templates, /tags, /projects, /milestones, /clients, /time-entries, /wallets, /categories, /transactions, /budgets, /savings-goals, /subscriptions, /people, /dashboards, /ai/skills
 
 Responses:
-- List: `{ "items": [...] }` (tasks: filters `status` (repeatable), `archived`, `sort`, `order`, `limit`, `offset`).
+- List: `{ "items": [...] }` (tasks: filters `status`, `priority`, `tagId` (each repeatable), `dueFrom`, `dueTo`, `noDate`, `completedAfter`, `completedBefore`, `parent` (`none` = top-level, the default, or a task id for its subtasks), `archived`, `sort`, `order`, `limit`, `offset`).
+- A task carries `tags`, `subtaskCount`, `subtasksDone`, `blockedBy`, and `dueAllDay`.
 - Get: `{ "item": {...} }`.
 - Create, update, complete, delete: `{ "item": {...}, "undo": { "action", "input" } | null }`. Create answers 201. Delete is a soft delete.
 - `undo` is the way to reverse the change: send it as the body of `POST /undo`.
@@ -23,6 +24,11 @@ Responses:
 | Method | Path | Purpose |
 |---|---|---|
 | GET | /health | Server health (full path /api/v1/health, no auth). Returns {"status":"ok","time":<UTC>} |
+| GET | /tags | List tags: `{ items: [...] }` |
+| POST | /tags | Create a tag (an existing name, ignoring case, returns that tag) |
+| PATCH | /tags/:id | Rename or recolor a tag |
+| POST | /tasks/:id/archive | Archive a task (returns the task and an undo) |
+| POST | /tasks/:id/unarchive | Bring an archived task back |
 | POST | /tasks/:id/complete | Mark a task done (returns the task and an undo) |
 | POST | /undo | Run the `undo` returned by a write: body `{ "action": "tasks.restore", "input": { "id": "..." } }`. Only actions that change data can be run this way |
 | GET | /me | The signed-in user from the token: {id, email, role}. Used to check that login works end to end |

@@ -20,6 +20,7 @@ export function toTask(row: TaskRow): Task {
     // The database only allows 1 to 4
     priority: row.priority as Task['priority'],
     dueAt: iso(row.dueAt),
+    dueAllDay: row.dueAllDay,
     reminderAt: iso(row.reminderAt),
     recurrenceRule: row.recurrenceRule,
     parentTaskId: row.parentTaskId,
@@ -28,6 +29,11 @@ export function toTask(row: TaskRow): Task {
     archivedAt: iso(row.archivedAt),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    // Filled in by the Feature 1 server work (tags, subtask counts) and Feature 3 (blockedBy).
+    tags: [],
+    subtaskCount: 0,
+    subtasksDone: 0,
+    blockedBy: [],
   };
 }
 

@@ -16,7 +16,8 @@ Project link and category come in Step 5 (tags cover grouping until then).
 
 ## Rules
 - Priority 1 is the most urgent, 4 the least (Urgent, High, Medium, Low). The default is 4.
-- Dates are stored in UTC and shown and typed in India time (Asia/Kolkata, UTC+05:30).
+- Dates are stored in UTC and shown and typed in India time (Asia/Kolkata, UTC+05:30). A due date can be all-day (date only, no time).
+- The redesigned screens (side panel, Overview, My tasks) are described in docs/features/tasks-redesign.md.
 - A reminder is only saved as a date for now. Notifications arrive with the reminder job.
 - Subtasks go one level deep only.
 - A blocked task (it has an unfinished task that blocks it) cannot be completed. It shows a "Blocked" badge listing the blockers, and the kanban refuses a move into Done with a clear message. A circular dependency (A blocks B blocks A) is rejected.

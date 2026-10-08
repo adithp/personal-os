@@ -1,37 +1,112 @@
 import type {
   CreateTaskInput,
+  ListTasksInput,
   Task,
+  TaskStatus,
   TaskWriteResult,
   UndoDescriptor,
   UpdateTaskInput,
 } from '@personal-os/shared';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { ApiError } from '../../api/api-client';
+import { useState } from 'react';
+import { ApiError, type RequestOptions } from '../../api/api-client';
 import { useApi } from '../../api/api-context';
 import { useToasts } from '../../store/toast-store';
+import { startOfIstDay } from './dates';
 
-/** Every cached list of tasks starts with this key. */
+/**
+ * Server data for the Tasks module (the hook signatures are part of the Feature 1 contract).
+ * Every cached task list or task starts with the TASKS_KEY, so one invalidation refreshes them all.
+ * Changes show up at once and are rolled back with a message if the server refuses.
+ */
 export const TASKS_KEY = ['tasks'] as const;
-const LIST_KEY = [...TASKS_KEY, 'list'] as const;
+export const taskKeys = {
+  all: TASKS_KEY,
+  lists: [...TASKS_KEY, 'list'] as const,
+  list: (input: ListTasksInput) => [...TASKS_KEY, 'list', input] as const,
+  detail: (id: string) => [...TASKS_KEY, 'detail', id] as const,
+};
 
 export type TaskPatch = Omit<UpdateTaskInput, 'id'>;
+export const OPEN_STATUSES: readonly TaskStatus[] = ['todo', 'doing'];
 
-/** All active tasks, in list order. */
-export function useTasks() {
+const text = (item: unknown): string =>
+  typeof item === 'string' || typeof item === 'number' ? String(item) : '';
+
+/** Query-string form of the list filters (numbers become text). */
+function toQuery(input: ListTasksInput): RequestOptions['query'] {
+  const query: Record<string, string | boolean | string[] | undefined> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) query[key] = value.map(text);
+    else if (typeof value === 'boolean') query[key] = value;
+    else query[key] = text(value);
+  }
+  return query;
+}
+
+/** Tasks matching the filters (the server's list action). */
+export function useTasks(input: ListTasksInput = {}, options: { enabled?: boolean } = {}) {
   const api = useApi();
   return useQuery({
-    queryKey: LIST_KEY,
-    queryFn: async () => (await api.request<{ items: Task[] }>('GET', '/tasks')).items,
+    queryKey: taskKeys.list(input),
+    queryFn: async () =>
+      (await api.request<{ items: Task[] }>('GET', '/tasks', { query: toQuery(input) })).items,
+    enabled: options.enabled ?? true,
   });
 }
 
-/** What the list should look like right after a change, before the server has answered. */
-function applyPatch(task: Task, patch: TaskPatch, now: string): Task {
+/** Top-level tasks that are not done, not archived. */
+export function useOpenTasks() {
+  return useTasks({ status: [...OPEN_STATUSES] });
+}
+
+/**
+ * Tasks completed in the last `days` India days (default 7), or, with `before`, the ones completed
+ * before that time (the "Show more" page). Day-aligned so the cache key is stable.
+ */
+export function useCompletedTasks(
+  options: { days?: number; before?: string; enabled?: boolean } = {},
+) {
+  const { days = 7, before, enabled } = options;
+  // Computed once per mount: the key stays stable while the screen is open
+  const [after] = useState(() => startOfIstDay(Date.now() - (days - 1) * 24 * 60 * 60 * 1000));
+  return useTasks(
+    before
+      ? { status: 'done', completedBefore: before }
+      : { status: 'done', completedAfter: after },
+    { enabled },
+  );
+}
+
+/** Archived top-level tasks. */
+export function useArchivedTasks(options: { enabled?: boolean } = {}) {
+  return useTasks({ archived: true }, options);
+}
+
+/** The subtasks of a task (one level only). */
+export function useSubtasks(parentId: string | null) {
+  return useTasks({ parent: parentId ?? 'none' }, { enabled: parentId !== null });
+}
+
+/** One task, fresh from the server (the detail panel uses this). */
+export function useTask(id: string | null) {
+  const api = useApi();
+  return useQuery({
+    queryKey: taskKeys.detail(id ?? ''),
+    queryFn: async () => (await api.request<{ item: Task }>('GET', `/tasks/${id ?? ''}`)).item,
+    enabled: id !== null,
+  });
+}
+
+/** What a task should look like right after a change, before the server has answered. */
+export function applyPatch(task: Task, patch: TaskPatch, now: string): Task {
   const next: Task = { ...task };
   if (patch.title !== undefined) next.title = patch.title;
   if (patch.description !== undefined) next.description = patch.description;
   if (patch.priority !== undefined) next.priority = patch.priority;
   if (patch.dueAt !== undefined) next.dueAt = patch.dueAt;
+  if (patch.dueAllDay !== undefined) next.dueAllDay = patch.dueAllDay;
   if (patch.reminderAt !== undefined) next.reminderAt = patch.reminderAt;
   if (patch.status !== undefined && patch.status !== task.status) {
     next.status = patch.status;
@@ -43,17 +118,36 @@ function applyPatch(task: Task, patch: TaskPatch, now: string): Task {
 const messageOf = (error: unknown) =>
   error instanceof ApiError ? error.message : 'Something went wrong. Try again.';
 
-/** Changes the cached list immediately; returns what to put back if the server says no. */
-function patchList(client: QueryClient, change: (tasks: Task[]) => Task[]): Task[] | undefined {
-  const previous = client.getQueryData<Task[]>(LIST_KEY);
-  if (previous) client.setQueryData<Task[]>(LIST_KEY, change(previous));
-  return previous;
+type Snapshot = [readonly unknown[], unknown][];
+
+/** Changes one task in every cached list and in its detail cache; returns what to put back. */
+function patchEverywhere(
+  client: QueryClient,
+  id: string,
+  change: (task: Task) => Task | null,
+): Snapshot {
+  const snapshot: Snapshot = client
+    .getQueriesData<Task[] | Task>({ queryKey: TASKS_KEY })
+    .map(([key, data]) => [key, data]);
+  client.setQueriesData<Task[] | Task>({ queryKey: TASKS_KEY }, (data) => {
+    if (Array.isArray(data)) {
+      return data.flatMap((task) => {
+        if (task.id !== id) return [task];
+        const next = change(task);
+        return next ? [next] : [];
+      });
+    }
+    if (data && data.id === id) return change(data) ?? data;
+    return data;
+  });
+  return snapshot;
 }
 
-/**
- * Everything the Tasks screen can do. Changes show up at once and are rolled back with a message
- * if the server refuses. Completing and deleting offer an Undo in a toast.
- */
+function restore(client: QueryClient, snapshot: Snapshot | undefined) {
+  for (const [key, data] of snapshot ?? []) client.setQueryData(key, data);
+}
+
+/** Everything the Tasks screens can do to tasks. Complete, delete, and archive offer an Undo toast. */
 export function useTaskActions() {
   const api = useApi();
   const client = useQueryClient();
@@ -82,15 +176,17 @@ export function useTaskActions() {
     });
   };
 
+  const fail = (error: unknown, snapshot?: Snapshot) => {
+    restore(client, snapshot);
+    toast().show(messageOf(error), { tone: 'error' });
+  };
+
   const create = useMutation({
     mutationFn: (input: CreateTaskInput) =>
       api.request<TaskWriteResult>('POST', '/tasks', { body: input }),
-    onSuccess: ({ item }) => {
-      client.setQueryData<Task[]>(LIST_KEY, (tasks) => (tasks ? [...tasks, item] : [item]));
-      void refresh();
-    },
+    onSuccess: () => refresh(),
     onError: (error) => {
-      toast().show(messageOf(error), { tone: 'error' });
+      fail(error);
     },
   });
 
@@ -100,15 +196,10 @@ export function useTaskActions() {
     onMutate: async ({ id, ...patch }) => {
       await client.cancelQueries({ queryKey: TASKS_KEY });
       const now = new Date().toISOString();
-      return {
-        previous: patchList(client, (tasks) =>
-          tasks.map((task) => (task.id === id ? applyPatch(task, patch, now) : task)),
-        ),
-      };
+      return { snapshot: patchEverywhere(client, id, (task) => applyPatch(task, patch, now)) };
     },
     onError: (error, _input, context) => {
-      if (context?.previous) client.setQueryData(LIST_KEY, context.previous);
-      toast().show(messageOf(error), { tone: 'error' });
+      fail(error, context?.snapshot);
     },
     onSettled: () => refresh(),
   });
@@ -119,17 +210,14 @@ export function useTaskActions() {
       await client.cancelQueries({ queryKey: TASKS_KEY });
       const now = new Date().toISOString();
       return {
-        previous: patchList(client, (tasks) =>
-          tasks.map((task) => (task.id === id ? applyPatch(task, { status: 'done' }, now) : task)),
-        ),
+        snapshot: patchEverywhere(client, id, (task) => applyPatch(task, { status: 'done' }, now)),
       };
     },
     onSuccess: ({ undo }) => {
       offerUndo('Task completed.', undo);
     },
     onError: (error, _id, context) => {
-      if (context?.previous) client.setQueryData(LIST_KEY, context.previous);
-      toast().show(messageOf(error), { tone: 'error' });
+      fail(error, context?.snapshot);
     },
     onSettled: () => refresh(),
   });
@@ -138,17 +226,39 @@ export function useTaskActions() {
     mutationFn: (id: string) => api.request<TaskWriteResult>('DELETE', `/tasks/${id}`),
     onMutate: async (id) => {
       await client.cancelQueries({ queryKey: TASKS_KEY });
-      return { previous: patchList(client, (tasks) => tasks.filter((task) => task.id !== id)) };
+      return { snapshot: patchEverywhere(client, id, () => null) };
     },
     onSuccess: ({ undo }) => {
       offerUndo('Task deleted.', undo);
     },
     onError: (error, _id, context) => {
-      if (context?.previous) client.setQueryData(LIST_KEY, context.previous);
-      toast().show(messageOf(error), { tone: 'error' });
+      fail(error, context?.snapshot);
     },
     onSettled: () => refresh(),
   });
 
-  return { create, update, complete, remove };
+  const archive = useMutation({
+    mutationFn: (id: string) => api.request<TaskWriteResult>('POST', `/tasks/${id}/archive`),
+    onMutate: async (id) => {
+      await client.cancelQueries({ queryKey: TASKS_KEY });
+      return { snapshot: patchEverywhere(client, id, () => null) };
+    },
+    onSuccess: ({ undo }) => {
+      offerUndo('Task archived.', undo);
+    },
+    onError: (error, _id, context) => {
+      fail(error, context?.snapshot);
+    },
+    onSettled: () => refresh(),
+  });
+
+  const unarchive = useMutation({
+    mutationFn: (id: string) => api.request<TaskWriteResult>('POST', `/tasks/${id}/unarchive`),
+    onSuccess: () => refresh(),
+    onError: (error) => {
+      fail(error);
+    },
+  });
+
+  return { create, update, complete, remove, archive, unarchive };
 }

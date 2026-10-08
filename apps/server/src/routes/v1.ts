@@ -4,6 +4,7 @@ import type { JwtVerifier } from '../auth/verify-jwt';
 import type { ActionRegistry } from '../actions';
 import { unauthorized } from '../lib/http-error';
 import type { Db } from '../lib/user-scope';
+import { tagRoutes } from './tags';
 import { taskRoutes } from './tasks';
 import { undoRoutes } from './undo';
 
@@ -31,6 +32,7 @@ export const v1Routes: FastifyPluginAsync<V1Options> = async (app, { verifier, d
 
     if (db && registry) {
       taskRoutes(protectedApp, { db, registry });
+      tagRoutes(protectedApp, { db, registry });
       undoRoutes(protectedApp, { db, registry });
     }
 

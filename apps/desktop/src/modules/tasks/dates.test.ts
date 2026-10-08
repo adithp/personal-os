@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { dueLabel, fromIstInput, toIstInput } from './dates';
+import {
+  dueLabel,
+  fromIstDate,
+  fromIstInput,
+  istDayStartPlus,
+  startOfIstDay,
+  toIstDate,
+  toIstInput,
+} from './dates';
 
 describe('toIstInput / fromIstInput (India time, UTC+05:30)', () => {
   it('shows a UTC time as the India wall clock', () => {
@@ -49,9 +57,51 @@ describe('dueLabel', () => {
     expect(dueLabel('2026-02-03T06:30:00.000Z', now).text).toContain('2026');
   });
 
-  it('is overdue only when the time has passed and the task is not done', () => {
-    expect(dueLabel('2025-10-07T05:00:00.000Z', now).overdue).toBe(true);
-    expect(dueLabel('2025-10-07T05:00:00.000Z', now, true).overdue).toBe(false);
-    expect(dueLabel('2025-10-07T11:30:00.000Z', now).overdue).toBe(false);
+  it('is overdue by day: a task due today is never overdue, even when its time has passed', () => {
+    const today = dueLabel('2025-10-07T03:30:00.000Z', now); // 9:00 AM today, now is 12:00
+    expect(today).toMatchObject({ overdue: false, timePassed: true });
+    expect(dueLabel('2025-10-07T11:30:00.000Z', now)).toMatchObject({
+      overdue: false,
+      timePassed: false,
+    });
+    expect(dueLabel('2025-10-06T11:30:00.000Z', now)).toMatchObject({ overdue: true });
+  });
+
+  it('never shows overdue or a passed time for a done task', () => {
+    expect(dueLabel('2025-10-06T11:30:00.000Z', now, true).overdue).toBe(false);
+    expect(dueLabel('2025-10-07T03:30:00.000Z', now, true).timePassed).toBe(false);
+  });
+
+  it('shows an all-day task as a date only, with no time and no red time', () => {
+    // All-day Oct 7 is stored as the start of that day in India time
+    const allDay = '2025-10-06T18:30:00.000Z';
+    expect(dueLabel(allDay, now, false, true)).toEqual({
+      text: 'Today',
+      overdue: false,
+      timePassed: false,
+    });
+    expect(dueLabel('2025-10-07T18:30:00.000Z', now, false, true).text).toBe('Tomorrow');
+    expect(dueLabel('2025-10-05T18:30:00.000Z', now, false, true)).toMatchObject({
+      text: 'Yesterday',
+      overdue: true,
+    });
+  });
+});
+
+describe('India calendar days', () => {
+  it('turns dates to and from UTC start-of-day', () => {
+    expect(fromIstDate('2025-10-07')).toBe('2025-10-06T18:30:00.000Z');
+    expect(toIstDate('2025-10-06T18:30:00.000Z')).toBe('2025-10-07');
+    expect(toIstDate('2025-10-07T18:29:00.000Z')).toBe('2025-10-07');
+    expect(toIstDate(null)).toBe('');
+    expect(fromIstDate('2025-10')).toBeNull();
+  });
+
+  it('finds the start of today and of a later day in India time', () => {
+    const noon = Date.parse('2025-10-07T06:30:00.000Z');
+    expect(startOfIstDay(noon)).toBe('2025-10-06T18:30:00.000Z');
+    expect(istDayStartPlus(noon, 1)).toBe('2025-10-07T18:30:00.000Z');
+    // 00:10 in India is already the new day, although UTC is still the 6th
+    expect(startOfIstDay(Date.parse('2025-10-06T18:40:00.000Z'))).toBe('2025-10-06T18:30:00.000Z');
   });
 });

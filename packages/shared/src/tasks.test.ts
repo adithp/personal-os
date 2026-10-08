@@ -42,6 +42,7 @@ describe('updateTaskInput', () => {
 describe('listTasksInput', () => {
   it('has defaults', () => {
     expect(listTasksInput.parse({})).toEqual({
+      parent: 'none',
       archived: false,
       sort: 'position',
       order: 'asc',
@@ -68,6 +69,7 @@ describe('taskSchema', () => {
       status: 'todo',
       priority: 4,
       dueAt: null,
+      dueAllDay: false,
       reminderAt: null,
       recurrenceRule: null,
       parentTaskId: null,
@@ -76,6 +78,10 @@ describe('taskSchema', () => {
       archivedAt: null,
       createdAt: '2025-10-07T00:00:00.000Z',
       updatedAt: '2025-10-07T00:00:00.000Z',
+      tags: [],
+      subtaskCount: 0,
+      subtasksDone: 0,
+      blockedBy: [],
     };
     expect(taskSchema.parse(task)).toEqual(task);
   });
@@ -88,6 +94,8 @@ describe('taskActions', () => {
       'tasks.get',
       'tasks.create',
       'tasks.update',
+      'tasks.archive',
+      'tasks.unarchive',
       'tasks.complete',
       'tasks.prioritize',
       'tasks.delete',

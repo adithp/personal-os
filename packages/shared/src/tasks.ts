@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { defineAction, type UndoDescriptor } from './actions';
+import { MAX_TAGS_PER_TASK, tagRefSchema } from './tags';
 
 /** Where a task is on the board (docs/features/tasks.md). */
 export const TASK_STATUSES = ['todo', 'doing', 'done'] as const;
@@ -34,6 +35,8 @@ export const taskSchema = z.object({
   priority: taskPrioritySchema,
   dueAt: isoTime.nullable(),
   reminderAt: isoTime.nullable(),
+  /** True: only the date of dueAt counts (stored as the start of that day in India time). */
+  dueAllDay: z.boolean(),
   recurrenceRule: z.string().nullable(),
   parentTaskId: z.uuid().nullable(),
   position: z.number(),
@@ -41,21 +44,38 @@ export const taskSchema = z.object({
   archivedAt: isoTime.nullable(),
   createdAt: isoTime,
   updatedAt: isoTime,
+  tags: z.array(tagRefSchema),
+  /** Subtasks that are not deleted. Always 0 for a subtask itself. */
+  subtaskCount: z.number().int().min(0),
+  subtasksDone: z.number().int().min(0),
+  /** Unfinished tasks that block this one. Empty until dependencies arrive. */
+  blockedBy: z.array(z.object({ id: z.uuid(), title: z.string() })),
 });
 export type Task = z.infer<typeof taskSchema>;
+export type TaskBlocker = Task['blockedBy'][number];
 
 const title = z.string().trim().min(1, 'Title is required').max(TASK_TITLE_MAX);
 const description = z.string().max(TASK_DESCRIPTION_MAX).nullable();
 
-/** What you may send to create a task. */
-export const createTaskInput = z.object({
-  title,
-  description: description.optional(),
-  status: taskStatusSchema.optional(),
-  priority: taskPrioritySchema.optional(),
-  dueAt: isoTime.nullable().optional(),
-  reminderAt: isoTime.nullable().optional(),
-});
+const tagIds = z.array(z.uuid()).max(MAX_TAGS_PER_TASK);
+
+/** What you may send to create a task. A subtask is a task with a parentTaskId (one level only). */
+export const createTaskInput = z
+  .object({
+    title,
+    description: description.optional(),
+    status: taskStatusSchema.optional(),
+    priority: taskPrioritySchema.optional(),
+    dueAt: isoTime.nullable().optional(),
+    dueAllDay: z.boolean().optional(),
+    reminderAt: isoTime.nullable().optional(),
+    parentTaskId: z.uuid().optional(),
+    tagIds: tagIds.optional(),
+  })
+  .refine((input) => !input.dueAllDay || Boolean(input.dueAt), {
+    message: 'An all-day task needs a due date',
+    path: ['dueAt'],
+  });
 export type CreateTaskInput = z.infer<typeof createTaskInput>;
 
 const taskId = z.uuid();
@@ -67,7 +87,10 @@ const editableFields = {
   status: taskStatusSchema.optional(),
   priority: taskPrioritySchema.optional(),
   dueAt: isoTime.nullable().optional(),
+  dueAllDay: z.boolean().optional(),
   reminderAt: isoTime.nullable().optional(),
+  /** Replaces the task's tags with exactly these. */
+  tagIds: tagIds.optional(),
 };
 
 export const EDITABLE_TASK_FIELDS = Object.keys(editableFields) as (keyof typeof editableFields)[];
@@ -88,9 +111,25 @@ export const TASK_LIST_MAX_LIMIT = 1000;
 /** "true" / "false" from a query string, or a real boolean. */
 const flag = z.union([z.boolean(), z.stringbool()]);
 
+/** One value or a list (a repeated query-string key gives a list). */
+const oneOrMany = <T extends z.ZodType>(schema: T) => z.union([schema, z.array(schema)]);
+
 /** Filters for the list. Query-string values (all text) are accepted as well as real values. */
 export const listTasksInput = z.object({
-  status: z.union([taskStatusSchema, z.array(taskStatusSchema)]).optional(),
+  status: oneOrMany(taskStatusSchema).optional(),
+  priority: oneOrMany(z.coerce.number().pipe(taskPrioritySchema)).optional(),
+  /** Only tasks that have this tag (or any of these tags). */
+  tagId: oneOrMany(z.uuid()).optional(),
+  /** Due between these times (inclusive start, exclusive end). */
+  dueFrom: isoTime.optional(),
+  dueTo: isoTime.optional(),
+  /** true: only tasks with no due date. */
+  noDate: flag.optional(),
+  /** Only tasks completed at or after / before these times (for the "Completed" section). */
+  completedAfter: isoTime.optional(),
+  completedBefore: isoTime.optional(),
+  /** Whose children to list: "none" (default) is the top-level tasks, or the id of a parent task. */
+  parent: z.union([z.literal('none'), z.uuid()]).default('none'),
   /** false (default): active tasks. true: archived tasks only. */
   archived: flag.default(false),
   sort: z.enum(TASK_SORTS).default('position'),
@@ -128,6 +167,18 @@ export const taskActions = {
     description: 'Change fields of a task (title, description, status, priority, dates).',
     permission: 'write',
     input: updateTaskInput,
+  }),
+  archive: defineAction({
+    name: 'tasks.archive',
+    description: 'Archive a task (hide it from the active lists).',
+    permission: 'write',
+    input: taskIdInput,
+  }),
+  unarchive: defineAction({
+    name: 'tasks.unarchive',
+    description: 'Bring an archived task back.',
+    permission: 'write',
+    input: taskIdInput,
   }),
   complete: defineAction({
     name: 'tasks.complete',

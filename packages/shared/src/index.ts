@@ -10,4 +10,5 @@ export * from './env';
 export * from './modules';
 export * from './money';
 export * from './settings';
+export * from './tags';
 export * from './tasks';

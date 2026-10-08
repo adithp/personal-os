@@ -36,7 +36,8 @@ Each module table uses the same id as its entity row.
 - project_id and category are added in Step 5 (tags cover grouping until then).
 - A task is the entity with the same id and the same owner (composite foreign key). Deleting an entity deletes its task. A task cannot be its own parent, and a subtask's parent must belong to the same user.
 - Dependencies are links with relation = blocks.
-- Migrations: 0002_tasks_table, and 0003_tasks_updated_at_trigger (written by hand).
+- due_all_day (boolean, default false): an all-day task stores the start of that day in India time in due_at and shows the date only.
+- Migrations: 0002_tasks_table, 0003_tasks_updated_at_trigger (by hand), 0004_tags_and_all_day, 0005_tags_updated_at_trigger (by hand).
 
 ### Habits
 - habits: id, name, category, schedule_type (daily, weekly, custom), schedule_days (int[]), target_per_period, reminder_time, color_override, notes, archived_at
@@ -50,8 +51,8 @@ Each module table uses the same id as its entity row.
 - Wikilinks and backlinks are links with relation = mentions, rebuilt on every save.
 
 ### Tags
-- tags: id, name, color. A plain table: a tag has no row in entities. The knowledge graph (Step 7) builds tag nodes from the tags table.
-- entity_tags: entity_id, tag_id
+- tags: id, user_id, name (unique per user ignoring case among live tags), color (a palette hex), deleted_at. A plain table: a tag has no row in entities. The knowledge graph (Step 7) builds tag nodes from the tags table.
+- entity_tags: entity_id, tag_id (a task can only get tags of the same user, enforced by composite foreign keys; each pair once)
 
 ### Calendar
 - calendars: id, google_calendar_id, name, color, visible

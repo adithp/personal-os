@@ -15,6 +15,8 @@ export default defineConfig(
     '**/target/',
     'apps/desktop/src-tauri/gen/',
     '**/routeTree.gen.ts',
+    // Parallel agent worktrees (each has its own copy of the repo)
+    '.claude/worktrees/',
   ]),
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,

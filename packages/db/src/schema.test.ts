@@ -25,7 +25,9 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await t.db.execute(sql`truncate table links, entities, auth.users cascade`);
+  await t.db.execute(
+    sql`truncate table entity_tags, tags, links, tasks, entities, auth.users cascade`,
+  );
   await createTestUser(t.db, ALICE);
   await createTestUser(t.db, BOB);
 });
@@ -65,6 +67,8 @@ describe('the generated migrations', () => {
       '0001_updated_at_trigger.sql',
       '0002_tasks_table.sql',
       '0003_tasks_updated_at_trigger.sql',
+      '0004_tags_and_all_day.sql',
+      '0005_tags_updated_at_trigger.sql',
     ]);
     const all = migrationFiles().flatMap(migrationStatements).join('\n').toUpperCase();
     for (const dangerous of [
@@ -82,7 +86,13 @@ describe('the generated migrations', () => {
     const tables = await rows(
       "select tablename from pg_tables where schemaname = 'public' order by tablename",
     );
-    expect(tables.map((r) => r.tablename)).toEqual(['entities', 'links', 'tasks']);
+    expect(tables.map((r) => r.tablename)).toEqual([
+      'entities',
+      'entity_tags',
+      'links',
+      'tags',
+      'tasks',
+    ]);
   });
 });
 
@@ -194,11 +204,13 @@ describe('docs/DATABASE.md rules', () => {
 describe('Row Level Security is on, with an own-rows policy', () => {
   it('is enabled on every table', async () => {
     const result = await rows(
-      "select relname, relrowsecurity from pg_class where relname in ('entities','links','tasks') order by relname",
+      "select relname, relrowsecurity from pg_class where relname in ('entities','entity_tags','links','tags','tasks') order by relname",
     );
     expect(result).toEqual([
       { relname: 'entities', relrowsecurity: true },
+      { relname: 'entity_tags', relrowsecurity: true },
       { relname: 'links', relrowsecurity: true },
+      { relname: 'tags', relrowsecurity: true },
       { relname: 'tasks', relrowsecurity: true },
     ]);
   });
@@ -207,7 +219,13 @@ describe('Row Level Security is on, with an own-rows policy', () => {
     const policies = await rows(
       "select tablename, policyname, roles, cmd, qual, with_check from pg_policies where schemaname = 'public' order by tablename",
     );
-    expect(policies.map((p) => p.tablename)).toEqual(['entities', 'links', 'tasks']);
+    expect(policies.map((p) => p.tablename)).toEqual([
+      'entities',
+      'entity_tags',
+      'links',
+      'tags',
+      'tasks',
+    ]);
     for (const policy of policies) {
       expect(policy.roles).toEqual(['authenticated']);
       expect(policy.cmd).toBe('ALL');

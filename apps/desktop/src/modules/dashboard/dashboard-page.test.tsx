@@ -254,9 +254,12 @@ describe('Dashboard tile buttons open the module', () => {
     await user.click(within(tile(title)).getByRole('button', { name: `Open ${moduleName}` }));
 
     expect(router.state.location.pathname).toBe(path);
-    expect(
-      within(screen.getByRole('main')).getByRole('heading', { name: moduleName }),
-    ).toBeInTheDocument();
+    // Tasks is a real module now (its own frame and pages), so its heading is checked in modules/tasks
+    if (moduleName !== 'Tasks') {
+      expect(
+        within(screen.getByRole('main')).getByRole('heading', { name: moduleName }),
+      ).toBeInTheDocument();
+    }
     expect(MODULES[path.slice(1) as keyof typeof MODULES].name).toBe(moduleName);
   });
 });
@@ -339,11 +342,10 @@ describe('Quick actions row', () => {
     },
   );
 
-  it('New task opens the Tasks page instead of showing a note', async () => {
+  it('New task opens My tasks instead of showing a note', async () => {
     const { user, router } = await openDashboard();
     await user.click(screen.getByRole('button', { name: 'New task' }));
-    expect(router.state.location.pathname).toBe('/tasks');
-    expect(await screen.findByRole('textbox', { name: 'New task' })).toHaveFocus();
+    expect(router.state.location.pathname).toBe('/tasks/my-tasks');
   });
 
   it.each([
