@@ -8,7 +8,7 @@
 | 4 | Supabase free plan, Mumbai | Free, includes Postgres, auth, storage, realtime, pgvector; close to Kerala |
 | 5 | Own backend server (not app-only) | Secrets stay safe, reminders run when devices are off, AI and Google shared by all devices |
 | 6 | Node.js + TypeScript + Fastify | One language across the whole project, shared types with the apps |
-| 7 | Oracle Cloud Always Free | Only option that stays free long term; AWS closes after 6 months, Azure credit lasts 30 days |
+| 7 | Oracle Cloud Always Free is the long-term home (AWS is used until capacity allows, see decision 35) | Only option that stays free long term; AWS closes after 6 months, Azure credit lasts 30 days |
 | 8 | OmniRoute as the AI gateway | One API for many providers, automatic fallback, free self-hosted |
 | 9 | One OmniRoute for the assistant and coding tools | Separate keys and limits per use |
 | 10 | Tailscale for coding tools access | OmniRoute never exposed to the internet |
@@ -25,7 +25,7 @@
 | 21 | JWT verification with Supabase JWKS using jose | New Supabase projects use asymmetric signing keys; no shared JWT secret on the server |
 | 22 | Backend scopes every query by user_id with one shared helper; RLS stays ON | The backend connects as postgres (bypasses RLS); RLS still protects client and Realtime access; isolation is proven by tests |
 | 23 | Settings saved locally (Zustand persist) until Step 3 | The action registry and settings API arrive in Step 3 |
-| 24 | Supabase session pooler (IPv4) for DATABASE_URL | The direct connection is IPv6-only and the Oracle VM uses IPv4 |
+| 24 | Supabase session pooler (IPv4) for DATABASE_URL | The direct connection is IPv6-only and the server host uses IPv4 |
 | 25 | Backups with pg_dump in a matching postgres container and rclone to Oracle Object Storage (S3-compatible API) | No host Postgres or OCI CLI needed; pg_dump version matches Supabase |
 | 26 | Frameless window with a custom glass title bar | Matches the glass design in dark and light mode |
 | 27 | Gradient placeholder wallpapers | Real images will be added later |
@@ -49,5 +49,7 @@
 | 45 | A due date can be all-day: tasks.due_all_day (default false); an all-day task stores the start of that day in India time and the server normalises it; overdue is by India calendar day | Date-only deadlines without a second column |
 | 46 | Tags are auto-colored from the module pastel palette in a cycle; a tag name has no spaces or # characters; names are unique ignoring case among live tags | Simple, quick-add friendly (#tag) |
 | 47 | Any change of a task to done (checkbox, status control, drag, AI) makes the next copy of a recurring task; Feature 3 must also make the undo remove that copy | One rule for every path to done |
-| 48 | Parallel agents (server-dev, ui-dev, code-reviewer, Sonnet, worktrees) build features from a committed contract; the plan and file ownership are in docs/features/tasks-redesign.md | Faster delivery with no file overlap |
-
+| 48 | Parallel agents (server-dev, ui-dev, and the code, design, security, and docs reviewers; Sonnet; worktrees) build features from a committed contract; the plan and file ownership are in docs/features/tasks-redesign.md | Faster delivery with no file overlap |
+| 49 | A commit that changes code listed in docs/doc-map.json must change its docs or say [docs-ok] <reason>; enforced by .githooks/commit-msg (turned on by pnpm install), pnpm docs:check, and a CI backstop | Docs must not drift from the code |
+| 50 | Project skills (.claude/skills) hold the procedures, and docs/LESSONS.md plus each skill's pitfalls.md record every mistake with the strongest prevention (an automated guard where possible) | The same error must not happen twice |
+| 51 | The server never logs SQL text or query parameters from database errors, and checks migrations read-only at startup (503 schema_behind) | Task titles and ids must not reach logs; a missing migration must be obvious |

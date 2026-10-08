@@ -9,11 +9,11 @@ Work on one step at a time. Use each step daily before starting the next.
 - [x] b. packages/ui design tokens and components (dark and light), UI gallery
 - [x] c. Desktop shell: custom glass title bar, dock, wallpaper, theme switching, placeholder module pages
 - [x] c2. Supabase email and password login screen and session
-- [x] d. Settings screen (appearance incl. Background: Transparent / Wallpaper / Solid, dock, logout), saved locally
+- [x] d. Settings screen (theme, background Transparent / Wallpaper / Solid with wallpaper image and blur, glass effect Liquid / Simple / Off with strength, dock, account log out), saved locally
 - [x] e. Dashboard with static placeholder data
 - [x] f. Command palette (commands only) and keyboard shortcuts
 - [x] g. Fastify skeleton with JWKS JWT verification and /api/v1/health
-- [x] h. Drizzle schema for entities and links with RLS, user-scope helper, migrations generated but not applied
+- [x] h. Drizzle schema for entities and links with RLS, user-scope helper, migrations generated (applied by the owner with pnpm db:migrate)
 - [x] i. Infra: docker-compose (caddy, server), Caddyfile, server Dockerfile, backup script, DuckDNS script
 
 ### Manual setup (me)
@@ -22,11 +22,17 @@ Work on one step at a time. Use each step daily before starting the next.
 - [x] DuckDNS (adith-os.duckdns.org)
 - [x] Supabase project and account
 - [ ] Google Cloud project
+- [ ] Lock SSH to my IP
+- [ ] AWS budget alert
+- [ ] Backup target and cron
+- [ ] DuckDNS updater cron
+- [ ] Redeploy the server with Step 2 (needs DATABASE_URL in its apps/server/.env)
 
 ## Step 2 – Tasks and notes
 - [x] Tasks list: create, edit, complete, delete, priorities, deadlines, reminder date, undo
-- [ ] Tasks: subtasks, tags, archive, recurring, dependencies
-- [ ] Task views: list and kanban
+- [x] Tasks redesign Feature 1: side panel, Overview, My tasks (Cards and List), detail panel, subtasks, tags, archive
+- [ ] Tasks: recurring and dependencies in the UI (Feature 3; the server only has stubs)
+- [ ] Task views: Board (kanban) and drag and drop (Feature 2)
 - [ ] Notes: TipTap editor, folders, wikilinks, backlinks, tags, templates, daily notes, version history
 - [ ] Full-text search
 - [ ] Realtime updates

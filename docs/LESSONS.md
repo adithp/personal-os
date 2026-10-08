@@ -45,3 +45,4 @@ Every time something cost a retry or a fix, we record it here so it never happen
 | 2026-10-09 | time-and-money | All-day due dates must be stored as the start of the India day | guarded | apps/server/src/actions/tasks.ts (normalises) and its tests |
 | 2026-10-09 | time-and-money | Typing a year in a date-time box passes through invalid years | guarded | task-detail tests (draft saved on blur or Enter) |
 | 2026-10-08 | docs-sync | Docs drifted from the code (hosting moved from Oracle to AWS in some files only) | guarded | scripts/docs-check.mjs, docs/doc-map.json, .githooks/commit-msg, CI |
+| 2026-10-09 | dev-environment | Python in a bash heredoc turns a doubled backslash n into a real newline inside strings | documented | dev-environment pitfalls |

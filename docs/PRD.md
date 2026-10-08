@@ -14,7 +14,7 @@ The vision: a personal assistant that understands my entire workspace and can ac
 - Link everything: emails, tasks, notes, files, events, money, and projects.
 - Ask questions and give instructions in plain English; the AI acts across every module.
 - Keep data in the cloud so the Phase 2 mobile app shows the same data instantly.
-- Hosting costs about ₹0 per month; only AI usage is paid (starting with free models).
+- Hosting costs about ₹0 per month (AWS free-plan credits for the first 6 months, then Oracle Always Free); only AI usage is paid (starting with free models).
 
 ## 3. Non-goals (this version)
 - Multiple users, teams, or sharing.

@@ -1,4 +1,4 @@
-# Personal OS on the Oracle server: Caddy (public HTTPS) in front of the Fastify server.
+# Personal OS on the server (AWS EC2 ARM now, Oracle later): Caddy (public HTTPS) in front of the Fastify server.
 # OmniRoute is added in Step 3. Run from this folder:  docker compose up -d --build
 #
 # Needs two files on the server (never committed):

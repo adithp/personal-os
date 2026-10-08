@@ -19,11 +19,13 @@ Laptop coding tools ──Tailscale──► OmniRoute
 ## 2. Data flow
 - Login: apps sign in with Supabase Auth and send the session JWT to the backend on every request.
 - Reads and writes: apps call the backend REST API only. The backend verifies the JWT, runs the action, and writes to Postgres.
-- Live updates: apps subscribe to Supabase Realtime on their own rows. On a change event, TanStack Query refetches the affected data from the backend.
+- Live updates (Step 2, not built yet): apps subscribe to Supabase Realtime on their own rows. On a change event, TanStack Query refetches the affected data from the backend.
 - AI: the backend calls OmniRoute; OmniRoute calls the configured AI provider.
 - Google: the backend holds encrypted Google tokens and calls Google APIs. Apps never talk to Google directly.
 
 ## 3. Tech stack
+Libraries not installed yet (planned): TipTap, CodeMirror, KaTeX, Shiki, Sigma.js, graphology, react-grid-layout, dnd-kit (Feature 2), rrule (Feature 3), Schedule-X, ECharts, TanStack Table, Vercel AI SDK, croner, googleapis.
+
 | Area | Choice |
 |---|---|
 | Monorepo | pnpm workspaces |
@@ -36,6 +38,7 @@ Laptop coding tools ──Tailscale──► OmniRoute
 | Note editor | TipTap, CodeMirror 6 (raw markdown), KaTeX, Shiki |
 | Knowledge graph | Sigma.js + graphology |
 | Dashboard grid | react-grid-layout |
+| Desktop plugins | @tauri-apps/plugin-dialog and @tauri-apps/plugin-fs (wallpaper upload, limited to $APPDATA/wallpapers) |
 | Drag and drop | dnd-kit |
 | Recurring dates | rrule (RRULE parsing and the next occurrence of a recurring task) |
 | Calendar views | Schedule-X |
@@ -49,7 +52,7 @@ Laptop coding tools ──Tailscale──► OmniRoute
 | ORM | Drizzle ORM |
 | Validation | Zod |
 | AI SDK | Vercel AI SDK with the OpenAI-compatible provider pointed at OmniRoute |
-| Scheduler | croner (inside the backend) |
+| Scheduler | croner (inside the backend; planned, not installed yet) |
 | Google | googleapis (official Node client) |
 | Database | Supabase Postgres with Row Level Security, full-text search, pgvector |
 | Tests | Vitest, Testing Library, jsdom; PGlite (in-memory Postgres, tests only) |
@@ -64,24 +67,33 @@ personal-os/
 │   ├── desktop/          Tauri 2 + React app
 │   │   ├── src-tauri/
 │   │   └── src/
-│   │       ├── modules/  one folder per module (tasks, notes, ...)
-│   │       ├── dock/
-│   │       ├── dashboard/
-│   │       ├── assistant/
-│   │       └── settings/
+│   │       ├── api/      backend client + TanStack Query provider
+│   │       ├── auth/     Supabase email and password login, session
+│   │       ├── commands/ command palette + Ctrl shortcut registry
+│   │       ├── dock/     bottom dock, magnification, auto-hide
+│   │       ├── modules/  one folder per module (dashboard, settings, tasks built so far)
+│   │       ├── routes/   TanStack Router file routes (routeTree.gen.ts is generated)
+│   │       ├── shell/    title bar, background, app layout, toasts
+│   │       ├── store/    Zustand stores (settings, palette, toasts, window effect)
+│   │       └── test/     test setup and fakes
 │   ├── server/           Fastify backend
 │   │   └── src/
 │   │       ├── routes/
 │   │       ├── actions/      action registry + handlers
-│   │       ├── ai/           agent loop, skills, OmniRoute client
-│   │       ├── integrations/ google (gmail, calendar, drive)
-│   │       ├── jobs/         scheduled jobs (croner)
-│   │       └── lib/
+│   │       ├── auth/         JWT check (jose)
+│   │       ├── config/       environment settings
+│   │       ├── lib/          user-scope helper, database, schema check
+│   │       ├── ai/           (planned) agent loop, skills, OmniRoute client
+│   │       ├── integrations/ (planned) google (gmail, calendar, drive)
+│   │       └── jobs/         (planned) scheduled jobs (croner)
 │   └── mobile/           Phase 2
 ├── packages/
 │   ├── shared/           Zod schemas, types, action definitions
 │   ├── db/               Drizzle schema + migrations
 │   └── ui/               design tokens + shared React components
+├── scripts/              docs check, git hook install
+├── .githooks/            commit-msg (docs check)
+├── .github/workflows/    CI
 ├── infra/
 │   ├── docker-compose.yml
 │   ├── Caddyfile
@@ -99,4 +111,4 @@ personal-os/
 | Drive changes sync | every 15 minutes |
 | Subscription renewal alerts | daily 08:00 IST |
 | Embedding updates for changed notes | every 10 minutes |
-| Database backup | daily 02:00 IST |
+| Database backup | daily 02:00 IST (host cron with infra/scripts/backup.sh; script ready, not scheduled yet) |

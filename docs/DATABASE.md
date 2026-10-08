@@ -15,7 +15,7 @@ Supabase Postgres (free plan, Mumbai). Schema and migrations are written with Dr
 ## 2. Connections model
 Every item is an entity, and any two entities can be linked. This powers project pages, backlinks, the knowledge graph, global search, and AI context.
 
-entities: id, user_id, type (task, note, project, habit, event, email, file, transaction, subscription, person, client, tag), title, search_vector (tsvector), created_at, updated_at, deleted_at
+entities: id, user_id, type (task, note, project, habit, event, email, file, transaction, subscription, person, client; the enum also has tag, which is unused because tags are a plain table), title, search_vector (tsvector), created_at, updated_at, deleted_at
 
 links: id, user_id, source_id → entities, target_id → entities, relation (mentions, belongs_to, blocks, derived_from, attached, related), created_at, updated_at, deleted_at
 
@@ -26,17 +26,19 @@ Each module table uses the same id as its entity row.
 - A link cannot join an item to itself (links_no_self_link).
 - There is at most one live link per user, source, target, and relation. A soft-deleted link does not block creating the same link again.
 - Deleting an entity deletes its links; deleting a user deletes their entities and links.
-- updated_at is refreshed by a trigger on every update of entities and links.
+- updated_at is refreshed by a trigger (set_updated_at(), migration 0001) on every update of entities, links, tasks, tags, and entity_tags.
 - Each table has one policy, "<table>_own_rows", for the authenticated role: user_id = (select auth.uid()) for both reading and writing. The anon role has no access.
-- Migrations live in packages/db/drizzle. They are generated with pnpm db:generate and applied only by the owner with pnpm db:migrate. The second migration (updated_at trigger) is written by hand because drizzle-kit cannot describe functions and triggers.
+- Migrations live in packages/db/drizzle. They are generated with pnpm db:generate and applied only by the owner with pnpm db:migrate. Migrations 0001, 0003, and 0005 (the updated_at triggers) are written by hand because drizzle-kit cannot describe functions and triggers. The server reads the migration list at startup and warns (and answers 503 schema_behind) while the database is missing migrations; it never applies them.
 
 ## 3. Tables
 ### Tasks
 - tasks: id (same as its entities row), title, description, status (todo, doing, done), priority (1–4, 1 is the most urgent), due_at, reminder_at, recurrence_rule (RRULE text), parent_task_id (one level only), position, completed_at, archived_at, deleted_at
 - project_id and category are added in Step 5 (tags cover grouping until then).
 - A task is the entity with the same id and the same owner (composite foreign key). Deleting an entity deletes its task. A task cannot be its own parent, and a subtask's parent must belong to the same user.
-- Dependencies are links with relation = blocks.
+- Dependencies are links with relation = blocks. The behavior (blocking completion, cycle checks) is built in Feature 3; no blocks link is created yet.
 - due_all_day (boolean, default false): an all-day task stores the start of that day in India time in due_at and shows the date only.
+- Soft-deleting a task also soft-deletes its entities row; restoring brings both back. Renaming a task updates entities.title. Subtasks are not touched when their parent is soft-deleted (they are only reachable through the parent); a hard delete of the parent removes them (tasks_parent_fk cascades).
+- Checks and indexes: priority between 1 and 4 (tasks_priority_range), indexes on user, user and status, user and due date, and parent.
 - Migrations: 0002_tasks_table, 0003_tasks_updated_at_trigger (by hand), 0004_tags_and_all_day, 0005_tags_updated_at_trigger (by hand).
 
 ### Habits
@@ -52,7 +54,7 @@ Each module table uses the same id as its entity row.
 
 ### Tags
 - tags: id, user_id, name (unique per user ignoring case among live tags), color (a palette hex), deleted_at. A plain table: a tag has no row in entities. The knowledge graph (Step 7) builds tag nodes from the tags table.
-- entity_tags: entity_id, tag_id (a task can only get tags of the same user, enforced by composite foreign keys; each pair once)
+- entity_tags: entity_id, tag_id (a task can only get tags of the same user, enforced by composite foreign keys; each pair once). entity_tags rows are hard-deleted (no deleted_at); soft-deleting a tag does not remove its rows, and task reads ignore tags that are soft-deleted
 
 ### Calendar
 - calendars: id, google_calendar_id, name, color, visible
@@ -98,5 +100,5 @@ Each module table uses the same id as its entity row.
 - reminders: id, entity_id, remind_at, sent_at, channel (desktop, mobile)
 
 ## 4. Search
-- entities.search_vector is updated by trigger from title and module text (task description, note content).
+- entities.search_vector (tsvector, with a GIN index) exists but is not filled yet. A trigger that fills it from the title and module text (task description, note content) arrives with full-text search (Step 2).
 - Semantic search uses embeddings with pgvector and cosine distance.

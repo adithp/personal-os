@@ -39,7 +39,7 @@ describe('the doc map', () => {
 
 describe('checkChanges', () => {
   it('passes when no mapped code changed', () => {
-    expect(check(['README.md', 'scripts/other.mjs'])).toEqual([]);
+    expect(check(['README.md', 'LICENSE'])).toEqual([]);
   });
 
   it('fails a route change without docs/API.md, and names the doc and why', () => {

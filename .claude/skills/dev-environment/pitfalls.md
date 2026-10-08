@@ -85,3 +85,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: Low memory on the PC
 - Fix: Do not restart heavy processes unasked; ask the owner first
 - Prevention: documented, dev-environment pitfalls
+
+### 2026-10-09: Python in a bash heredoc turns a doubled backslash n into a real newline
+- Symptom: a generated test file had a string literal broken across two lines (Unterminated string literal)
+- Cause: the shell heredoc passed the text to Python, where a doubled backslash followed by n became a real newline
+- Fix: write the script with the Write tool (a .py file) and run it, or build the escape with chr(92)
+- Prevention: documented, dev-environment pitfalls

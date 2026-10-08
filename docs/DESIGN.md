@@ -1,6 +1,6 @@
 # Design system
 
-The app uses a dark glass design with bright pastel tiles and a macOS-style magnifying bottom dock. A light mode uses the same layout, tiles, and colors on light glass. There is no left sidebar.
+The app uses a dark glass design with bright pastel tiles and a macOS-style magnifying bottom dock. A light mode uses the same layout, tiles, and colors on light glass. There is no app-level sidebar (the Tasks module has its own slim inner side panel, see docs/features/tasks-redesign.md).
 
 ## 1. Theme modes
 Setting: Appearance → Theme = Dark, Light, or System. Default: System.
@@ -33,7 +33,7 @@ The window background has three modes. Setting: Appearance → Background = Tran
 - Transparent mode uses a transparent Tauri window with the Windows Acrylic effect (Mica as the fallback when Acrylic is not available). Acrylic can make dragging and resizing the window less smooth on some Windows 10 and 11 builds.
 - Tint layer (the tint token in section 1): dark mode rgba(21,23,28,0.55), light mode rgba(238,240,243,0.55). It is the bg color at 55% opacity.
 - Glass cards, tiles, the dock, and the title bar keep their normal style on top of every mode.
-- Blur strength (0–40 px, default 24) and the image choice (built-in gradient or upload) are shown only for Wallpaper. Blur is the backdrop-filter blur of glass panels.
+- Blur strength (0–40 px, default 24) and the image choice (built-in gradient or upload) are shown only for Wallpaper. Blur is the backdrop-filter blur of glass panels. The saved blur value applies in every background mode; only the slider is limited to Wallpaper.
 - If the Acrylic effect is not supported or fails, the app falls back to Wallpaper mode automatically for that session. The saved choice stays Transparent.
 - Saved settings from before this change (Wallpaper On/Off) migrate safely: Off becomes Solid, anything else becomes the default Transparent.
 
@@ -66,7 +66,8 @@ Fit with the backgrounds and themes:
 How it works (no WebGL, no page screenshots, no extra library):
 - Each glass element gets an SVG filter whose displacement map is a small image drawn on a canvas for its size (sizes are rounded to 8 px, 96 px for the dock, so many elements share one filter).
 - The mode is set with data-glass="liquid" | "simple" | "off" on the page root; the look comes from inherited CSS variables, so any wrapper can preview a mode (the UI gallery shows all three side by side).
-- Tokens: panel-solid and lg-fill, lg-rim-light, lg-rim-soft, lg-rim-dark, lg-glow, lg-shine in both themes (packages/ui/src/styles/tokens.css).
+- Tokens (both themes, packages/ui/src/styles/tokens.css): panel-solid, panel-solid-strong, lg-fill, lg-fill-strong, lg-hairline (the 1 px edge), lg-rim-soft, lg-rim-dark (soft bottom edge), lg-glow, lg-shine, lg-input-dark (dark inner top edge of inputs). lg-rim-light and lg-edge exist but the current quiet-edge look does not use them.
+- Other tokens: tile-action-bg, progress-track, progress-fill, window-close, wallpaper-default (a gradient per theme), glass-blur, and the durations (fast 150 ms, normal 200 ms). Until data-theme is set the root uses the dark values.
 
 Fallback and limits:
 - If the browser cannot apply an SVG filter to a backdrop (only Chromium, which includes WebView2, can) or cannot draw the maps, the app shows Simple automatically. The saved choice stays Liquid and Settings explains it.
@@ -102,7 +103,7 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 - Spacing scale: 4, 8, 12, 16, 24, 32.
 - Radius: tiles and glass cards 16, dock 18, dock icons 10, buttons and inputs 10, chips 8.
 - Borders: 0.5 px using glass-border.
-- No drop shadows on cards; depth comes from glass and blur (Liquid Glass adds inner highlights only, see section 2b).
+- No drop shadows on cards; depth comes from glass and blur (Liquid Glass adds inner highlights only, see section 2b). The one exception is the accent glow under the lavender send button of the quick add bar.
 
 ## 6. Components
 ### Tile (dashboard widget, colored)
@@ -137,6 +138,29 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 ### Keyboard hint (Kbd)
 - Small chip per key: input background, 0.5 px glass-border, radius 8, 11 px muted text, height 20.
 
+### Sizes of controls
+- Primary and secondary buttons and inputs are 34 px high. An input has a transparent 0.5 px border that turns accent on keyboard focus and danger when invalid.
+
+### Segmented control, switch, slider, progress bar, avatar
+- Segmented control: a glass radio group; options 28 px high, radius 8; the chosen one is lavender with dark text; arrow keys move the choice.
+- Switch 36×20, lavender when on. Slider 160 px wide, accent colored. Progress bar 5 px. Module avatar 26 px.
+
+### Quick add bar (Tasks)
+- A glass bar 40 px high, radius 16, with a thin inner top highlight. Left: a 24 px input-colored square with a plus icon. Middle: a borderless text field ("Add a task…"). Right: a 28 px lavender gradient send button with an arrow (accent glow), at 45% opacity and disabled while the field is empty. On focus the border turns accent. Enter adds.
+
+### Toast
+- Glass-strong, radius 10, padding 16×8, centered 96 px above the bottom (above the dock): the message, an optional accent action button (Undo), and a dismiss X. Info toasts use text-primary, error toasts text-danger (announced as alerts). They stay 5 s, or 8 s with an action; the timer waits while the mouse is over a toast or focus is inside it. At most 3 at once; the oldest drops.
+
+### Menus and popovers
+- Glass-strong, radius 16, 0.5 px border, items 28 px high, arrow-key navigation, Escape and outside click close them; they use the menu roles.
+
+### Task checkbox, card, row, chips
+- Round checkbox 18 px with a 1.5 px border, module yellow with a check when done.
+- Task card: glass, radius 16, padding 12, in a grid of columns at least 180 px wide, lifts 2 px on hover (not with reduced motion), lavender ring when selected, 60% opacity when done. Priority flag colors: Urgent danger red, High Calendar orange, Medium Tasks yellow, Low none. Tag chips: radius 8, height 20, dark text on the tag color. Blocked badge: input-colored chip with a lock icon. Overdue due text uses the danger color.
+
+### Login screen
+- A centered glass card (max 384 px) with a 48 px lavender sparkle square, the title "Sign in", Email and Password fields, and a full-width primary button. Without Supabase settings it shows a card "The app is not configured" listing the missing variables. It sits inside the same background and title bar.
+
 ## 6b. Title bar
 The window is frameless. The title bar is not a separate bar: it is fully transparent, so the background and the page show straight through and the top of the window looks like one continuous surface.
 - Height 40 px, overlaying the top of the page area. Page content has 40 px of top padding so it never sits under the buttons.
@@ -149,7 +173,7 @@ The window is frameless. The title bar is not a separate bar: it is fully transp
 
 ## 7. Dock (main navigation)
 - Position: bottom center, 10 px above the window edge, floating.
-- Look: glass-strong background, radius 18, padding 6×10, height 60.
+- Look: glass-strong background, radius 18, horizontal padding 10 px, height 60 px (Small and Medium icons); with Large icons the height grows to icon size + 24 (68 px).
 - Icons: 36×36 tiles in module colors, radius 10, gap 6, dark icon glyph.
 - Order: Dashboard, Tasks, Habits, Notes, Graph, Calendar, Mail, Drive, Projects, Money | divider | AI assistant, Settings.
 - Hover: magnification. Size scales up to 1.7× for the icon under the cursor and falls off within 90 px. Built with Motion (formerly Framer Motion).
@@ -175,7 +199,7 @@ Right column, top to bottom, all glass cards:
 
 Fit and scrolling:
 - The title bar overlays the top (content starts 40 px down) and the dock floats over the bottom (the page area keeps 80 px of bottom padding), so nothing sits under them.
-- The page itself never scrolls. At the 1100×700 minimum the whole main column fits without scrolling; the right column scrolls on its own. If the window is ever too short, each column scrolls independently.
+- The Dashboard and Tasks pages never scroll as a whole (other pages scroll inside the page area). At the 1100×700 minimum the whole main column fits without scrolling; the right column scrolls on its own. If the window is ever too short, each column scrolls independently.
 - The compact tile size (Tile compact) still exists in packages/ui for crowded screens but the dashboard uses the normal tile size.
 
 ## 9. Keyboard
@@ -190,12 +214,12 @@ Fit and scrolling:
 - Module commands use a 22 px icon square in the module color; other commands use a neutral square.
 - Typing filters by whole or partial words in the title or its keywords (for example "night" finds the dark theme). The selected row uses the input background.
 - For now it only runs commands. Searching tasks, notes, mail, and files comes with those modules.
-- All shortcuts live in one registry (apps/desktop/src/commands/shortcuts.ts). Shortcut keys are cancelled in the page so Windows' own use of them (for example Ctrl J for downloads) does not also run.
+- All Ctrl shortcuts live in one registry (apps/desktop/src/commands/shortcuts.ts). The Tasks page has its own plain-key shortcuts (N, Space, Enter, Delete, Esc, arrows, ?; see docs/features/tasks-redesign.md) that never use Ctrl, so they cannot clash with the global ones. Shortcut keys are cancelled in the page so Windows' own use of them (for example Ctrl J for downloads) does not also run.
 
 ## 10. Mobile (Phase 2)
 - Same tokens, colors, tiles, and glass.
 - Navigation: bottom tab bar with Dashboard, Tasks, AI assistant, Calendar, More. No magnification on mobile.
 
 ## 11. Motion
-- Duration 150–250 ms, ease-out.
+- Duration 150–250 ms, ease-out. The dock slide takes 200 ms. Hover lifts and transitions are switched off for people who prefer reduced motion.
 - Tiles lift 2 px on hover. Dock magnification follows the cursor without delay.

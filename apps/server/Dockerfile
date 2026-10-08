@@ -3,7 +3,7 @@
 #
 # The server is bundled into ONE JavaScript file (tsup), so it is built on the machine's own
 # platform (fast, no emulation) and only the small runtime image is made for the target
-# platform (linux/arm64 on the Oracle server).
+# platform (linux/arm64 on the AWS EC2 ARM server, Oracle later).
 
 # ---- 1. Install dependencies (build platform) --------------------------------------------
 FROM --platform=$BUILDPLATFORM node:22.23.3-alpine AS deps

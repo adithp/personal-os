@@ -2,10 +2,17 @@
 
 This is the approved plan for the Tasks module redesign (Asana-style, dark glass, minimal). Liquid Glass is not part of it. The parallel-agent rules are in CLAUDE.md ("Parallel work").
 
+## Status
+- Feature 1 is built (side panel, Overview, My tasks Cards and List, detail panel, subtasks, tags, archive); Repeat and Blocked by are placeholders in the detail panel.
+- Feature 2: stub only (board/board-view.tsx returns null). Feature 3: server stubs only, no UI. Feature 4: the quick-add bar is title only and quick-add/parse.ts does not exist. Feature 5: modules/tasks/favorites/* are stubs; manage-tags/ does not exist. Features 6 to 8 are not started (Inbox, Reporting, Goals show a "Coming soon" page).
+- None of @dnd-kit, rrule, chrono-node, or echarts is installed yet.
+
 ## Screens
 - **Inner side panel** (inside the Tasks page; the bottom dock stays the main navigation): Overview, My tasks, Inbox (count), Reporting, Goals, Portfolios (disabled, "Soon", Step 5), and a Favorites list with a + button. Collapsible. Inbox, Reporting, Goals and the Favorites + button are disabled with "Soon" until their feature is built (`modules/tasks/features.ts`).
+- **Panel details:** 224 px wide with labels, or 56 px with icons and tooltips when collapsed (the choice is saved). A disabled row shows "Soon". The Inbox count only appears once Inbox is enabled (TASK_FEATURES.inbox).
 - **Overview** (opens from the dock and Ctrl 2): greeting with the date and "7 open · 2 overdue", a collapsible "Tasks due soon" card (5 open tasks, overdue first, then today, then upcoming), and a Favorites section (hidden until Feature 5).
 - **My tasks**: header with Cards (default) | List | Board (saved on this device), Filter / Sort / Group, a quick add bar. Sections: Overdue, Today, Upcoming, No date, Completed (collapsed, last 7 days, "Show more"). Defaults: Group = due, Sort = manual. Overdue is by India calendar day. When Sort is not manual, drag-to-reorder is off with a hint.
+- **My tasks details:** the summary reads "N open · M overdue" ("Nothing left to do" when none). Filter menu: Status (To do, In progress, Done), Priority, Tag, Due (Any, Overdue, Today, This week, No date), Archived; "Clear filters" appears when any filter is on. Sort: Manual (default), Due date, Priority, Created, Title. Group: Due (default), None, Tag (a task appears in each of its tags, untagged under "No tag"), Priority. Filters, sort, group, and the open task can be in the URL (status, priority, tag, due, archived, sort, group, task). The "Sort not manual turns off drag" hint arrives with drag and drop (Feature 2).
 - **Detail panel** on the right: status, priority, due (date, time, or all-day), reminder, repeat, tags, blocked by, subtasks (one level), notes, Archive, Delete.
 
 ## Decisions (answers recorded)
@@ -13,7 +20,8 @@ This is the approved plan for the Tasks module redesign (Asana-style, dark glass
 - Subtasks appear only inside their parent. Completing all subtasks does not complete the parent.
 - Tags: auto color from the module palette in a cycle; recolor from a chip's menu; a card shows the first tag plus "+N".
 - Favorites are stored on the server (`task_favorites`, Feature 5). Goals use the `links` table with a new `goal` entity type (Feature 8).
-- Keyboard (only on the Tasks page, not in a text box, no Ctrl combinations): N new task, Space complete, Enter open details, Delete delete (undo toast), Esc close, arrows move, ? shortcut help.
+- Saved on this device (localStorage key personal-os.tasks-ui): the view, whether the side panel is collapsed, and which date sections are collapsed. Sort, group, and the open task start fresh.
+- Keyboard (only on the Tasks page, not in a text box, no Ctrl combinations; Space and Enter act on the focused card or row; none of the keys work while the palette is open, in menus or dialogs, or inside the detail panel): N new task, Space complete, Enter open details, Delete delete (undo toast), Esc close, arrows move, ? shortcut help.
 
 ## Contract (committed before agents start; the orchestrator owns it)
 Shared types and actions (`packages/shared/src/tasks.ts`, `tags.ts`), the database schema and migrations, the server stubs, the route tree and route files, the hook signatures (`modules/tasks/tasks-queries.ts`, `tags-queries.ts`), the UI store (`tasks-ui-store.ts`), pure logic with tests (`dates.ts`, `sections.ts`, `filters.ts`, `my-tasks-search.ts`), shared small components (`modules/tasks/shared/`), the mock API for tests (`apps/desktop/src/test/fake-api.ts`), `features.ts`, and the empty slots that agents fill in.

@@ -43,10 +43,15 @@ The UI and the AI call the same actions.
 | external | send email, create event with guests | waits for my confirmation in the chat |
 | destructive | delete project, delete email, bulk changes | always waits for my confirmation |
 
-Every action is recorded in ai_action_log.
+Every action is recorded in ai_action_log (Step 3). Until then the registry only tells observers after each action (success or failure); no log table exists yet.
+
+Today: read = tasks.list, tasks.get, tags.list; write = tasks.create, tasks.update, tasks.archive, tasks.unarchive, tasks.complete, tasks.prioritize, tasks.restore, tags.create, tags.update; destructive = tasks.delete. The app's buttons run actions with confirmed = true (a button press is the confirmation), so deleting in the app does not prompt; a call from the AI without confirmation is stopped by the registry (409 confirmation_required) until the user confirms.
+
+Undo: a write returns an undo (an action plus its input). tasks.create undoes with tasks.delete, tasks.delete with tasks.restore (and back), tasks.update with tasks.update carrying the old values, archive and unarchive undo each other, tags.update undoes itself, tags.create has no undo. POST /undo runs it through the same registry.
 
 ## 5. Action list (Phase 1)
-- tasks: list, get, create, update, complete, delete, prioritize
+- tasks: list, get, create, update, archive, unarchive, complete, delete, restore, prioritize
+- tags: list, create, update
 - habits: list, log, stats
 - notes: search, get, create, update, append, summarize, link
 - graph: related

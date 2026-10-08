@@ -1,5 +1,7 @@
 # Google integrations
 
+Status: planned for Step 4. Nothing here is built yet.
+
 ## 1. Google Cloud setup
 - One Google Cloud project for Personal OS.
 - APIs enabled: Gmail API, Google Calendar API, Google Drive API.

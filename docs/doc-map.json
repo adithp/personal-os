@@ -66,6 +66,12 @@
       "paths": ["package.json", "apps/*/package.json", "packages/*/package.json"],
       "dependenciesOnly": true,
       "docs": ["docs/ARCHITECTURE.md"]
+    },
+    {
+      "name": "Repo tooling",
+      "why": "Scripts, hooks, and tool configuration are described in the conventions and deployment docs.",
+      "paths": ["scripts/**", ".prettierignore"],
+      "docs": ["docs/CONVENTIONS.md", "docs/DEPLOYMENT.md"]
     }
   ]
 }

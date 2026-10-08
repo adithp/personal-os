@@ -110,7 +110,7 @@ describe('Caddyfile', () => {
     expect(caddyfile).toContain('health_uri /api/v1/health');
   });
 
-  it('does not rewrite paths: the server serves /api/v1 itself (decision 14)', () => {
+  it('does not rewrite paths: the server serves /api/v1 itself', () => {
     for (const directive of [
       'rewrite',
       'uri strip_prefix',

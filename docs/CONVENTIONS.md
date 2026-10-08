@@ -12,7 +12,8 @@
 - Store UTC, display Asia/Kolkata.
 
 ## Tools
-- pnpm workspaces, ESLint, Prettier, Vitest.
+- pnpm workspaces, ESLint, Prettier, Vitest, pnpm typecheck.
+- pnpm docs:check and the commit-msg git hook in .githooks (turned on by pnpm install).
 
 ## Tests
 - Every action: success, invalid input, permission behavior, undo.
@@ -22,3 +23,5 @@
 - Branch per roadmap step: step-1-foundation, step-2-tasks-notes, ...
 - Conventional Commits: feat:, fix:, docs:, refactor:, test:, chore:.
 - Never commit .env files.
+- A commit that changes code listed in docs/doc-map.json must also change its docs, or contain a line "[docs-ok] <reason>" in the message.
+- Parallel agents: at most 3 at once (see the orchestrate-feature skill).
