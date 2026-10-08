@@ -69,6 +69,8 @@ export function resolveDrop({
     ...(next ? { beforeId: next.id } : {}),
   };
   const position = positionBetween(prev?.position, next?.position);
+  // Without neighbours (Sort is not Manual) the place does not change, so nothing to show
+  const placed = prev || next ? { position } : {};
   const reorder = (): DropResult => {
     if (!manualSort) return { kind: 'reject', message: NOT_MANUAL_MESSAGE };
     return { kind: 'move', input: { id: task.id, ...neighbours }, position };
@@ -105,10 +107,10 @@ export function resolveDrop({
       return {
         kind: 'move',
         input: { id: task.id, ...reopen, ...dueToday(task, now), ...neighbours },
-        position,
+        ...placed,
       };
     case 'upcoming':
       if (here === 'upcoming') return sameContainer ? reorder() : { kind: 'none' };
-      return { kind: 'pick-date', input: { id: task.id, ...reopen, ...neighbours }, position };
+      return { kind: 'pick-date', input: { id: task.id, ...reopen, ...neighbours }, ...placed };
   }
 }

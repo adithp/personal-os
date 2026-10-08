@@ -141,6 +141,21 @@ describe('tasks.move position', () => {
     expect(rows.rows.map((row) => row.position)).toEqual([1024, 1536, 2048, 3072]);
   });
 
+  it('repairs two tasks that have the same position instead of refusing the move', async () => {
+    const { a, b, c } = await four();
+    await t.db.execute(sql`update tasks set position = 1500 where id in (${a.id}, ${b.id})`);
+    await move(alice(), { id: c.id, afterId: a.id, beforeId: b.id });
+    expect(await order(alice())).toEqual(['A', 'C', 'B', 'D']);
+  });
+
+  it('refuses a position outside the allowed range in tasks.update', async () => {
+    const { a } = await four();
+    const error = await failure(
+      registry.run(alice(), 'tasks.update', { id: a.id, position: 1e308 }),
+    );
+    expect(error).toBeInstanceOf(ZodError);
+  });
+
   it('keeps the position when there are no neighbours', async () => {
     const { a } = await four();
     const { task } = await move(alice(), { id: a.id, status: 'doing' });

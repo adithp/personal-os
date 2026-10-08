@@ -92,7 +92,7 @@ const editableFields = {
   /** Replaces the task's tags with exactly these. */
   tagIds: tagIds.optional(),
   /** Where the task sits in the manual order (smaller is higher). tasks.move works this out. */
-  position: z.number().optional(),
+  position: z.number().min(-1e9).max(1e9).optional(),
 };
 
 export const EDITABLE_TASK_FIELDS = Object.keys(editableFields) as (keyof typeof editableFields)[];

@@ -60,14 +60,9 @@ describe('BoardView', () => {
     expect(within(column('Done')).getByText('Nothing here')).toBeInTheDocument();
   });
 
-  it('shows no hint when sort is manual', () => {
-    setup(true);
-    expect(screen.queryByText('Sort is not Manual, so reordering is off.')).not.toBeInTheDocument();
-  });
-
-  it('shows the hint when sort is not manual', () => {
+  it('leaves the "Sort is not Manual" hint to the page, so it shows only once', () => {
     setup(false);
-    expect(screen.getByText('Sort is not Manual, so reordering is off.')).toBeInTheDocument();
+    expect(screen.queryByText('Sort is not Manual, so reordering is off.')).not.toBeInTheDocument();
   });
 
   it('opens a card in the detail panel by selecting it', async () => {

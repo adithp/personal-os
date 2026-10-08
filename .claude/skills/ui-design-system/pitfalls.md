@@ -37,3 +37,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: dnd-kit restoreFocus runs after a frame, and a card that changes section gets a new sortable id
 - Fix: accessibility.restoreFocus is false and the page keeps focus itself (my-tasks/tasks-dnd.tsx)
 - Prevention: documented, ui-design-system pitfalls
+
+### 2026-10-09: Do not add border-[0.5px] next to the glass utilities
+- Symptom: A popup got a doubled edge at 125% and 150% display scaling
+- Cause: glass and glass-strong already set the whole-pixel border; a hand-written half-pixel border overrides it
+- Fix: Remove the extra border classes (also removed from the My tasks menus)
+- Prevention: documented, ui-design-system pitfalls

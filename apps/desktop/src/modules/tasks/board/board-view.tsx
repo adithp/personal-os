@@ -7,15 +7,15 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { SortableContext, useSortable } from '@dnd-kit/sortable';
+import { SortableContext } from '@dnd-kit/sortable';
 import { TASK_STATUSES, type Task, type TaskStatus } from '@personal-os/shared';
 import { cx } from '@personal-os/ui';
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { useToasts } from '../../../store/toast-store';
 import { taskAnnouncements, useTaskSensors } from '../drag/dnd';
 import { columnDropId, parseDropId } from '../drag/drop-ids';
+import { useDrag } from '../my-tasks/use-drag';
 import { TaskCard, type TaskItemContext } from '../my-tasks/task-item';
-import { DragHandle } from '../shared/drag-handle';
 import { useTaskActions } from '../tasks-queries';
 import { useTasksUi } from '../tasks-ui-store';
 import { boardPlace, planBoardDrop } from './plan-drop';
@@ -25,6 +25,8 @@ export interface BoardViewProps {
   now: Date;
   /** Sort is Manual: only then can cards be reordered inside a column. */
   manualSort: boolean;
+  /** false (the Archived filter): cards cannot be dragged. */
+  draggable?: boolean;
 }
 
 const COLUMN_NAMES: Record<TaskStatus, string> = {
@@ -42,19 +44,9 @@ function SortableCard({
   status: TaskStatus;
   context: TaskItemContext;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useSortable({ id: task.id });
-  return (
-    <TaskCard
-      task={task}
-      itemKey={`${status}/${task.id}`}
-      context={context}
-      drag={{
-        setNodeRef,
-        dragging: isDragging,
-        handle: <DragHandle title={task.title} {...attributes} {...listeners} />,
-      }}
-    />
-  );
+  const itemKey = `${status}/${task.id}`;
+  const drag = useDrag({ task, itemKey, context }, task.id);
+  return <TaskCard task={task} itemKey={itemKey} context={context} drag={drag} />;
 }
 
 function InsertionLine() {
@@ -66,12 +58,14 @@ function Column({
   tasks,
   context,
   insertAt,
+  draggable,
 }: {
   status: TaskStatus;
   tasks: readonly Task[];
   context: TaskItemContext;
   /** Index in this column where the dragged card would land (a quiet line), or null. */
   insertAt: number | null;
+  draggable: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: columnDropId(status) });
   const name = COLUMN_NAMES[status];
@@ -79,7 +73,7 @@ function Column({
     <section
       aria-label={name}
       className={cx(
-        'flex min-h-48 min-w-0 flex-1 flex-col gap-3 rounded-card glass p-3 transition-shadow duration-150',
+        'flex min-h-48 min-w-[200px] flex-1 flex-col gap-3 rounded-card glass p-3 transition-shadow duration-150 motion-reduce:transition-none',
         isOver && 'ring-1 ring-accent',
       )}
     >
@@ -92,7 +86,11 @@ function Column({
           {tasks.map((task, index) => (
             <Fragment key={task.id}>
               {insertAt === index ? <InsertionLine /> : null}
-              <SortableCard task={task} status={status} context={context} />
+              {draggable ? (
+                <SortableCard task={task} status={status} context={context} />
+              ) : (
+                <TaskCard task={task} itemKey={`${status}/${task.id}`} context={context} />
+              )}
             </Fragment>
           ))}
           {insertAt !== null && insertAt >= tasks.length ? <InsertionLine /> : null}
@@ -106,13 +104,26 @@ function Column({
 }
 
 /** Board: three columns (To do, In progress, Done) with the same card as Cards view, draggable. */
-export function BoardView({ tasks, now, manualSort }: BoardViewProps) {
+export function BoardView({ tasks, now, manualSort, draggable = true }: BoardViewProps) {
   const sensors = useTaskSensors();
   const { selectedTaskId, select } = useTasksUi();
   const { complete, update, remove, move } = useTaskActions();
   const [tabKey, setTabKey] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  // After a keyboard drop the card may be in another column (a new element): focus it again
+  // on the next renders, for a moment, until the moved card is on the screen
+  const refocus = useRef<{ id: string; at: number } | null>(null);
+  const byKeyboard = useRef(false);
+  useEffect(() => {
+    const pending = refocus.current;
+    if (!pending) return;
+    if (Date.now() - pending.at > 1500) {
+      refocus.current = null;
+      return;
+    }
+    document.querySelector<HTMLElement>(`[data-task-id="${pending.id}"]`)?.focus();
+  });
 
   const columns = TASK_STATUSES.map((status) => ({
     status,
@@ -166,7 +177,8 @@ export function BoardView({ tasks, now, manualSort }: BoardViewProps) {
     setActiveId(null);
     setOverId(null);
   };
-  const onDragStart = ({ active: lifted }: DragStartEvent) => {
+  const onDragStart = ({ active: lifted, activatorEvent }: DragStartEvent) => {
+    byKeyboard.current = activatorEvent instanceof KeyboardEvent;
     setActiveId(String(lifted.id));
   };
   const onDragOver = ({ over }: DragOverEvent) => {
@@ -174,6 +186,7 @@ export function BoardView({ tasks, now, manualSort }: BoardViewProps) {
   };
   const onDragEnd = ({ active: dropped, over }: DragEndEvent) => {
     finish();
+    if (byKeyboard.current) refocus.current = { id: String(dropped.id), at: Date.now() };
     const result = planBoardDrop(
       { tasks, activeId: String(dropped.id), overId: over ? String(over.id) : null },
       now,
@@ -191,19 +204,16 @@ export function BoardView({ tasks, now, manualSort }: BoardViewProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      {manualSort ? null : (
-        <p className="px-1 text-small text-fg-muted">Sort is not Manual, so reordering is off.</p>
-      )}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
-        accessibility={{ announcements: taskAnnouncements(titleOf, nameOf) }}
+        accessibility={{ announcements: taskAnnouncements(titleOf, nameOf), restoreFocus: false }}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
         onDragCancel={finish}
       >
-        <div className="flex items-stretch gap-3">
+        <div className="flex items-stretch gap-3 overflow-x-auto">
           {columns.map((column) => (
             <Column
               key={column.status}
@@ -211,6 +221,7 @@ export function BoardView({ tasks, now, manualSort }: BoardViewProps) {
               tasks={column.tasks}
               context={context}
               insertAt={lineAt?.status === column.status ? lineIndex : null}
+              draggable={draggable}
             />
           ))}
         </div>

@@ -63,7 +63,7 @@ export function DropDatePicker({ title, now, anchor, onPick, onCancel }: DropDat
         onSubmit={submit}
         onKeyDown={onKeyDown}
         style={{ left, top, width: WIDTH }}
-        className="fixed flex flex-col gap-3 rounded-card border-[0.5px] border-glass-border glass-strong p-3"
+        className="fixed flex flex-col gap-3 rounded-card glass-strong p-3"
       >
         <label className="flex flex-col gap-1.5 text-small text-fg-muted">
           Due date
@@ -77,7 +77,11 @@ export function DropDatePicker({ title, now, anchor, onPick, onCancel }: DropDat
             }}
           />
         </label>
-        {valid ? null : <p className="text-small text-fg-muted">Pick a day after today.</p>}
+        {valid ? null : (
+          <p role="alert" className="text-small text-fg-muted">
+            Pick a day after today.
+          </p>
+        )}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onCancel}>
             Cancel

@@ -18,7 +18,7 @@ import type { DropResult } from '../drag/resolve-drop';
 import type { GroupKey, TaskGroup } from '../filters';
 import { SECTION_LABELS } from '../sections';
 import { useTaskActions } from '../tasks-queries';
-import { DRAG_HANDLE_ATTRIBUTE } from './sortable-item';
+import { DRAG_HANDLE_ATTRIBUTE } from './use-drag';
 import { DropDatePicker } from './drop-date-picker';
 import { parseItemKey, planDrop } from './drop-plan';
 import { TaskCard, TaskRow, type TaskItemContext } from './task-item';

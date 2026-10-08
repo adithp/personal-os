@@ -75,7 +75,7 @@ export const taskMoveImplementations = [
       if (afterId !== undefined || beforeId !== undefined) {
         const after = afterId === undefined ? undefined : await neighbour(tx, moved, afterId);
         const before = beforeId === undefined ? undefined : await neighbour(tx, moved, beforeId);
-        if (after && before && after.position >= before.position) {
+        if (after && before && after.position > before.position) {
           throw invalid('afterId must sit above beforeId');
         }
 
@@ -92,6 +92,9 @@ export const taskMoveImplementations = [
           range = await bounds(tx, moved, afterId, beforeId);
         }
         const { lower, upper } = range;
+        if (lower !== null && upper !== null && lower >= upper) {
+          throw invalid('afterId must sit above beforeId');
+        }
         if (lower !== null && upper !== null) position = (lower + upper) / 2;
         else if (lower !== null) position = lower + POSITION_STEP;
         else if (upper !== null) position = upper - POSITION_STEP;

@@ -53,7 +53,7 @@ export function ShortcutsHelp({ onClose }: ShortcutsHelpProps) {
         aria-label="Keyboard shortcuts"
         tabIndex={-1}
         onKeyDown={onKeyDown}
-        className="flex w-[340px] max-w-[90vw] flex-col gap-3 rounded-card border-[0.5px] border-glass-border glass-strong p-4 outline-none"
+        className="flex w-[340px] max-w-[90vw] flex-col gap-3 rounded-card glass-strong p-4 outline-none"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-section font-semibold text-fg">Keyboard shortcuts</h2>

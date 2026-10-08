@@ -125,7 +125,7 @@ export function Menu({ label, detail, children }: MenuProps) {
             aria-label={label}
             tabIndex={-1}
             onKeyDown={onKeyDown}
-            className="absolute top-full left-0 z-30 mt-1 flex min-w-[210px] flex-col gap-1 rounded-card border-[0.5px] border-glass-border glass-strong p-1.5"
+            className="absolute top-full left-0 z-30 mt-1 flex min-w-[210px] flex-col gap-1 rounded-card glass-strong p-1.5"
           >
             {children}
           </div>

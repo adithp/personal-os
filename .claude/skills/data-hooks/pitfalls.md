@@ -13,3 +13,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: tagIds were computed from stale props and the cache did not change optimistically
 - Fix: applyPatch applies tagIds optimistically; the tag menu reads the latest ids
 - Prevention: guarded, apps/desktop/src/modules/tasks/detail/task-detail-review-fixes.test.tsx
+
+### 2026-10-09: Two equal positions broke a move with a 400
+- Symptom: Dragging a task between two tasks with the same position was refused
+- Cause: The check required afterId to be strictly above beforeId before the rebalance could repair the tie
+- Fix: Only an inverted order is refused; ties are rebalanced first (tasks.move) and position is limited to +/-1e9
+- Prevention: guarded, apps/server/src/actions/task-moves.test.ts

@@ -5,7 +5,7 @@ This is the approved plan for the Tasks module redesign (Asana-style, dark glass
 ## Status
 - Feature 1 is built (side panel, Overview, My tasks Cards and List, detail panel, subtasks, tags, archive); Repeat and Blocked by are placeholders in the detail panel.
 - Feature 2 is built (Board view; drag and drop in Cards, List and Board; the tasks.move action). Feature 3: server stubs only, no UI. Feature 4: the quick-add bar is title only and quick-add/parse.ts does not exist. Feature 5: modules/tasks/favorites/* are stubs; manage-tags/ does not exist. Features 6 to 8 are not started (Inbox, Reporting, Goals show a "Coming soon" page).
-- None of @dnd-kit, rrule, chrono-node, or recharts is installed yet.
+- @dnd-kit (core, sortable, utilities) is installed (Feature 2); rrule, chrono-node, and recharts are not installed yet.
 
 ## Screens
 - **Inner side panel** (inside the Tasks page; the bottom dock stays the main navigation): Overview, My tasks, Inbox (count), Reporting, Goals, Portfolios (disabled, "Soon", Step 5), and a Favorites list with a + button. Collapsible. Inbox, Reporting, Goals and the Favorites + button are disabled with "Soon" until their feature is built (`modules/tasks/features.ts`).

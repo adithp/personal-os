@@ -96,6 +96,7 @@ export function TaskCard(props: TaskItemProps) {
         <span
           className={cx(
             'line-clamp-2 min-w-0 text-body break-words',
+            drag && 'pr-5',
             done ? 'text-fg-muted line-through' : 'text-fg',
           )}
         >

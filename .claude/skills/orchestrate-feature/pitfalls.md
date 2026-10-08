@@ -25,3 +25,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: The flat ESLint config lints every folder
 - Fix: Ignore .claude/worktrees/ in ESLint; it is also git-ignored
 - Prevention: guarded, eslint.config.js ignores .claude/worktrees/; scripts/repo-guards.test.mjs
+
+### 2026-10-09: Two agents built the same drag handle twice and one copy missed the guards
+- Symptom: The Board handle let Delete delete a task, added a Tab stop per card, and could be dragged in the Archived view
+- Cause: The Board agent could not see the Cards and List code being written in parallel, so it copied the pattern without the later fixes
+- Fix: One shared hook (my-tasks/use-drag.tsx) for all views, the archived guard passed to the Board, and Board tests that run through the whole page
+- Prevention: documented: when views share behaviour, put it in the contract (shared hook or component) before the agents start, and test each view through the page
