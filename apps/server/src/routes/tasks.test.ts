@@ -4,7 +4,6 @@ import { sql } from 'drizzle-orm';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { loadEnv } from '../config/env';
-import type { Db } from '../lib/user-scope';
 import {
   OTHER_USER_ID,
   TEST_DATABASE_URL,
@@ -42,7 +41,7 @@ beforeEach(async () => {
   await t.db.execute(sql`truncate table links, tasks, entities, auth.users cascade`);
   await createTestUser(t.db, USER_ID);
   await createTestUser(t.db, OTHER_USER_ID);
-  app = buildApp({ env, verifier: keys.verifier, db: t.db as unknown as Db });
+  app = buildApp({ env, verifier: keys.verifier, db: t.db });
 });
 
 afterEach(async () => {
@@ -62,7 +61,10 @@ interface Item {
   status: string;
   priority: number;
 }
-type Written = { item: Item; undo: { action: string; input: Record<string, unknown> } | null };
+interface Written {
+  item: Item;
+  undo: { action: string; input: Record<string, unknown> } | null;
+}
 
 async function createTask(title: string, headers = alice, extra: object = {}) {
   const response = await call('POST', '/tasks', headers, { title, ...extra });

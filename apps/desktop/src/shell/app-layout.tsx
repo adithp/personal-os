@@ -5,6 +5,7 @@ import { useShortcuts } from '../commands/use-shortcuts';
 import { Dock } from '../dock/dock';
 import { useSettings } from '../store/settings-store';
 import { moduleFromPath, modulePath } from './module-paths';
+import { ToastHost } from './toast-host';
 
 /** Layout for signed-in screens: the page area and the dock. */
 export function AppLayout() {
@@ -26,6 +27,7 @@ export function AppLayout() {
         <Outlet />
       </main>
       <CommandPalette />
+      <ToastHost />
       <Dock
         activeModule={moduleFromPath(pathname)}
         onNavigate={(id) => {

@@ -12,6 +12,7 @@ Setup log (one line per step, newest last; no secrets here):
 - 2026-10-08: read-only GitHub deploy key created on the server; repo cloned to ~/personal-os (branch step-1-foundation).
 - 2026-10-08: apps/server/.env copied from the PC with scp (never printed or pasted); infra/.env created on the server; both chmod 600.
 - 2026-10-08: `docker compose up -d --build` in ~/personal-os/infra. Caddy and server are up, the server is healthy, and https://adith-os.duckdns.org/api/v1/health returns {"status":"ok"} with a valid certificate. Random internet scanners already hit / (404), which is normal.
+- Step 2 note: the server now also needs DATABASE_URL (Supabase session pooler) in its .env. Add it to apps/server/.env on the PC, and to ~/personal-os/apps/server/.env on the AWS server before the next redeploy, or the server will refuse to start. Step 2 is built and tested against the local server (VITE_API_URL=http://127.0.0.1:3000/api/v1); the AWS server is left alone until you redeploy.
 - Next: point the desktop app at the server (VITE_API_URL), lock SSH to my IP, set the budget alert, choose the backup target, add Tailscale, then the deploy workflow and the final deployment guide.
 
 AWS rules for this server: security group allows TCP 80 and 443 from anywhere (UDP 443 for HTTP/3) and TCP 22 from my IP only; port 3000 is never opened. Budget alert of about $5 in AWS Billing. Check that the account is on the Free plan and note the end date of the credits in the calendar.

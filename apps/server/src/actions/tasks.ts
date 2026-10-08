@@ -67,14 +67,14 @@ function orderFor(sort: string, order: 'asc' | 'desc'): SQL[] {
   return [main, asc(tasks.position), asc(tasks.createdAt)];
 }
 
-type Patch = {
+interface Patch {
   title?: string;
   description?: string | null;
   status?: TaskStatus;
   priority?: 1 | 2 | 3 | 4;
   dueAt?: string | null;
   reminderAt?: string | null;
-};
+}
 
 /** Applies a change to one task and works out how to put it back. */
 async function applyChange(

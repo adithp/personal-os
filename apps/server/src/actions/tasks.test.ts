@@ -4,7 +4,7 @@ import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
 import { HttpError } from '../lib/http-error';
-import { createUserScope, type Db } from '../lib/user-scope';
+import { createUserScope } from '../lib/user-scope';
 import { createRegistry, type ActionContext, type ActionEvent } from '.';
 
 const ALICE = '3f6b2c1e-8d4a-4b7e-9c11-2a5d6e7f8091';
@@ -15,7 +15,7 @@ let events: ActionEvent[];
 const registry = createRegistry([{ onAction: (event) => void events.push(event) }]);
 
 const context = (userId: string, overrides: Partial<ActionContext> = {}): ActionContext => ({
-  scope: createUserScope(t.db as unknown as Db, userId),
+  scope: createUserScope(t.db, userId),
   source: 'ui',
   confirmed: true,
   ...overrides,
@@ -39,7 +39,7 @@ beforeEach(async () => {
   await createTestUser(t.db, BOB);
 });
 
-type Item = {
+interface Item {
   id: string;
   title: string;
   status: string;
@@ -49,7 +49,7 @@ type Item = {
   dueAt: string | null;
   reminderAt: string | null;
   completedAt: string | null;
-};
+}
 
 async function create(ctx: ActionContext, input: Record<string, unknown>) {
   const outcome = await registry.run(ctx, 'tasks.create', input);

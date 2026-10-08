@@ -118,14 +118,10 @@
         "entities_user_id_users_id_fk": {
           "name": "entities_user_id_users_id_fk",
           "tableFrom": "entities",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -134,10 +130,7 @@
       "uniqueConstraints": {
         "entities_id_user_id_key": {
           "name": "entities_id_user_id_key",
-          "columns": [
-            "id",
-            "user_id"
-          ],
+          "columns": ["id", "user_id"],
           "nullsNotDistinct": false
         }
       },
@@ -146,9 +139,7 @@
           "name": "entities_own_rows",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"entities\".\"user_id\" = (select auth.uid())",
           "withCheck": "\"entities\".\"user_id\" = (select auth.uid())"
         }
@@ -298,44 +289,28 @@
         "links_user_id_users_id_fk": {
           "name": "links_user_id_users_id_fk",
           "tableFrom": "links",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "links_source_owner_fk": {
           "name": "links_source_owner_fk",
           "tableFrom": "links",
-          "columnsFrom": [
-            "source_id",
-            "user_id"
-          ],
+          "columnsFrom": ["source_id", "user_id"],
           "tableTo": "entities",
-          "columnsTo": [
-            "id",
-            "user_id"
-          ],
+          "columnsTo": ["id", "user_id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "links_target_owner_fk": {
           "name": "links_target_owner_fk",
           "tableFrom": "links",
-          "columnsFrom": [
-            "target_id",
-            "user_id"
-          ],
+          "columnsFrom": ["target_id", "user_id"],
           "tableTo": "entities",
-          "columnsTo": [
-            "id",
-            "user_id"
-          ],
+          "columnsTo": ["id", "user_id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -347,9 +322,7 @@
           "name": "links_own_rows",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"links\".\"user_id\" = (select auth.uid())",
           "withCheck": "\"links\".\"user_id\" = (select auth.uid())"
         }
@@ -548,44 +521,28 @@
         "tasks_user_id_users_id_fk": {
           "name": "tasks_user_id_users_id_fk",
           "tableFrom": "tasks",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "tasks_entity_fk": {
           "name": "tasks_entity_fk",
           "tableFrom": "tasks",
-          "columnsFrom": [
-            "id",
-            "user_id"
-          ],
+          "columnsFrom": ["id", "user_id"],
           "tableTo": "entities",
-          "columnsTo": [
-            "id",
-            "user_id"
-          ],
+          "columnsTo": ["id", "user_id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "tasks_parent_fk": {
           "name": "tasks_parent_fk",
           "tableFrom": "tasks",
-          "columnsFrom": [
-            "parent_task_id",
-            "user_id"
-          ],
+          "columnsFrom": ["parent_task_id", "user_id"],
           "tableTo": "tasks",
-          "columnsTo": [
-            "id",
-            "user_id"
-          ],
+          "columnsTo": ["id", "user_id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -594,10 +551,7 @@
       "uniqueConstraints": {
         "tasks_id_user_id_key": {
           "name": "tasks_id_user_id_key",
-          "columns": [
-            "id",
-            "user_id"
-          ],
+          "columns": ["id", "user_id"],
           "nullsNotDistinct": false
         }
       },
@@ -606,9 +560,7 @@
           "name": "tasks_own_rows",
           "as": "PERMISSIVE",
           "for": "ALL",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"tasks\".\"user_id\" = (select auth.uid())",
           "withCheck": "\"tasks\".\"user_id\" = (select auth.uid())"
         }
@@ -648,23 +600,12 @@
     "public.link_relation": {
       "name": "link_relation",
       "schema": "public",
-      "values": [
-        "mentions",
-        "belongs_to",
-        "blocks",
-        "derived_from",
-        "attached",
-        "related"
-      ]
+      "values": ["mentions", "belongs_to", "blocks", "derived_from", "attached", "related"]
     },
     "public.task_status": {
       "name": "task_status",
       "schema": "public",
-      "values": [
-        "todo",
-        "doing",
-        "done"
-      ]
+      "values": ["todo", "doing", "done"]
     }
   },
   "schemas": {},

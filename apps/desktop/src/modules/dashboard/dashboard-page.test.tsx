@@ -316,9 +316,9 @@ describe('Quick actions row', () => {
     const note = within(section()).getByRole('status');
     expect(note).toHaveClass('h-4');
     expect(note).toHaveTextContent('');
-    await user.click(screen.getByRole('button', { name: 'New task' }));
+    await user.click(screen.getByRole('button', { name: 'Log expense' }));
     expect(note).toHaveClass('h-4');
-    expect(note).toHaveTextContent('Tasks arrive in step 2');
+    expect(note).toHaveTextContent('Money arrives in step 6');
   });
 
   it.each([
@@ -339,8 +339,14 @@ describe('Quick actions row', () => {
     },
   );
 
+  it('New task opens the Tasks page instead of showing a note', async () => {
+    const { user, router } = await openDashboard();
+    await user.click(screen.getByRole('button', { name: 'New task' }));
+    expect(router.state.location.pathname).toBe('/tasks');
+    expect(await screen.findByRole('textbox', { name: 'New task' })).toHaveFocus();
+  });
+
   it.each([
-    ['New task', 'Tasks arrive in step 2'],
     ['New note', 'Notes arrive in step 2'],
     ['Log expense', 'Money arrives in step 6'],
     ['New event', 'Calendar arrives in step 4'],
@@ -352,8 +358,8 @@ describe('Quick actions row', () => {
 
   it('matches the roadmap steps and replaces the note on the next click', async () => {
     const { user } = await openDashboard();
-    expect(MODULES.tasks.roadmapStep).toBe(2);
-    await user.click(screen.getByRole('button', { name: 'New task' }));
+    expect(MODULES.notes.roadmapStep).toBe(2);
+    await user.click(screen.getByRole('button', { name: 'New note' }));
     await user.click(screen.getByRole('button', { name: 'New event' }));
     expect(within(section()).getAllByRole('status')).toHaveLength(1);
     expect(within(section()).getByRole('status')).toHaveTextContent('Calendar arrives in step 4');

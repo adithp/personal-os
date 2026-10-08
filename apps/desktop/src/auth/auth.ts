@@ -27,6 +27,8 @@ export interface Auth {
   signIn: (email: string, password: string) => Promise<SignInResult>;
   /** Signs out on this device only. */
   signOut: () => Promise<void>;
+  /** The current login token for calls to the backend, or null when signed out. */
+  getAccessToken: () => Promise<string | null>;
 }
 
 export type AuthSource = { client: AuthClient } | { issues: string[] };
@@ -106,5 +108,16 @@ export function createAuth(source: AuthSource): Auth {
     store.setState(stateFor(null));
   };
 
-  return { store, initialize, signIn, signOut };
+  const getAccessToken = async (): Promise<string | null> => {
+    if ('issues' in source) return null;
+    try {
+      // supabase-js refreshes an expiring token itself before handing it out
+      const { data } = await source.client.getSession();
+      return data.session?.access_token ?? null;
+    } catch {
+      return null;
+    }
+  };
+
+  return { store, initialize, signIn, signOut, getAccessToken };
 }

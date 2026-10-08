@@ -12,5 +12,5 @@ export interface ServerDatabase {
  */
 export function connectDatabase(databaseUrl: string): ServerDatabase {
   const connection = createDatabase(databaseUrl);
-  return { db: connection.db as unknown as Db, close: connection.close };
+  return { db: connection.db, close: connection.close };
 }

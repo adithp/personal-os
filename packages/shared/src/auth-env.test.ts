@@ -39,9 +39,16 @@ describe('parseDesktopEnv', () => {
     expect(parseDesktopEnv(valid)).toEqual({ ok: true, env: valid });
   });
 
-  it('allows the API URL to be missing or empty', () => {
-    expect(parseDesktopEnv({ ...valid, VITE_API_URL: undefined }).ok).toBe(true);
-    expect(parseDesktopEnv({ ...valid, VITE_API_URL: '' }).ok).toBe(true);
+  it('requires the API URL, and accepts the local development address', () => {
+    for (const missing of [undefined, '']) {
+      const result = parseDesktopEnv({ ...valid, VITE_API_URL: missing });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.issues.join('\n')).toContain('VITE_API_URL');
+    }
+    expect(parseDesktopEnv({ ...valid, VITE_API_URL: 'http://127.0.0.1:3000/api/v1' }).ok).toBe(
+      true,
+    );
+    expect(parseDesktopEnv({ ...valid, VITE_API_URL: 'not a url' }).ok).toBe(false);
   });
 
   it('ignores unrelated variables such as MODE and DEV', () => {
@@ -54,6 +61,7 @@ describe('parseDesktopEnv', () => {
     if (result.ok) return;
     expect(result.issues.join('\n')).toContain('VITE_SUPABASE_URL');
     expect(result.issues.join('\n')).toContain('VITE_SUPABASE_ANON_KEY');
+    expect(result.issues.join('\n')).toContain('VITE_API_URL');
   });
 
   it('rejects the placeholder values from .env.example', () => {

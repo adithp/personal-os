@@ -16,6 +16,7 @@ vi.mock('@supabase/supabase-js', () => ({
 const env = {
   VITE_SUPABASE_URL: 'https://abcdefgh.supabase.co',
   VITE_SUPABASE_ANON_KEY: 'public-anon-key-value',
+  VITE_API_URL: 'http://127.0.0.1:3000/api/v1',
 };
 
 beforeEach(() => {

@@ -12,10 +12,19 @@ Every write route calls the matching action in the action registry.
 
 Resources: /tasks, /habits, /habit-logs, /notes, /note-folders, /note-templates, /tags, /projects, /milestones, /clients, /time-entries, /wallets, /categories, /transactions, /budgets, /savings-goals, /subscriptions, /people, /dashboards, /ai/skills
 
+Responses:
+- List: `{ "items": [...] }` (tasks: filters `status` (repeatable), `archived`, `sort`, `order`, `limit`, `offset`).
+- Get: `{ "item": {...} }`.
+- Create, update, complete, delete: `{ "item": {...}, "undo": { "action", "input" } | null }`. Create answers 201. Delete is a soft delete.
+- `undo` is the way to reverse the change: send it as the body of `POST /undo`.
+- Task times are ISO 8601 strings in UTC (for example `2025-10-07T11:30:00.000Z`) and must carry a zone.
+
 ## Special routes
 | Method | Path | Purpose |
 |---|---|---|
 | GET | /health | Server health (full path /api/v1/health, no auth). Returns {"status":"ok","time":<UTC>} |
+| POST | /tasks/:id/complete | Mark a task done (returns the task and an undo) |
+| POST | /undo | Run the `undo` returned by a write: body `{ "action": "tasks.restore", "input": { "id": "..." } }`. Only actions that change data can be run this way |
 | GET | /me | The signed-in user from the token: {id, email, role}. Used to check that login works end to end |
 | GET | /links?entityId= | Links for an entity (backlinks, project items) |
 | POST | /links | Create a link |

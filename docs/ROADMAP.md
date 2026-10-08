@@ -24,11 +24,19 @@ Work on one step at a time. Use each step daily before starting the next.
 - [ ] Google Cloud project
 
 ## Step 2 – Tasks and notes
-- [ ] Tasks: CRUD, subtasks, priorities, deadlines, tags, recurring, dependencies
+- [x] Tasks list: create, edit, complete, delete, priorities, deadlines, reminder date, undo
+- [ ] Tasks: subtasks, tags, archive, recurring, dependencies
 - [ ] Task views: list and kanban
 - [ ] Notes: TipTap editor, folders, wikilinks, backlinks, tags, templates, daily notes, version history
 - [ ] Full-text search
 - [ ] Realtime updates
+
+## Step 2b – Notes extras
+Left out of Step 2 on purpose so the core editor ships first:
+- [ ] Math (KaTeX) and callouts
+- [ ] Images, files, embeds, and attachments (Supabase Storage)
+- [ ] Raw markdown mode (CodeMirror 6)
+- [ ] Local graph in the notes right panel
 
 ## Step 3 – AI core
 - [ ] OmniRoute container, assistant and coding keys, Tailscale access for coding tools

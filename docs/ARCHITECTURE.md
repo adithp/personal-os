@@ -37,6 +37,7 @@ Laptop coding tools ──Tailscale──► OmniRoute
 | Knowledge graph | Sigma.js + graphology |
 | Dashboard grid | react-grid-layout |
 | Drag and drop | dnd-kit |
+| Recurring dates | rrule (RRULE parsing and the next occurrence of a recurring task) |
 | Calendar views | Schedule-X |
 | Charts | Apache ECharts |
 | Tables | TanStack Table |

@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import { createAuth, type Auth, type AuthClient } from '../auth/auth';
 
-type Session = { user: { email: string } } | null;
+type Session = { user: { email: string }; access_token?: string } | null;
 type Listener = (event: string, session: Session) => void;
 
 interface SignInResponse {
@@ -35,7 +35,7 @@ export function createFakeClient(initialSession: Session = null) {
     }),
     signInWithPassword: vi.fn(
       ({ email }: { email: string; password: string }): Promise<SignInResponse> => {
-        const session = { user: { email } };
+        const session = { user: { email }, access_token: 'test-token' };
         current = session;
         return Promise.resolve({ data: { session, user: session.user }, error: null });
       },
@@ -52,7 +52,7 @@ export function createFakeClient(initialSession: Session = null) {
 export function signedInAuth(
   email = 'me@example.com',
 ): { auth: Auth } & ReturnType<typeof createFakeClient> {
-  const fake = createFakeClient({ user: { email } });
+  const fake = createFakeClient({ user: { email }, access_token: 'test-token' });
   return { auth: createAuth({ client: fake.client }), ...fake };
 }
 

@@ -32,8 +32,11 @@ Each module table uses the same id as its entity row.
 
 ## 3. Tables
 ### Tasks
-- tasks: id, title, description, status (todo, doing, done), priority (1–4), due_at, reminder_at, recurrence_rule (RRULE text), parent_task_id, project_id, category, position, completed_at, archived_at
+- tasks: id (same as its entities row), title, description, status (todo, doing, done), priority (1–4, 1 is the most urgent), due_at, reminder_at, recurrence_rule (RRULE text), parent_task_id (one level only), position, completed_at, archived_at, deleted_at
+- project_id and category are added in Step 5 (tags cover grouping until then).
+- A task is the entity with the same id and the same owner (composite foreign key). Deleting an entity deletes its task. A task cannot be its own parent, and a subtask's parent must belong to the same user.
 - Dependencies are links with relation = blocks.
+- Migrations: 0002_tasks_table, and 0003_tasks_updated_at_trigger (written by hand).
 
 ### Habits
 - habits: id, name, category, schedule_type (daily, weekly, custom), schedule_days (int[]), target_per_period, reminder_time, color_override, notes, archived_at
@@ -47,7 +50,7 @@ Each module table uses the same id as its entity row.
 - Wikilinks and backlinks are links with relation = mentions, rebuilt on every save.
 
 ### Tags
-- tags: id, name, color
+- tags: id, name, color. A plain table: a tag has no row in entities. The knowledge graph (Step 7) builds tag nodes from the tags table.
 - entity_tags: entity_id, tag_id
 
 ### Calendar
