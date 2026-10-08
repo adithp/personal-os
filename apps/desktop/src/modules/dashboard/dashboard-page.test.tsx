@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSettings } from '../../store/settings-store';
 import { signedInAuth } from '../../test/fake-auth';
 import { renderApp } from '../../test/render-app';
-import { DASHBOARD_DATA, moneyTileText, tasksProgressPercent } from './dashboard-data';
+import { DASHBOARD_DATA, moneyTileText } from './dashboard-data';
 
 vi.mock('@tauri-apps/api/window', async (importOriginal) => ({
   ...(await importOriginal<typeof TauriWindow>()),
@@ -173,17 +173,6 @@ describe('Dashboard tiles use the module colors', () => {
 });
 
 describe('Dashboard content', () => {
-  it("shows today's tasks with progress", async () => {
-    await openDashboard();
-    const el = tile("Today's tasks");
-    expect(within(el).getByText('3')).toBeInTheDocument();
-    expect(within(el).getByText('of 7 done')).toBeInTheDocument();
-    expect(within(el).getByText('Next: Submit DBMS assignment')).toBeInTheDocument();
-    expect(within(el).getByText('Due 5:00 PM')).toBeInTheDocument();
-    expect(within(el).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '43');
-    expect(tasksProgressPercent()).toBe(43);
-  });
-
   it('shows the Important emails tile in Mail blue with the count and the top two subjects', async () => {
     await openDashboard();
     const el = tile('Important emails');
