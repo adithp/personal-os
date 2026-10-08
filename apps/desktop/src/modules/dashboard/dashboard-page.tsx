@@ -7,21 +7,23 @@ import { usePalette } from '../../store/palette-store';
 import { ActivityCard } from './activity-card';
 import { AssistantCard } from './assistant-card';
 import { addDays, todayInIndia } from './calendar-grid';
-import { DASHBOARD_DATA, moneyTileText, tasksProgressPercent } from './dashboard-data';
+import { DASHBOARD_DATA, moneyTileText } from './dashboard-data';
 import { formatDashboardDate, greetingFor, useNow } from './greeting';
 import { MiniCalendar } from './mini-calendar';
 import { QuickActions } from './quick-actions';
 import { UpcomingCard } from './upcoming-card';
+import { useTasksTile } from './use-tasks-tile';
 
 /**
- * The day at a glance (static placeholder data for now).
+ * The day at a glance (real tasks in the Today's tasks tile, static placeholder data elsewhere).
  * Two columns that scroll independently when the window is short: the main column
  * (greeting, assistant, tiles, quick actions) and the right column (calendar, upcoming, activity).
  */
 export function DashboardPage() {
   const navigate = useNavigate();
   const now = useNow();
-  const { tasks, emails, streak, projects } = DASHBOARD_DATA;
+  const { emails, streak, projects } = DASHBOARD_DATA;
+  const tasks = useTasksTile(now).text;
   const money = moneyTileText();
 
   const today = todayInIndia(now);
@@ -82,10 +84,10 @@ export function DashboardPage() {
           <Tile
             module="tasks"
             title="Today's tasks"
-            value={tasks.done}
-            unit={`of ${String(tasks.total)} done`}
-            lines={[`Next: ${tasks.nextTitle}`, tasks.nextDue]}
-            progress={tasksProgressPercent()}
+            value={tasks.value}
+            unit={tasks.unit}
+            lines={tasks.lines}
+            progress={tasks.progress}
             onOpen={open('tasks')}
           />
           <Tile
