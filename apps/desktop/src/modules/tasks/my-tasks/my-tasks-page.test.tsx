@@ -7,6 +7,7 @@ import { createFakeApi, makeTag, makeTask } from '../../../test/fake-api';
 import { useTasksUi } from '../tasks-ui-store';
 import {
   addBox,
+  findToast,
   itemOf,
   items,
   openMyTasks,
@@ -174,9 +175,8 @@ describe('cards', () => {
     const grid = card.parentElement;
     expect(grid).toHaveClass('grid', 'grid-cols-[repeat(auto-fill,minmax(180px,1fr))]', 'gap-2');
     expect(card).toHaveClass('hover:-translate-y-0.5', 'glass', 'rounded-card');
-    // Drag and drop arrives with the Board feature
-    expect(card).not.toHaveAttribute('draggable');
-    expect(screen.queryByRole('button', { name: /drag/i })).not.toBeInTheDocument();
+    // Each card has a drag handle
+    expect(within(card).getByRole('button', { name: 'Drag One' })).toBeInTheDocument();
   });
 
   it('fades completed cards and strikes their titles through', async () => {
@@ -564,8 +564,7 @@ describe('complete, delete, and select', () => {
     });
     expect(screen.getByRole('button', { name: /Completed/ })).toHaveTextContent('1');
 
-    const toast = await screen.findByRole('status');
-    expect(toast).toHaveTextContent('Task completed.');
+    const toast = await findToast('Task completed.');
     await user.click(within(toast).getByRole('button', { name: 'Undo' }));
     await waitFor(() => {
       expect(titles()).toEqual(['Write report']);
@@ -595,8 +594,7 @@ describe('complete, delete, and select', () => {
     await waitFor(() => {
       expect(titles()).toEqual(['Keep me']);
     });
-    const toast = await screen.findByRole('status');
-    expect(toast).toHaveTextContent('Task deleted.');
+    const toast = await findToast('Task deleted.');
     await user.click(within(toast).getByRole('button', { name: 'Undo' }));
     await waitFor(() => {
       expect(titles()).toHaveLength(2);

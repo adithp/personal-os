@@ -6,6 +6,7 @@ import { ApiError } from '../../../api/api-client';
 import { useNow } from '../../dashboard/greeting';
 import { BoardView } from '../board/board-view';
 import { TaskDetailPanel } from '../detail/task-detail-panel';
+import { NOT_MANUAL_MESSAGE } from '../drag/resolve-drop';
 import { TASK_FEATURES } from '../features';
 import {
   applyFilters,
@@ -26,6 +27,7 @@ import { FilterMenu, GroupMenu, SortMenu } from './controls';
 import { ShortcutsHelp } from './shortcuts-help';
 import type { TaskItemContext } from './task-item';
 import { TaskSection } from './task-section';
+import { TasksDnd } from './tasks-dnd';
 import { useMyTasksData } from './use-my-tasks-data';
 import { useTaskShortcuts } from './use-task-shortcuts';
 
@@ -191,6 +193,36 @@ export function MyTasksPage() {
   const filtered = hasActiveFilters(filters);
   const empty = shown.length === 0;
 
+  // Archived tasks cannot be dragged. Reordering needs Manual sort (moving between sections does not).
+  const dragEnabled = !archived && view !== 'board';
+  const manualSort = ui.sort === 'manual';
+  const sections =
+    view === 'board'
+      ? null
+      : groups.map((group) => (
+          <TaskSection
+            key={group.id}
+            group={group}
+            view={view}
+            heading={ui.group !== 'none'}
+            collapsed={isCollapsed(group.id)}
+            onToggle={() => {
+              toggleGroup(group.id);
+            }}
+            context={context}
+            dnd={dragEnabled ? { sections: ui.group === 'due' } : undefined}
+            footer={
+              ui.group === 'due' && group.id === 'completed' && data.canShowMore ? (
+                <div>
+                  <Button variant="secondary" disabled={data.loadingMore} onClick={data.showMore}>
+                    Show more
+                  </Button>
+                </div>
+              ) : null
+            }
+          />
+        ));
+
   return (
     <div className="flex h-full min-h-0 w-full gap-6 px-8 pt-4">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">
@@ -238,6 +270,9 @@ export function MyTasksPage() {
             >
               Clear filters
             </button>
+          ) : null}
+          {!archived && !manualSort ? (
+            <p className="px-2 text-small text-fg-muted">{NOT_MANUAL_MESSAGE}</p>
           ) : null}
           <button
             type="button"
@@ -291,34 +326,22 @@ export function MyTasksPage() {
           {!data.isPending && !data.isError && !empty && view === 'board' ? (
             <BoardView tasks={shown} now={now} manualSort={ui.sort === 'manual'} />
           ) : null}
-          {!data.isPending && !data.isError && !empty && view !== 'board'
-            ? groups.map((group) => (
-                <TaskSection
-                  key={group.id}
-                  group={group}
-                  view={view}
-                  heading={ui.group !== 'none'}
-                  collapsed={isCollapsed(group.id)}
-                  onToggle={() => {
-                    toggleGroup(group.id);
-                  }}
-                  context={context}
-                  footer={
-                    ui.group === 'due' && group.id === 'completed' && data.canShowMore ? (
-                      <div>
-                        <Button
-                          variant="secondary"
-                          disabled={data.loadingMore}
-                          onClick={data.showMore}
-                        >
-                          Show more
-                        </Button>
-                      </div>
-                    ) : null
-                  }
-                />
-              ))
-            : null}
+          {!data.isPending && !data.isError && !empty && view !== 'board' ? (
+            dragEnabled ? (
+              <TasksDnd
+                groups={groups}
+                groupKey={ui.group}
+                view={view}
+                now={now}
+                manualSort={manualSort}
+                context={context}
+              >
+                {sections}
+              </TasksDnd>
+            ) : (
+              sections
+            )
+          ) : null}
         </div>
       </div>
 

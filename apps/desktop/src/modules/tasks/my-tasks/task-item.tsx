@@ -37,10 +37,13 @@ export interface TaskItemProps {
   /** Unique on the page (a task can be in two tag groups). */
   itemKey: string;
   context: TaskItemContext;
+  /** The copy that follows the pointer while dragging: not a real item, hidden from the keyboard and screen readers. */
+  overlay?: boolean;
 }
 
-function itemProps({ task, itemKey, context }: TaskItemProps) {
+function itemProps({ task, itemKey, context, overlay }: TaskItemProps) {
   const selected = context.selectedId === task.id;
+  if (overlay) return { selected, attrs: { 'aria-hidden': true as const } };
   return {
     selected,
     attrs: {

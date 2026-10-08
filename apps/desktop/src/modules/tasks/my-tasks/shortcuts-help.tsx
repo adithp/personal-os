@@ -8,6 +8,9 @@ const SHORTCUTS: readonly { keys: readonly string[]; action: string }[] = [
   { keys: ['Space'], action: 'Complete or reopen' },
   { keys: ['Enter'], action: 'Open details' },
   { keys: ['Delete'], action: 'Delete' },
+  { keys: ['Space'], action: 'Lift or drop (on the drag handle)' },
+  { keys: ['←', '→', '↑', '↓'], action: 'Move a lifted task' },
+  { keys: ['Esc'], action: 'Cancel a lift' },
   { keys: ['Esc'], action: 'Close' },
   { keys: ['?'], action: 'Show this help' },
 ];
