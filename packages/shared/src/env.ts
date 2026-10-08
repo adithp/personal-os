@@ -10,7 +10,7 @@ const exampleMessage = 'still has the example value from .env.example';
 
 /**
  * The only variables the desktop and mobile apps may have (docs/SECURITY.md).
- * The API URL is optional until the first screen that calls the backend.
+ * VITE_API_URL is where the backend runs, e.g. http://127.0.0.1:3000/api/v1 on this computer.
  */
 export const desktopEnvSchema = z.object({
   VITE_SUPABASE_URL: z
@@ -18,8 +18,8 @@ export const desktopEnvSchema = z.object({
     .refine(notExample, exampleMessage),
   VITE_SUPABASE_ANON_KEY: z.string().trim().min(1, 'is missing').refine(notExample, exampleMessage),
   VITE_API_URL: z
-    .union([z.literal(''), z.url('must be a full URL').refine(notExample, exampleMessage)])
-    .optional(),
+    .url('must be a full URL such as http://127.0.0.1:3000/api/v1')
+    .refine(notExample, exampleMessage),
 });
 
 export type DesktopEnv = z.infer<typeof desktopEnvSchema>;

@@ -59,10 +59,12 @@ async function entity(
 }
 
 describe('the generated migrations', () => {
-  it('has the two migrations in order, and they never drop or empty anything', () => {
+  it('has the migrations in order, and they never drop or empty anything', () => {
     expect(migrationFiles()).toEqual([
       '0000_entities_and_links.sql',
       '0001_updated_at_trigger.sql',
+      '0002_tasks_table.sql',
+      '0003_tasks_updated_at_trigger.sql',
     ]);
     const all = migrationFiles().flatMap(migrationStatements).join('\n').toUpperCase();
     for (const dangerous of [
@@ -80,7 +82,7 @@ describe('the generated migrations', () => {
     const tables = await rows(
       "select tablename from pg_tables where schemaname = 'public' order by tablename",
     );
-    expect(tables.map((r) => r.tablename)).toEqual(['entities', 'links']);
+    expect(tables.map((r) => r.tablename)).toEqual(['entities', 'links', 'tasks']);
   });
 });
 
@@ -192,11 +194,12 @@ describe('docs/DATABASE.md rules', () => {
 describe('Row Level Security is on, with an own-rows policy', () => {
   it('is enabled on every table', async () => {
     const result = await rows(
-      "select relname, relrowsecurity from pg_class where relname in ('entities','links') order by relname",
+      "select relname, relrowsecurity from pg_class where relname in ('entities','links','tasks') order by relname",
     );
     expect(result).toEqual([
       { relname: 'entities', relrowsecurity: true },
       { relname: 'links', relrowsecurity: true },
+      { relname: 'tasks', relrowsecurity: true },
     ]);
   });
 
@@ -204,7 +207,7 @@ describe('Row Level Security is on, with an own-rows policy', () => {
     const policies = await rows(
       "select tablename, policyname, roles, cmd, qual, with_check from pg_policies where schemaname = 'public' order by tablename",
     );
-    expect(policies.map((p) => p.tablename)).toEqual(['entities', 'links']);
+    expect(policies.map((p) => p.tablename)).toEqual(['entities', 'links', 'tasks']);
     for (const policy of policies) {
       expect(policy.roles).toEqual(['authenticated']);
       expect(policy.cmd).toBe('ALL');

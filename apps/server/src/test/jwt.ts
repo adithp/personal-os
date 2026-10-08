@@ -69,3 +69,4 @@ export async function createTestKeys(): Promise<TestKeys> {
     signWithUnknownKey: (options = {}) => signWith(stranger.privateKey, 'stranger-key', options),
   };
 }
+export const TEST_DATABASE_URL = 'postgresql://postgres.test:secret@localhost:5432/postgres';

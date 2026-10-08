@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CORS_ORIGINS, EnvError, loadEnv } from './env';
 
-const valid = { SUPABASE_URL: 'https://abcdefgh.supabase.co' };
+const DATABASE_URL =
+  'postgresql://postgres.abcdefgh:secret@aws-0-ap-south-1.pooler.supabase.com:5432/postgres';
+const valid = { SUPABASE_URL: 'https://abcdefgh.supabase.co', DATABASE_URL };
 
 describe('loadEnv', () => {
   it('applies defaults', () => {
@@ -53,11 +55,29 @@ describe('loadEnv', () => {
   });
 
   it('rejects the example values from .env.example', () => {
-    expect(() => loadEnv({ SUPABASE_URL: 'https://xxxx.supabase.co' })).toThrow(/example value/);
+    expect(() => loadEnv({ SUPABASE_URL: 'https://xxxx.supabase.co', DATABASE_URL })).toThrow(
+      /example value/,
+    );
   });
 
   it('rejects a value that is not a URL', () => {
-    expect(() => loadEnv({ SUPABASE_URL: 'abcdefgh.supabase.co' })).toThrow(EnvError);
+    expect(() => loadEnv({ SUPABASE_URL: 'abcdefgh.supabase.co', DATABASE_URL })).toThrow(EnvError);
+  });
+
+  it('needs DATABASE_URL, a postgresql:// address, and never repeats it in an error', () => {
+    expect(() => loadEnv({ SUPABASE_URL: valid.SUPABASE_URL })).toThrow(/DATABASE_URL/);
+    expect(() => loadEnv({ ...valid, DATABASE_URL: 'mysql://user:hunter2@host/db' })).toThrow(
+      /DATABASE_URL must be a postgresql/,
+    );
+    expect(() =>
+      loadEnv({ ...valid, DATABASE_URL: 'postgresql://postgres.xxxx:replace-me@h/db' }),
+    ).toThrow(/example value/);
+    try {
+      loadEnv({ ...valid, DATABASE_URL: 'mysql://user:hunter2@host/db' });
+    } catch (error) {
+      expect((error as EnvError).message).not.toContain('hunter2');
+    }
+    expect(loadEnv(valid).DATABASE_URL).toBe(DATABASE_URL);
   });
 
   it('rejects an unknown NODE_ENV or log level', () => {
@@ -67,7 +87,11 @@ describe('loadEnv', () => {
 
   it('never repeats a secret value in the error', () => {
     try {
-      loadEnv({ SUPABASE_URL: 'https://xxxx.supabase.co', PORT: 'super-secret-port-text' });
+      loadEnv({
+        SUPABASE_URL: 'https://xxxx.supabase.co',
+        DATABASE_URL,
+        PORT: 'super-secret-port-text',
+      });
     } catch (error) {
       expect((error as EnvError).message).not.toContain('super-secret-port-text');
       expect((error as EnvError).message).not.toContain('xxxx.supabase.co');

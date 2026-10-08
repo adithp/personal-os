@@ -22,6 +22,12 @@ export const serverEnvSchema = z.object({
   SUPABASE_URL: z
     .url('must be a full URL such as https://abcd.supabase.co')
     .refine(notExample, 'still has the example value from .env.example'),
+  /** Supabase session pooler address (IPv4). Holds a password, so it is never logged. */
+  DATABASE_URL: z
+    .string()
+    .trim()
+    .regex(/^postgres(ql)?:\/\//, 'must be a postgresql:// address')
+    .refine(notExample, 'still has the example value from .env.example'),
   /** Comma-separated list of allowed browser origins. Defaults to the desktop app. */
   CORS_ORIGINS: z.string().optional(),
 });

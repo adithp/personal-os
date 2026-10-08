@@ -5,12 +5,23 @@ import { z } from 'zod';
 import { buildApp } from './app';
 import { loadEnv } from './config/env';
 import { HttpError } from './lib/http-error';
-import { TEST_SUPABASE_URL, USER_ID, createTestKeys, type TestKeys } from './test/jwt';
+import {
+  TEST_DATABASE_URL,
+  TEST_SUPABASE_URL,
+  USER_ID,
+  createTestKeys,
+  type TestKeys,
+} from './test/jwt';
 
 let keys: TestKeys;
 let app: FastifyInstance | undefined;
 
-const env = loadEnv({ SUPABASE_URL: TEST_SUPABASE_URL, NODE_ENV: 'test', LOG_LEVEL: 'silent' });
+const env = loadEnv({
+  SUPABASE_URL: TEST_SUPABASE_URL,
+  DATABASE_URL: TEST_DATABASE_URL,
+  NODE_ENV: 'test',
+  LOG_LEVEL: 'silent',
+});
 
 beforeAll(async () => {
   keys = await createTestKeys();
@@ -232,6 +243,7 @@ describe('CORS (the desktop app talks to the server from the browser engine)', (
   it('uses the origins from the settings when given', async () => {
     const custom = loadEnv({
       SUPABASE_URL: TEST_SUPABASE_URL,
+      DATABASE_URL: TEST_DATABASE_URL,
       LOG_LEVEL: 'silent',
       CORS_ORIGINS: 'https://app.example',
     });
@@ -254,7 +266,11 @@ describe('logging never contains secrets', () => {
       },
     });
     const server = makeApp({
-      env: loadEnv({ SUPABASE_URL: TEST_SUPABASE_URL, LOG_LEVEL: 'trace' }),
+      env: loadEnv({
+        SUPABASE_URL: TEST_SUPABASE_URL,
+        DATABASE_URL: TEST_DATABASE_URL,
+        LOG_LEVEL: 'trace',
+      }),
       logStream: stream,
     });
     await run(server);

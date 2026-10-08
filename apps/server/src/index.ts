@@ -1,5 +1,6 @@
 import { buildApp } from './app';
 import { EnvError, loadEnv } from './config/env';
+import { connectDatabase } from './lib/database';
 
 function readEnv() {
   try {
@@ -17,11 +18,13 @@ function readEnv() {
 }
 
 const env = readEnv();
-const app = buildApp({ env });
+const database = connectDatabase(env.DATABASE_URL);
+const app = buildApp({ env, db: database.db });
 
 async function shutdown(signal: string) {
   app.log.info({ signal }, 'shutting down');
   await app.close();
+  await database.close();
   process.exit(0);
 }
 process.on('SIGTERM', () => void shutdown('SIGTERM'));

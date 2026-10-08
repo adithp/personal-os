@@ -2,9 +2,11 @@ import cors from '@fastify/cors';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import type { Writable } from 'node:stream';
 import { ZodError } from 'zod';
+import { createRegistry } from './actions';
 import { createJwtVerifier, type JwtVerifier } from './auth/verify-jwt';
 import type { ServerEnv } from './config/env';
 import { HttpError } from './lib/http-error';
+import type { Db } from './lib/user-scope';
 import { v1Routes } from './routes/v1';
 
 export const API_PREFIX = '/api/v1';
@@ -13,6 +15,8 @@ export interface BuildAppOptions {
   env: ServerEnv;
   /** Checks login tokens. Defaults to the Supabase project's keys; tests pass their own. */
   verifier?: JwtVerifier;
+  /** The database (always given when the server runs; some tests leave it out). */
+  db?: Db;
   /** Where log lines go. Defaults to stdout. */
   logStream?: Writable;
 }
@@ -28,7 +32,7 @@ const body = (code: string, message: string): ErrorBody => ({ error: { code, mes
  * Logs never contain tokens: the Authorization and cookie headers are redacted and only the
  * path (no query string) of a request is logged.
  */
-export function buildApp({ env, verifier, logStream }: BuildAppOptions): FastifyInstance {
+export function buildApp({ env, verifier, db, logStream }: BuildAppOptions): FastifyInstance {
   const app = Fastify({
     trustProxy: true,
     logger: {
@@ -60,6 +64,7 @@ export function buildApp({ env, verifier, logStream }: BuildAppOptions): Fastify
   void app.register(v1Routes, {
     prefix: API_PREFIX,
     verifier: verifier ?? createJwtVerifier({ supabaseUrl: env.SUPABASE_URL }),
+    ...(db ? { db, registry: createRegistry() } : {}),
   });
 
   app.setNotFoundHandler((_request, reply) => {
