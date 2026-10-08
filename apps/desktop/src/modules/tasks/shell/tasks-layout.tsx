@@ -1,12 +1,14 @@
 import { Outlet } from '@tanstack/react-router';
+import { SidePanel } from './side-panel';
 
-/**
- * CONTRACT STUB, owned by the Feature 1 "shell and overview" ui-dev agent.
- * The Tasks module frame: the slim, collapsible inner side panel (Overview, My tasks, Inbox,
- * Reporting, Goals, Portfolios, Favorites) on the left and the page (<Outlet />) on the right.
- * Read TASK_FEATURES (../features) to know which items are disabled ("Soon") and useTasksUi
- * (../tasks-ui-store) for the collapsed state. The Inbox count is inboxTasks(...) from ../sections.
- */
+/** The Tasks module frame: the slim inner side panel on the left, the page on the right. */
 export function TasksLayout() {
-  return <Outlet />;
+  return (
+    <div className="flex h-full min-h-0 gap-3 px-4 pt-4">
+      <SidePanel />
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+        <Outlet />
+      </div>
+    </div>
+  );
 }
