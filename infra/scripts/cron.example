@@ -1,0 +1,11 @@
+# Host cron for the Oracle server (Ubuntu). Install with:  crontab -e
+# The server clock is UTC, so 02:00 India time (UTC+5:30) is 20:30 UTC the day before.
+# Adjust /opt/personal-os to where the repository is cloned. Make the scripts executable once:
+#   chmod +x /opt/personal-os/infra/scripts/*.sh
+# Create the log folder once:  sudo mkdir -p /var/log/personal-os && sudo chown "$USER" /var/log/personal-os
+
+# Keep the DuckDNS name pointing at this server (every 5 minutes)
+*/5 * * * * /opt/personal-os/infra/scripts/duckdns-update.sh >> /var/log/personal-os/duckdns.log 2>&1
+
+# Database backup at 02:00 India time (20:30 UTC), kept for 30 days in Oracle Object Storage
+30 20 * * * /opt/personal-os/infra/scripts/backup.sh >> /var/log/personal-os/backup.log 2>&1

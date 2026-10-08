@@ -3,7 +3,7 @@
 AI is the intelligence layer across the whole app. The AI never touches the database directly; it uses tools (actions), and the backend runs them.
 
 ## 1. OmniRoute
-- One self-hosted OmniRoute server on the Oracle machine (Docker, private network, never public).
+- One self-hosted OmniRoute server on the server machine (Docker, private network, never public).
 - Pinned to a reviewed, patched version. No automatic updates.
 - Two gateway API keys:
   - assistant – used only by the Personal OS backend.

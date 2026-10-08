@@ -4,13 +4,16 @@
 One screen that shows my whole day and lets me act on it.
 
 ## Layout
-Follows docs/DESIGN.md section 8: greeting and search, assistant card, tile grid, activity feed, dock.
+Follows docs/DESIGN.md section 8.
+- Main column: greeting and date, a wide search field (type to open the command palette with your text), the assistant card, then a 3 by 2 grid of equal-size cards: Today's tasks, Important emails, Money, Streak, Projects, and the Quick actions card (New task, New note, Log expense, New event in a 2 by 2 grid).
+- Right column (280 px): mini calendar, Upcoming (Today and Tomorrow, at most 4 events), Activity (3 items with "View all").
+- At the 1100×700 minimum window the main column fits without scrolling; the two columns scroll independently if the window is shorter.
 
 ## Widgets
 | Widget | Color | Shows |
 |---|---|---|
 | Today's tasks | Tasks yellow | done of total, progress bar, next due task |
-| Next event | Calendar orange | time of next event, title, minutes until |
+| Next event | Calendar orange | time of next event, title, minutes until (in the first layout this is shown by the Upcoming card instead) |
 | Habits streak | Habits lime | best current streak, today's habits |
 | Money | Money mint | spent this month of budget, % used |
 | Projects | Projects pink | active count, top two with progress |

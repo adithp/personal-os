@@ -20,7 +20,7 @@ Read these before starting any work:
 - ORM: Drizzle ORM
 - AI: OmniRoute gateway, called with the Vercel AI SDK (OpenAI-compatible provider)
 - Validation and shared types: Zod in packages/shared
-- Hosting: Oracle Cloud Always Free ARM server, Docker Compose, Caddy, DuckDNS, Tailscale
+- Hosting: AWS EC2 ARM server for now (free-plan credits), moving to Oracle Cloud Always Free when capacity allows; Docker Compose, Caddy, DuckDNS, Tailscale (decision 35)
 
 ## Commands
 - pnpm install – install everything

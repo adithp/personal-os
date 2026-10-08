@@ -16,14 +16,61 @@ Setting: Appearance → Theme = Dark, Light, or System. Default: System.
 | text-muted | rgba(255,255,255,0.45) | rgba(0,0,0,0.4) |
 | text-on-tile | #1C1C1C | #1C1C1C |
 | danger | #F28B82 | #C5221F |
+| tint (background layer) | rgba(21,23,28,0.55) | rgba(238,240,243,0.55) |
 
 Define all tokens as CSS variables in packages/ui and switch them with a data-theme attribute on the root.
 
-## 2. Wallpaper
-- Glass panels sit on top of a wallpaper image with backdrop-filter blur.
-- Settings: Appearance → Wallpaper = On/Off, choose image (built-in images or upload), blur strength (0–40 px, default 24).
-- Default: On, built-in dark landscape for dark mode, built-in light landscape for light mode.
-- When Off, the solid bg color is used.
+## 2. Background
+The window background has three modes. Setting: Appearance → Background = Transparent, Wallpaper, or Solid. Default: Transparent.
+
+| Mode | What shows behind the glass |
+|---|---|
+| Transparent (default) | The Windows desktop shows through the window, blurred, like macOS vibrancy. A tint layer sits on top so text and pastel tiles stay readable on any desktop wallpaper. |
+| Wallpaper | A built-in gradient (dark for dark mode, light for light mode) or an uploaded image. Glass panels blur it with the blur setting. |
+| Solid | The solid bg color. |
+
+- The window has rounded corners (8 px, the same as Windows 11's own window rounding; the window shadow is on so Windows rounds the Acrylic too) and goes square when maximized.
+- Transparent mode uses a transparent Tauri window with the Windows Acrylic effect (Mica as the fallback when Acrylic is not available). Acrylic can make dragging and resizing the window less smooth on some Windows 10 and 11 builds.
+- Tint layer (the tint token in section 1): dark mode rgba(21,23,28,0.55), light mode rgba(238,240,243,0.55). It is the bg color at 55% opacity.
+- Glass cards, tiles, the dock, and the title bar keep their normal style on top of every mode.
+- Blur strength (0–40 px, default 24) and the image choice (built-in gradient or upload) are shown only for Wallpaper. Blur is the backdrop-filter blur of glass panels.
+- If the Acrylic effect is not supported or fails, the app falls back to Wallpaper mode automatically for that session. The saved choice stays Transparent.
+- Saved settings from before this change (Wallpaper On/Off) migrate safely: Off becomes Solid, anything else becomes the default Transparent.
+
+## 2b. Liquid Glass
+Glass panels can look like Apple's Liquid Glass. Setting: Appearance → Glass effect = Liquid (default), Simple, or Off. Liquid also has a Strength slider (0–100, default 50).
+
+| Effect | What panels look like |
+|---|---|
+| Liquid | The background bends near the edges of the glass, with a bright rim, shine, inner glow, and a boosted blur. |
+| Simple | The plain blurred glass described in sections 1 to 6. |
+| Off | Solid panels (theme panel color), no blur. The lowest power use. |
+
+What Liquid adds, on top of the normal glass look:
+- **Edge refraction:** an SVG feDisplacementMap used through backdrop-filter, so the background is pulled inward along the rounded edges (a lens-like rim) and is untouched in the flat middle. The strength slider sets how far it bends (0 to 36 px at the very edge; default about 18 px).
+- **Quiet edge:** no white outline. A faint 1 px dark hairline, a soft darker edge at the bottom, and an inner glow. Everything is drawn in whole pixels, so the edge is even at 100%, 125%, and 150% display scaling.
+- **Inner glow and specular shine:** a faint glow inside the edge and a soft highlight from the top-left corner.
+- **Blur and color boost:** the glass blur setting scaled down (about 30%) plus a saturation and brightness boost of what is behind.
+
+Where it is used:
+- Glass cards, the assistant card, the dock, the command palette, tooltips, activity items, secondary buttons, icon buttons, segmented controls, the login card, and the dashboard search bar.
+- Inputs become glass wells (dark inner top edge, light rim at the bottom).
+- Window buttons turn into a small Liquid glass pill on hover (Close stays red).
+- Pastel module tiles, dock icons, and icon squares keep their solid colors but get the rim light and shine on top. A hovered tile or dock icon brightens slightly.
+- Not used: the title bar itself (transparent) and small short-lived elements such as tooltips, which get the edge and shine but no refraction.
+
+Fit with the backgrounds and themes:
+- Works in dark and light mode with their own rim, glow, and fill values (tokens named lg-*), and in all three background modes.
+- Refraction can only bend what the page itself draws behind a panel (the wallpaper, other panels, the tint). In Transparent mode the blurred Windows desktop is added by Windows underneath the whole window, so it cannot be refracted; there the glass shows the rim, shine, glow, and boosted blur, and bends the tint and other panels.
+
+How it works (no WebGL, no page screenshots, no extra library):
+- Each glass element gets an SVG filter whose displacement map is a small image drawn on a canvas for its size (sizes are rounded to 8 px, 96 px for the dock, so many elements share one filter).
+- The mode is set with data-glass="liquid" | "simple" | "off" on the page root; the look comes from inherited CSS variables, so any wrapper can preview a mode (the UI gallery shows all three side by side).
+- Tokens: panel-solid and lg-fill, lg-rim-light, lg-rim-soft, lg-rim-dark, lg-glow, lg-shine in both themes (packages/ui/src/styles/tokens.css).
+
+Fallback and limits:
+- If the browser cannot apply an SVG filter to a backdrop (only Chromium, which includes WebView2, can) or cannot draw the maps, the app shows Simple automatically. The saved choice stays Liquid and Settings explains it.
+- Settings are saved on this device with the other appearance settings.
 
 ## 3. Module colors
 Every module has one pastel color used everywhere: dock icon, dashboard tile, page header accent, graph node color, and activity feed avatar. Text and icons on these colors are always #1C1C1C.
@@ -48,14 +95,14 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 ## 4. Typography
 - Font: Inter (bundled with the app).
 - Weights: 400 regular, 500 medium, 600 semibold (headings and big numbers only).
-- Sizes: page title 22, section title 16, card title 13, body 13, small 11, big tile number 28–32.
+- Sizes: page title 22, section title 16, card title 13, body 13, small 11, big tile number 30 (28–32 allowed).
 - Sentence case everywhere.
 
 ## 5. Shapes and spacing
 - Spacing scale: 4, 8, 12, 16, 24, 32.
 - Radius: tiles and glass cards 16, dock 18, dock icons 10, buttons and inputs 10, chips 8.
 - Borders: 0.5 px using glass-border.
-- No drop shadows on cards; depth comes from glass and blur.
+- No drop shadows on cards; depth comes from glass and blur (Liquid Glass adds inner highlights only, see section 2b).
 
 ## 6. Components
 ### Tile (dashboard widget, colored)
@@ -82,29 +129,68 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 
 ### Icons
 - Tabler Icons (outline) everywhere.
+- Module icons: Dashboard layout-dashboard, Tasks checklist, Habits flame, Notes notes, Graph affiliate, Calendar calendar, Mail mail, Drive brand-google-drive, Projects briefcase, Money wallet, AI assistant sparkles, Settings settings.
+
+### Tooltip
+- Glass-strong background, radius 8, 11 px text, shown above the element on hover or keyboard focus; Escape hides it.
+
+### Keyboard hint (Kbd)
+- Small chip per key: input background, 0.5 px glass-border, radius 8, 11 px muted text, height 20.
+
+## 6b. Title bar
+The window is frameless. The title bar is not a separate bar: it is fully transparent, so the background and the page show straight through and the top of the window looks like one continuous surface.
+- Height 40 px, overlaying the top of the page area. Page content has 40 px of top padding so it never sits under the buttons.
+- No background, no border, no blur, no separate color.
+- The whole empty area is a drag region; double-click maximizes and restores.
+- App name: left side, 11 px, text-muted, no logo or background behind it.
+- Window buttons on the right (minimize, maximize/restore, close): 36×28, thin icons in text-secondary, no background by default.
+- Hover: soft glass background (glass token), radius 8. Close on hover: red (#E81123, token window-close) with a white icon.
+- The same look in dark and light mode.
 
 ## 7. Dock (main navigation)
 - Position: bottom center, 10 px above the window edge, floating.
 - Look: glass-strong background, radius 18, padding 6×10, height 60.
 - Icons: 36×36 tiles in module colors, radius 10, gap 6, dark icon glyph.
 - Order: Dashboard, Tasks, Habits, Notes, Graph, Calendar, Mail, Drive, Projects, Money | divider | AI assistant, Settings.
-- Hover: magnification. Size scales up to 1.7× for the icon under the cursor and falls off within 90 px. Built with Framer Motion.
+- Hover: magnification. Size scales up to 1.7× for the icon under the cursor and falls off within 90 px. Built with Motion (formerly Framer Motion).
 - Tooltip with the module name above the hovered icon.
 - Active module: 4 px dot under its icon.
 - Settings: Dock → Auto-hide (default Off), Magnification (default On), Icon size (Small 32 / Medium 36 / Large 44, default Medium).
 - Auto-hide: dock slides down out of view; it slides up when the cursor enters the bottom 28 px of the window, and hides 400 ms after the cursor leaves.
 
 ## 8. Dashboard layout
-- Top row: greeting (22) with date (11) on the left; glass search bar with "Ctrl K" hint on the right.
+Two columns under the title bar: a main column and a wider right column (280 px).
+
+Main column, top to bottom:
+- Greeting (22) with the date (11) under it.
+- Search field: one wide glass field the full width of the column, with a magnifier on the left and a "Ctrl K" hint on the right. Click it, press Enter, or just type: the command palette opens with what you typed, and the field itself stays empty.
 - Assistant card: glass, full width of the main column, lavender sparkle icon, 1–2 line daily summary, input "Ask or tell me what to do", lavender send button.
-- Tile grid under the assistant card (react-grid-layout).
-- Activity feed: right column, 190–240 px wide, glass items.
-- The dock floats over the bottom; content leaves 80 px bottom padding.
+- Card grid: three columns, two rows, every card exactly the same size (equal rows, so no card is a short wide strip). Row one: Today's tasks (yellow), Important emails (Mail blue), Money (mint). Row two: Streak (lime), Projects (pink), and the Quick actions card.
+- Quick actions card: a glass card the size of a tile with the title "Quick actions" and four glass buttons in a 2 by 2 grid: New task, New note, Log expense, New event. Each has a 22 px rounded icon square in its module color (Tasks yellow, Notes peach, Money mint, Calendar orange) with a dark icon. The note line under the buttons always keeps its space, so the card never changes size when you click.
+
+Right column, top to bottom, all glass cards:
+- Mini calendar: month name with previous and next arrows, weekday header starting Monday, today highlighted with the lavender accent, a small orange dot under days that have events. Clicking a day opens the Calendar page.
+- Upcoming: events grouped by "Today" and "Tomorrow", at most 4. Each has a thin (3 px) bar in its module color, the title, and the time; the next event also shows "in 45 min".
+- Activity: the latest 3 items and a "View all" link.
+
+Fit and scrolling:
+- The title bar overlays the top (content starts 40 px down) and the dock floats over the bottom (the page area keeps 80 px of bottom padding), so nothing sits under them.
+- The page itself never scrolls. At the 1100×700 minimum the whole main column fits without scrolling; the right column scrolls on its own. If the window is ever too short, each column scrolls independently.
+- The compact tile size (Tile compact) still exists in packages/ui for crowded screens but the dashboard uses the normal tile size.
 
 ## 9. Keyboard
 - Ctrl K: global search and command palette.
 - Ctrl 1 to Ctrl 9: Dashboard, Tasks, Habits, Notes, Graph, Calendar, Mail, Drive, Projects.
 - Ctrl 0: Money. Ctrl J: open AI assistant. Ctrl , : Settings.
+
+### Command palette
+- Opens with Ctrl K, or by clicking the dashboard search bar. Esc, or Ctrl K again, closes it. It is only available on signed-in screens.
+- A glass-strong panel, 560 px wide, radius 16, near the top of the window over a dimmed page. A search field with an Esc hint, a list, and a hint line ("↑ ↓ to move · Enter to run · Esc to close").
+- Groups: Go to (every module in dock order, with its shortcut), Appearance (dark, light, or system theme; the current one is marked), and Dock (toggle auto-hide, showing On or Off).
+- Module commands use a 22 px icon square in the module color; other commands use a neutral square.
+- Typing filters by whole or partial words in the title or its keywords (for example "night" finds the dark theme). The selected row uses the input background.
+- For now it only runs commands. Searching tasks, notes, mail, and files comes with those modules.
+- All shortcuts live in one registry (apps/desktop/src/commands/shortcuts.ts). Shortcut keys are cancelled in the page so Windows' own use of them (for example Ctrl J for downloads) does not also run.
 
 ## 10. Mobile (Phase 2)
 - Same tokens, colors, tiles, and glass.

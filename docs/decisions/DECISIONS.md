@@ -20,3 +20,20 @@
 | 16 | AI providers start free and are configurable in Settings | Change models without code changes |
 | 17 | Schedule-X for calendar views | Chosen for its modern look |
 | 18 | Single user | Personal assistant for me only |
+| 19 | Motion (formerly Framer Motion) 14 for animation | Same library under its new package name |
+| 20 | Email and password login, no sign-up in the app | Works fully inside Tauri; my one account is created in the Supabase dashboard and public sign-ups are disabled |
+| 21 | JWT verification with Supabase JWKS using jose | New Supabase projects use asymmetric signing keys; no shared JWT secret on the server |
+| 22 | Backend scopes every query by user_id with one shared helper; RLS stays ON | The backend connects as postgres (bypasses RLS); RLS still protects client and Realtime access; isolation is proven by tests |
+| 23 | Settings saved locally (Zustand persist) until Step 3 | The action registry and settings API arrive in Step 3 |
+| 24 | Supabase session pooler (IPv4) for DATABASE_URL | The direct connection is IPv6-only and the Oracle VM uses IPv4 |
+| 25 | Backups with pg_dump in a matching postgres container and rclone to Oracle Object Storage (S3-compatible API) | No host Postgres or OCI CLI needed; pg_dump version matches Supabase |
+| 26 | Frameless window with a custom glass title bar | Matches the glass design in dark and light mode |
+| 27 | Gradient placeholder wallpapers | Real images will be added later |
+| 28 | TypeScript 6.0.3, not 7 | typescript-eslint supports TypeScript below 6.1 only |
+| 29 | Repo stays at C:\Users\adith\OneDrive\Documents\personal-os (OneDrive is uninstalled, so nothing syncs it); Rust uses its default target folder inside the project (git-ignored); C:\dev\personal-os is only a temporary backup copy | The move to another folder failed and was reverted; one location keeps docs, scripts, and paths consistent. Windows Controlled Folder Access protects Documents and blocked cargo.exe from writing there, so it is turned off on this machine for Rust builds |
+| 30 | prettier-plugin-tailwindcss, Vite UI gallery in packages/ui, tsup server build, PGlite for tests | Approved tooling for Step 1 |
+| 31 | Default background is transparent (Windows Acrylic, Mica fallback) with a tint layer; Wallpaper and Solid are the other modes; automatic fallback to Wallpaper if the effect fails | Apple-like look where the desktop shows through; Acrylic is blurred and may be less smooth when moving or resizing the window on some Windows builds, which is accepted |
+| 32 | Background mode replaces the old wallpaper on/off setting; old saved settings migrate (Off becomes Solid, otherwise Transparent) | One clear setting with three modes |
+| 33 | Liquid Glass built in packages/ui with CSS and SVG filters (feDisplacementMap through backdrop-filter, displacement maps drawn on a canvas), no new library; effect choice Liquid (default) / Simple / Off with a strength slider; automatic fallback to Simple | Apple-like glass without WebGL or page screenshots. dashersw/liquid-glass-js was rejected: not on npm, one WebGL canvas per element, and html2canvas screenshots cannot see the Windows desktop behind the transparent Acrylic window |
+| 34 | Liquid refraction bends only what the page draws behind a panel; the Windows desktop shown through the Acrylic window cannot be refracted | Acrylic is composited by Windows beneath the web page, outside what backdrop-filter can read |
+| 35 | The server runs on AWS (EC2, ARM, free-plan credits for 6 months) until Oracle Always Free has capacity; GitHub private repository with a CI workflow (lint, tests, build) | Oracle Mumbai had no free ARM capacity. The server is stateless (data is in Supabase), so moving hosts later means redeploying the same Docker image. AWS credits end after 6 months |

@@ -3,17 +3,25 @@
 Work on one step at a time. Use each step daily before starting the next.
 
 ## Step 1 – Foundation
-- [ ] Oracle server: account, ARM instance, firewall, SSH key, Docker, Tailscale, DuckDNS
-- [ ] Caddy with HTTPS on the DuckDNS domain
-- [ ] Supabase project (Mumbai), auth, sign-ups disabled
-- [ ] Monorepo with pnpm workspaces (apps/desktop, apps/server, packages/shared, packages/db, packages/ui)
-- [ ] Drizzle setup with entities and links tables, RLS policies
-- [ ] Fastify skeleton with JWT auth and /health
-- [ ] Tauri 2 desktop shell with login
-- [ ] Design tokens (dark and light), glass components, tiles, dock with magnification and auto-hide, wallpaper
-- [ ] Settings screen: appearance, wallpaper, dock
-- [ ] Command palette (Ctrl K) and keyboard shortcuts
-- [ ] Nightly backup script
+
+### Features (code)
+- [x] a. Monorepo setup (pnpm workspaces, strict TypeScript, ESLint, Prettier, Vitest)
+- [x] b. packages/ui design tokens and components (dark and light), UI gallery
+- [x] c. Desktop shell: custom glass title bar, dock, wallpaper, theme switching, placeholder module pages
+- [x] c2. Supabase email and password login screen and session
+- [x] d. Settings screen (appearance incl. Background: Transparent / Wallpaper / Solid, dock, logout), saved locally
+- [x] e. Dashboard with static placeholder data
+- [x] f. Command palette (commands only) and keyboard shortcuts
+- [x] g. Fastify skeleton with JWKS JWT verification and /api/v1/health
+- [x] h. Drizzle schema for entities and links with RLS, user-scope helper, migrations generated but not applied
+- [x] i. Infra: docker-compose (caddy, server), Caddyfile, server Dockerfile, backup script, DuckDNS script
+
+### Manual setup (me)
+- [x] Server: AWS EC2 for now (Oracle Cloud later), running with Caddy and HTTPS
+- [ ] Tailscale
+- [x] DuckDNS (adith-os.duckdns.org)
+- [x] Supabase project and account
+- [ ] Google Cloud project
 
 ## Step 2 – Tasks and notes
 - [ ] Tasks: CRUD, subtasks, priorities, deadlines, tags, recurring, dependencies
@@ -30,7 +38,7 @@ Work on one step at a time. Use each step daily before starting the next.
 - [ ] Assistant card and full chat panel
 - [ ] Skills: Daily planner, Knowledge assistant
 - [ ] Settings → AI (OmniRoute dashboard, model routes)
-- [ ] Move appearance, wallpaper, and dock settings from local Zustand persist (Step 1) to the server settings table through the action registry
+- [ ] Move appearance, background, and dock settings from local Zustand persist (Step 1) to the server settings table through the action registry
 - [ ] Done when: the AI creates a task from a chat message
 
 ## Step 4 – Google

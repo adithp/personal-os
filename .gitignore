@@ -15,7 +15,6 @@ target/
 coverage/
 *.tsbuildinfo
 apps/desktop/src-tauri/gen/
-apps/desktop/src/routeTree.gen.ts
 
 # Logs and OS files
 *.log

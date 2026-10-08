@@ -3,7 +3,7 @@
 ## 1. Overview
 Three layers:
 1. Apps (what I see): Tauri 2 desktop app now, Tauri 2 mobile app in Phase 2.
-2. Backend (the brain): one Fastify server on Oracle Cloud that runs all logic, the AI agent, Google sync, and reminders.
+2. Backend (the brain): one Fastify server on an AWS EC2 ARM server (Oracle Cloud later) that runs all logic, the AI agent, Google sync, and reminders.
 3. Services: Supabase (data, login, files, realtime, vector search), OmniRoute (AI gateway), Google APIs.
 
 ```
@@ -32,7 +32,7 @@ Laptop coding tools ──Tailscale──► OmniRoute
 | UI | React 19, TypeScript, Vite, Tailwind CSS, Tabler Icons |
 | Routing | TanStack Router |
 | State | Zustand (UI state), TanStack Query (server data) |
-| Animation | Framer Motion |
+| Animation | Motion (formerly Framer Motion) |
 | Note editor | TipTap, CodeMirror 6 (raw markdown), KaTeX, Shiki |
 | Knowledge graph | Sigma.js + graphology |
 | Dashboard grid | react-grid-layout |
@@ -41,15 +41,20 @@ Laptop coding tools ──Tailscale──► OmniRoute
 | Charts | Apache ECharts |
 | Tables | TanStack Table |
 | Command palette | cmdk |
+| Auth | Supabase Auth, email and password (no sign-up in the app) |
 | Backend | Node.js 22 LTS, TypeScript, Fastify |
+| JWT verification | jose (Supabase JWKS) |
+| Server build | tsup (bundles workspace packages for the Docker image) |
 | ORM | Drizzle ORM |
 | Validation | Zod |
 | AI SDK | Vercel AI SDK with the OpenAI-compatible provider pointed at OmniRoute |
 | Scheduler | croner (inside the backend) |
 | Google | googleapis (official Node client) |
 | Database | Supabase Postgres with Row Level Security, full-text search, pgvector |
-| Tests | Vitest |
-| Hosting | Oracle Cloud Always Free ARM VM, Docker Compose, Caddy, DuckDNS, Tailscale |
+| Tests | Vitest, Testing Library, jsdom; PGlite (in-memory Postgres, tests only) |
+| Lint and format | ESLint, typescript-eslint, eslint-plugin-react-hooks, eslint-plugin-react-refresh, Prettier, prettier-plugin-tailwindcss |
+| UI gallery | Vite dev server in packages/ui (dev dependency only) |
+| Hosting | AWS EC2 ARM VM for now (Oracle Cloud Always Free later), Docker Compose, Caddy, DuckDNS, Tailscale |
 
 ## 4. Folder structure
 ```
