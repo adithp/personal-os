@@ -24,7 +24,8 @@ describe('TaskDetailPanel: layout', () => {
     for (const label of ['Status', 'Priority', 'Due', 'Reminder', 'Repeat', 'Blocked by', 'Tags']) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
-    expect(screen.getAllByText('Not available yet')).toHaveLength(2);
+    expect(screen.getByText('Not blocked')).toBeVisible();
+    expect(screen.getByText('Set a due date to repeat')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Close details' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
