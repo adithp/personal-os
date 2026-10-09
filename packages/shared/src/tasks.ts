@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { defineAction, type UndoDescriptor } from './actions';
 import { recurrenceRuleSchema } from './recurrence';
-import { MAX_TAGS_PER_TASK, tagRefSchema } from './tags';
+import { MAX_TAGS_PER_TASK, tagName, tagRefSchema } from './tags';
 
 /** Where a task is on the board (docs/features/tasks.md). */
 export const TASK_STATUSES = ['todo', 'doing', 'done'] as const;
@@ -78,6 +78,8 @@ export const createTaskInput = z
     reminderAt: isoTime.nullable().optional(),
     parentTaskId: z.uuid().optional(),
     tagIds: tagIds.optional(),
+    /** Tags by name: each one is found (ignoring capitals) or created. Together with tagIds at most 20. */
+    tagNames: z.array(tagName).max(MAX_TAGS_PER_TASK).optional(),
     /** One of the repeat presets (see recurrence.ts). A repeating task needs a due date. */
     recurrenceRule: recurrenceRuleSchema.optional(),
   })

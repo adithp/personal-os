@@ -184,8 +184,22 @@ export function createFakeApi(initial: Task[] = [], initialTags: Tag[] = []) {
           throw new ApiError(400, 'validation_error', 'Subtasks go one level deep only');
         }
       }
-      const { tagIds, ...rest } = body;
-      const task = makeTask({ ...(rest as Partial<Task>), title, tags: tagRefs(tagIds) });
+      const { tagIds, tagNames, ...rest } = body;
+      // Tags by name are found (ignoring capitals) or created, like POST /tags
+      const named = asArray(tagNames).map((name) => {
+        const existing = [...tagStore.values()].find(
+          (tag) => tag.name.toLowerCase() === name.toLowerCase(),
+        );
+        if (existing) return existing.id;
+        const tag = makeTag({ name, color: nextTagColor(tagStore.size) });
+        tagStore.set(tag.id, tag);
+        return tag.id;
+      });
+      const task = makeTask({
+        ...(rest as Partial<Task>),
+        title,
+        tags: tagRefs([...new Set([...asArray(tagIds), ...named])]),
+      });
       store.set(task.id, task);
       return { item: view(task), undo: { action: 'tasks.delete', input: { id: task.id } } };
     }

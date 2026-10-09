@@ -41,6 +41,7 @@ Libraries not installed yet (planned): TipTap, CodeMirror, KaTeX, Shiki, Sigma.j
 | Desktop plugins | @tauri-apps/plugin-dialog and @tauri-apps/plugin-fs (wallpaper upload, limited to $APPDATA/wallpapers) |
 | Drag and drop | dnd-kit (installed: core 6.3.1, sortable 10.0.0, utilities 3.2.2) |
 | Recurring dates | rrule 2.8.1 (installed in apps/server; the next occurrence of a recurring task) |
+| Typed dates | chrono-node 2.10.2 (installed in apps/desktop; quick add understands "tomorrow 5pm") |
 | Calendar views | Schedule-X |
 | Charts | Recharts |
 | Tables | TanStack Table |

@@ -32,6 +32,9 @@ Shared types and actions (`packages/shared/src/tasks.ts`, `tags.ts`), the databa
 ## Feature 3 contract (committed before the agents start)
 `packages/shared/src/recurrence.ts` has the repeat presets (`buildRecurrence`, `parseRecurrence`, `describeRecurrence`, `recurrenceRuleSchema`); `recurrenceRule` is accepted by create and update (a repeating task needs a due date). New actions `tasks.addBlocker`, `tasks.removeBlocker` and `tasks.reopen` (the undo of completing a repeating task: it restores the old values and removes the copy that completing it created, decision 47); routes `POST /tasks/:id/blockers` and `DELETE /tasks/:id/blockers/:blockerId`. The server files `actions/task-dependencies.ts` (loadBlockers, assertNotBlocked, the two blocker actions) and `actions/recurrence.ts` (spawnNextOccurrence, tasks.reopen) are implemented (Feature 3). On the desktop `useTaskActions()` has `addBlocker` and `removeBlocker`, and the mock API follows the blocker rules.
 
+## Feature 4 contract (committed before the agents start)
+`tasks.create` accepts `tagNames` (find or create by name). `modules/tasks/quick-add/parse.ts` has the types and the signature `parseQuickAdd(input, now, ignored)` (a stub for the parse agent): it returns the title, `dueAt`/`dueAllDay`, `priority`, `tagNames`, `recurrenceRule` and the list of understood `parts` (each with kind, typed text, position and a label for the chip); `partKey` names a part so the bar can switch it off. The mock API's create route handles `tagNames`. `chrono-node` 2.10.2 is installed in apps/desktop.
+
 ## Build order and ownership
 Ownership is per feature: within one feature no two agents own the same file. Only the orchestrator edits migrations, `packages/shared/src/index.ts`, route files and `routeTree.gen.ts`, `features.ts`, `fake-api.ts`, docs, `ROADMAP.md`, `DECISIONS.md`, `CLAUDE.md`.
 

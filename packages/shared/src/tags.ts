@@ -28,7 +28,7 @@ export function nextTagColor(existingTagCount: number): string {
 export const TAG_NAME_MAX = 40;
 export const MAX_TAGS_PER_TASK = 20;
 
-const tagName = z
+export const tagName = z
   .string()
   .trim()
   .min(1, 'Tag name is required')
