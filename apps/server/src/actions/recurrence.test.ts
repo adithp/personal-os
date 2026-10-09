@@ -377,6 +377,36 @@ describe('completing a repeating task', () => {
     expect(open.every((task) => task.dueAt === ist('2026-10-10 09:00'))).toBe(true);
   });
 
+  it('makes one copy when the same task is completed twice at once', async () => {
+    setNow('2026-10-09 10:00');
+    const task = await create(alice(), {
+      title: 'Twice',
+      dueAt: ist('2026-10-09 09:00'),
+      recurrenceRule: DAILY,
+    });
+    await Promise.all([
+      registry.run(alice(), 'tasks.complete', { id: task.id }),
+      registry.run(alice(), 'tasks.complete', { id: task.id }),
+    ]);
+    const copies = (await openTasks(alice())).filter((row) => row.title === 'Twice');
+    expect(copies).toHaveLength(1);
+  });
+
+  it('does not make a second copy when the task is done, reopened, and done again', async () => {
+    setNow('2026-10-09 10:00');
+    const task = await create(alice(), {
+      title: 'Round trip',
+      dueAt: ist('2026-10-09 09:00'),
+      recurrenceRule: DAILY,
+    });
+    await registry.run(alice(), 'tasks.complete', { id: task.id });
+    await registry.run(alice(), 'tasks.update', { id: task.id, status: 'todo' });
+    await registry.run(alice(), 'tasks.update', { id: task.id, status: 'done' });
+    const open = (await openTasks(alice())).filter((row) => row.title === 'Round trip');
+    // The reopened original is open again? No: it is done again, so only the one copy is open
+    expect(open).toHaveLength(1);
+  });
+
   it('does not copy again when the task is already done', async () => {
     setNow('2026-10-09 10:00');
     const task = await create(alice(), {
@@ -466,6 +496,50 @@ describe('tasks.reopen (the undo of completing)', () => {
       removeIds: [task.id],
     });
     expect((await openTasks(alice())).map((entry) => entry.id)).toContain(task.id);
+  });
+
+  it('removes only real copies: an unrelated task in removeIds stays', async () => {
+    const { task } = await completeRepeating();
+    const unrelated = await create(alice(), { title: 'Unrelated' });
+    const otherRule = await create(alice(), {
+      title: 'Other rule',
+      dueAt: ist('2026-10-12 09:00'),
+      recurrenceRule: 'FREQ=YEARLY',
+    });
+    const [copy] = await openTasks(alice()).then((rows) =>
+      rows.filter((row) => row.title === 'Repeats' && row.id !== task.id),
+    );
+    await registry.run(alice(), 'tasks.reopen', {
+      id: task.id,
+      status: 'todo',
+      removeIds: [unrelated.id, otherRule.id, copy?.id],
+    });
+    const ids = (await openTasks(alice())).map((row) => row.id);
+    expect(ids).toContain(unrelated.id);
+    expect(ids).toContain(otherRule.id);
+    expect(ids).not.toContain(copy?.id);
+  });
+
+  it('removes the subtasks of a removed copy too', async () => {
+    const { task } = await completeRepeating();
+    const [copy] = (await openTasks(alice())).filter((row) => row.id !== task.id);
+    if (!copy) throw new Error('expected a copy');
+    const child = await create(alice(), { title: 'Child', parentTaskId: copy.id });
+    await registry.run(alice(), 'tasks.reopen', {
+      id: task.id,
+      status: 'todo',
+      removeIds: [copy.id],
+    });
+    const children = await list(alice(), { parent: copy.id });
+    expect(children.map((row) => row.id)).not.toContain(child.id);
+  });
+
+  it('cannot be used to complete a task', async () => {
+    const { task } = await completeRepeating();
+    const error = await failure(
+      registry.run(alice(), 'tasks.reopen', { id: task.id, status: 'done', removeIds: [] }),
+    );
+    expect(error).toBeInstanceOf(ZodError);
   });
 
   it('rejects bad input', async () => {

@@ -16,6 +16,7 @@ import {
   isNotNull,
   isNull,
   lt,
+  ne,
   sql,
   type SQL,
 } from 'drizzle-orm';
@@ -116,7 +117,7 @@ export async function withDetails(scope: UserScope, rows: TaskRow[]): Promise<Ta
   );
 }
 
-async function detailed(scope: UserScope, row: TaskRow): Promise<Task> {
+export async function detailed(scope: UserScope, row: TaskRow): Promise<Task> {
   const [task] = await withDetails(scope, [row]);
   if (!task) throw new Error('Could not load the task');
   return task;
@@ -134,7 +135,7 @@ async function findTask(scope: UserScope, id: string, includeDeleted = false): P
 }
 
 /** The position after the last live task among the same siblings (top level or one parent). */
-async function nextPosition(scope: UserScope, parentTaskId: string | null): Promise<number> {
+export async function nextPosition(scope: UserScope, parentTaskId: string | null): Promise<number> {
   const [last] = await scope.select(tasks, {
     where: and(
       scope.isLive(tasks),
@@ -292,7 +293,15 @@ export async function applyChange(
 
     let updated: TaskRow | undefined = current;
     if (Object.keys(values).length > 0) {
-      [updated] = await tx.update(tasks, values, eq(tasks.id, id));
+      // Completing only counts when the task is not done yet, so two requests at once make one copy
+      [updated] = await tx.update(
+        tasks,
+        values,
+        (completing ? and(eq(tasks.id, id), ne(tasks.status, 'done')) : undefined) ??
+          eq(tasks.id, id),
+      );
+      if (!updated && completing)
+        return { data: await detailed(tx, await findTask(tx, id)), undo: null };
       if (!updated) throw notFound();
       if (values.title !== undefined) {
         await tx.update(entities, { title: values.title }, eq(entities.id, id));

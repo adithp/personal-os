@@ -27,7 +27,7 @@ CORS: the allowed origins come from CORS_ORIGINS (comma-separated); the default 
 ## Standard resource routes
 Each resource has: GET list (filters, sort, page), GET by id, POST create, PATCH update, DELETE (soft delete).
 Every write route calls the matching action in the action registry.
-Built so far: /tasks (all five, plus complete, archive, unarchive, move) and /tags (list, create, update only: no get by id and no delete yet). The other resources arrive with their module step.
+Built so far: /tasks (all five, plus complete, archive, unarchive, move, and blockers add and remove) and /tags (list, create, update only: no get by id and no delete yet). The other resources arrive with their module step.
 
 Resources: /tasks, /habits, /habit-logs, /notes, /note-folders, /note-templates, /tags, /projects, /milestones, /clients, /time-entries, /wallets, /categories, /transactions, /budgets, /savings-goals, /subscriptions, /people, /dashboards, /ai/skills
 
@@ -39,7 +39,7 @@ Responses:
 - Create, update, complete, delete: `{ "item": {...}, "undo": { "action", "input" } | null }`. Create answers 201. Delete is a soft delete.
 - `undo` is the way to reverse the change: send it as the body of `POST /undo`.
 - Task times are ISO 8601 strings in UTC (for example `2025-10-07T11:30:00.000Z`) and must carry a zone.
-- Task create and update accept `title` (1 to 500 characters), `description` (up to 20000), `status`, `priority` (1 to 4), `dueAt`, `dueAllDay`, `reminderAt`, and `tagIds` (up to 20; on update it replaces the task's tags); create and update accept `recurrenceRule` (one of the presets: `FREQ=DAILY`, `FREQ=WEEKLY;BYDAY=MO,WE`, `FREQ=MONTHLY;BYMONTHDAY=15`, `FREQ=YEARLY`, or null on update to stop repeating; a repeating task needs a due date); update also accepts `position` (a number from -1e9 to 1e9, smaller is higher in the manual order; POST /tasks/:id/move works it out and the undo of a move uses it); create also accepts `parentTaskId` (the parent must itself be top-level). `dueAllDay: true` needs a `dueAt`; the server stores the start of that day in India time. Clearing `dueAt` on an all-day task clears the flag. `recurrenceRule` is returned but cannot be set yet (Feature 3).
+- Task create and update accept `title` (1 to 500 characters), `description` (up to 20000), `status`, `priority` (1 to 4), `dueAt`, `dueAllDay`, `reminderAt`, and `tagIds` (up to 20; on update it replaces the task's tags); create and update accept `recurrenceRule` (it must be exactly one of the presets: `FREQ=DAILY`, `FREQ=WEEKLY;BYDAY=` with 1 to 7 two-letter days in Monday-to-Sunday order without repeats, `FREQ=MONTHLY;BYMONTHDAY=1..31`, `FREQ=YEARLY`, or null on update to stop repeating; anything else is 400 `validation_error`; a repeating task needs a due date, also when the due date is cleared later, else 400 `validation_error` "A repeating task needs a due date"; `dueAt` must be between the years 2000 and 2100). Completing a repeating task (complete, update to done, or move into Done) creates the next copy and returns an undo with action `tasks.reopen`; update also accepts `position` (a number from -1e9 to 1e9, smaller is higher in the manual order; POST /tasks/:id/move works it out and the undo of a move uses it); create also accepts `parentTaskId` (the parent must itself be top-level). `dueAllDay: true` needs a `dueAt`; the server stores the start of that day in India time. Clearing `dueAt` on an all-day task clears the flag.
 - Tag input: `name` (1 to 40 characters, no spaces, no `#`) and an optional `color` (`#RRGGBB`; missing means the next color of the module palette).
 
 ## Special routes
@@ -52,8 +52,8 @@ Responses:
 | POST | /tasks/:id/archive | Archive a task (returns the task and an undo) |
 | POST | /tasks/:id/unarchive | Bring an archived task back |
 | POST | /tasks/:id/complete | Mark a task done (returns the task and an undo) |
-| POST | /tasks/:id/blockers | Body `{ blockerId }`: make that task block this one. 400 for itself, 409 `circular_dependency` for a cycle, 404 unknown. Adding the same link again changes nothing. Returns the task and an undo |
-| DELETE | /tasks/:id/blockers/:blockerId | Stop that task from blocking this one (returns the task and an undo) |
+| POST | /tasks/:id/blockers | Body `{ blockerId }`: make that task block this one. 400 for itself, 409 `circular_dependency` for a cycle, 404 unknown. Adding the same link again changes nothing. Returns the task and an undo (null when nothing changed) |
+| DELETE | /tasks/:id/blockers/:blockerId | Stop that task from blocking this one (returns the task and an undo; null when there was no such link) |
 | POST | /tasks/:id/move | Drag and drop: body `status`, `dueAt`, `dueAllDay`, `afterId` (task just above), `beforeId` (task just below), at least one; returns the task and an undo. The position goes between the two neighbours; 400 when a neighbour is the task itself, has a different parent, or `afterId` is not above `beforeId`; 404 for an unknown, deleted or other user's task or neighbour. The status and dates change exactly like in PATCH /tasks/:id |
 | POST | /undo | Run the `undo` returned by a write: body `{ "action": "tasks.restore", "input": { "id": "..." } }`. Only write and destructive actions can be run this way; anything else answers 400 cannot_undo |
 | GET | /me | The signed-in user from the token: {id, email, role}. Used to check that login works end to end |

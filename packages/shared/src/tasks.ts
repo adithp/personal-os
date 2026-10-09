@@ -27,6 +27,12 @@ export const TASK_DESCRIPTION_MAX = 20000;
 /** A time as sent over the API: ISO 8601 in UTC (e.g. 2025-10-07T11:30:00.000Z). */
 const isoTime = z.iso.datetime({ offset: true });
 
+/** A due date: between the years 2000 and 2100, so repeating a rule from it stays quick. */
+const dueTime = isoTime.refine(
+  (value) => Date.parse(value) >= Date.UTC(2000, 0, 1) && Date.parse(value) < Date.UTC(2100, 0, 1),
+  { message: 'The due date must be between the years 2000 and 2100' },
+);
+
 /** A task as the API returns it. Times are ISO strings in UTC. */
 export const taskSchema = z.object({
   id: z.uuid(),
@@ -67,7 +73,7 @@ export const createTaskInput = z
     description: description.optional(),
     status: taskStatusSchema.optional(),
     priority: taskPrioritySchema.optional(),
-    dueAt: isoTime.nullable().optional(),
+    dueAt: dueTime.nullable().optional(),
     dueAllDay: z.boolean().optional(),
     reminderAt: isoTime.nullable().optional(),
     parentTaskId: z.uuid().optional(),
@@ -93,7 +99,7 @@ const editableFields = {
   description: description.optional(),
   status: taskStatusSchema.optional(),
   priority: taskPrioritySchema.optional(),
-  dueAt: isoTime.nullable().optional(),
+  dueAt: dueTime.nullable().optional(),
   dueAllDay: z.boolean().optional(),
   reminderAt: isoTime.nullable().optional(),
   /** Replaces the task's tags with exactly these. */
@@ -159,7 +165,7 @@ export const moveTaskInput = z
   .object({
     id: taskId,
     status: taskStatusSchema.optional(),
-    dueAt: isoTime.nullable().optional(),
+    dueAt: dueTime.nullable().optional(),
     dueAllDay: z.boolean().optional(),
     afterId: z.uuid().optional(),
     beforeId: z.uuid().optional(),
@@ -186,6 +192,8 @@ export type BlockerInput = z.infer<typeof blockerInput>;
 export const reopenTaskInput = z.object({
   id: taskId,
   ...editableFields,
+  /** Reopening never completes a task. */
+  status: z.enum(['todo', 'doing']).optional(),
   removeIds: z.array(taskId).max(10),
 });
 

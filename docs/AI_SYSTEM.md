@@ -47,14 +47,14 @@ Every action is recorded in ai_action_log (Step 3). Until then the registry only
 
 Today: read = tasks.list, tasks.get, tags.list; write = tasks.create, tasks.update, tasks.archive, tasks.unarchive, tasks.complete, tasks.move, tasks.addBlocker, tasks.removeBlocker, tasks.reopen, tasks.prioritize, tasks.restore, tags.create, tags.update; destructive = tasks.delete. The app's buttons run actions with confirmed = true (a button press is the confirmation), so deleting in the app does not prompt; a call from the AI without confirmation is stopped by the registry (409 confirmation_required) until the user confirms.
 
-`tasks.addBlocker` and `tasks.removeBlocker` (write): add or remove a link with relation blocks from the blocker to the blocked task (cycles, self links and unknown tasks are refused); each one's undo is the other. `tasks.reopen` (write) is the undo of completing a repeating task: it restores the old values and removes the copy that completing it created (only live copies that are not done); it has no undo of its own.
+`tasks.addBlocker` and `tasks.removeBlocker` (write): add or remove a link with relation blocks from the blocker to the blocked task (cycles, self links and unknown tasks are refused); each one's undo is the other. `tasks.reopen` (write) is the undo of completing a repeating task: it restores the old values and removes the copy that completing it created (only live copies that are not done, with the same repeat rule and parent, and their subtasks); it has no undo of its own. It is meant as an undo: the AI should not call it on its own.
 
 `tasks.move` (write): puts a task between two neighbours (`afterId` above, `beforeId` below) and can change its status and due date in the same step through the same code as tasks.update. The new position is the middle between the neighbours; when the gap is smaller than 1e-6 the siblings are renumbered first. The undo is a tasks.update with the old status, dates and position (tasks.update accepts `position`, from -1e9 to 1e9); the renumbered siblings are not restored (their order does not change).
 
-Undo: a write returns an undo (an action plus its input). tasks.create undoes with tasks.delete, tasks.delete with tasks.restore (and back), tasks.update with tasks.update carrying the old values, archive and unarchive undo each other, tags.update undoes itself, tags.create has no undo. POST /undo runs it through the same registry.
+Undo: a write returns an undo (an action plus its input). tasks.create undoes with tasks.delete, tasks.delete with tasks.restore (and back), tasks.update (and tasks.complete and tasks.move) with tasks.update carrying the old values, except when the change completes a repeating task: then the undo is tasks.reopen with the old values and the id of the new copy; tasks.addBlocker and tasks.removeBlocker undo each other (undo is null when nothing changed); tasks.reopen has no undo, archive and unarchive undo each other, tags.update undoes itself, tags.create has no undo. POST /undo runs it through the same registry.
 
 ## 5. Action list (Phase 1)
-- tasks: list, get, create, update, archive, unarchive, complete, delete, restore, prioritize
+- tasks: list, get, create, update, archive, unarchive, complete, move, addBlocker, removeBlocker, reopen, delete, restore, prioritize
 - tags: list, create, update
 - habits: list, log, stats
 - notes: search, get, create, update, append, summarize, link

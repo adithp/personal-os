@@ -114,3 +114,17 @@ describe('taskActions', () => {
     expect(needing.map((action) => action.name)).toEqual(['tasks.delete']);
   });
 });
+
+describe('due dates', () => {
+  it('must be between the years 2000 and 2100', () => {
+    expect(
+      createTaskInput.safeParse({ title: 'x', dueAt: '2025-10-07T09:30:00.000Z' }).success,
+    ).toBe(true);
+    expect(
+      createTaskInput.safeParse({ title: 'x', dueAt: '0001-01-01T00:00:00.000Z' }).success,
+    ).toBe(false);
+    expect(
+      createTaskInput.safeParse({ title: 'x', dueAt: '2100-01-01T00:00:00.000Z' }).success,
+    ).toBe(false);
+  });
+});

@@ -4,7 +4,7 @@ import { and, eq, inArray, ne, sql, type SQL } from 'drizzle-orm';
 import { HttpError } from '../lib/http-error';
 import type { UserScope } from '../lib/user-scope';
 import { implement } from './registry';
-import { withDetails } from './tasks';
+import { detailed } from './tasks';
 
 /**
  * Task dependencies: a live link with relation "blocks" from the blocker (source) to the blocked
@@ -55,11 +55,9 @@ export async function loadBlockers(
 export async function assertNotBlocked(scope: UserScope, taskId: string): Promise<void> {
   const blockers = (await loadBlockers(scope, [taskId])).get(taskId);
   if (!blockers || blockers.length === 0) return;
-  throw new HttpError(
-    409,
-    'blocked',
-    `Blocked by: ${blockers.map((blocker) => blocker.title).join(', ')}`,
-  );
+  const shown = blockers.slice(0, 3).map((blocker) => blocker.title);
+  const more = blockers.length > 3 ? ` and ${String(blockers.length - 3)} more` : '';
+  throw new HttpError(409, 'blocked', `Blocked by: ${shown.join(', ')}${more}`);
 }
 
 const notFound = () => new HttpError(404, 'not_found', 'Task not found');
@@ -99,12 +97,6 @@ async function reaches(scope: UserScope, from: string, to: string): Promise<bool
 /** The live "blocks" link from the blocker to the blocked task. */
 const linkCondition = (scope: UserScope, blockerId: string, id: string): SQL =>
   sql`${scope.isLive(links)} and ${eq(links.relation, 'blocks')} and ${eq(links.sourceId, blockerId)} and ${eq(links.targetId, id)}`;
-
-async function detailed(scope: UserScope, row: TaskRow) {
-  const [task] = await withDetails(scope, [row]);
-  if (!task) throw new Error('Could not load the task');
-  return task;
-}
 
 /**
  * tasks.addBlocker / tasks.removeBlocker. Refuses a task blocking itself and any cycle (A blocks B

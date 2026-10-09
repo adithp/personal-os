@@ -266,6 +266,15 @@ describe('blocking enforcement', () => {
     expect(error).toMatchObject({ message: 'Blocked by: Another, Blocker' });
   });
 
+  it('shows at most three blocker titles in the message, then how many more', async () => {
+    const { b } = await pair();
+    for (const title of ['C1', 'C2', 'C3']) {
+      await block(alice(), await create(alice(), title), b);
+    }
+    const error = await failure(registry.run(alice(), 'tasks.complete', { id: b.id }));
+    expect(error).toMatchObject({ message: 'Blocked by: Blocker, C1, C2 and 1 more' });
+  });
+
   it('shows blockedBy in tasks.list and tasks.get', async () => {
     const { a, b } = await pair();
     const listed = (await registry.run(alice(), 'tasks.list', {})).data as Item[];

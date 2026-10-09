@@ -1,10 +1,10 @@
 import { entities, entityTags, tasks, type TaskRow } from '@personal-os/db';
 import { parseRecurrence, taskActions, type Recurrence } from '@personal-os/shared';
-import { and, desc, eq, inArray, isNull, ne } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { RRule, type Options } from 'rrule';
 import type { UserScope } from '../lib/user-scope';
 import { implement } from './registry';
-import { applyChange, POSITION_STEP } from './tasks';
+import { applyChange, nextPosition } from './tasks';
 
 /** India is UTC+05:30 all year (no daylight saving), so a fixed offset is exact. */
 const IST_MS = (5 * 60 + 30) * 60 * 1000;
@@ -59,19 +59,6 @@ export function nextDueDate(rule: string, dueAt: Date, now: Date): Date | null {
   return next ? fromFloating(next) : null;
 }
 
-/** The position after the last live task with the same parent. */
-async function positionAfterLast(scope: UserScope, parentTaskId: string | null): Promise<number> {
-  const [last] = await scope.select(tasks, {
-    where: and(
-      scope.isLive(tasks),
-      parentTaskId ? eq(tasks.parentTaskId, parentTaskId) : isNull(tasks.parentTaskId),
-    ),
-    orderBy: desc(tasks.position),
-    limit: 1,
-  });
-  return (last?.position ?? 0) + POSITION_STEP;
-}
-
 /**
  * Called when a task with a recurrence rule has just been completed. Creates the next copy, due
  * on the first occurrence of the rule after both the old due date and `now` (Asia/Kolkata), and
@@ -90,6 +77,21 @@ export async function spawnNextOccurrence(
     : null;
 
   return scope.transaction(async (tx) => {
+    // Done, reopened, and done again must not leave two copies of the same chore
+    const [existing] = await tx.select(tasks, {
+      where: and(
+        tx.isLive(tasks),
+        ne(tasks.status, 'done'),
+        eq(tasks.title, completed.title),
+        eq(tasks.recurrenceRule, completed.recurrenceRule ?? ''),
+        eq(tasks.dueAt, dueAt),
+        completed.parentTaskId
+          ? eq(tasks.parentTaskId, completed.parentTaskId)
+          : isNull(tasks.parentTaskId),
+      ),
+      limit: 1,
+    });
+    if (existing) return null;
     const [entity] = await tx.insert(entities, { type: 'task', title: completed.title });
     if (!entity) throw new Error('Could not create the next task');
     const [copy] = await tx.insert(tasks, {
@@ -103,7 +105,7 @@ export async function spawnNextOccurrence(
       reminderAt,
       recurrenceRule: completed.recurrenceRule,
       parentTaskId: completed.parentTaskId,
-      position: await positionAfterLast(tx, completed.parentTaskId),
+      position: await nextPosition(tx, completed.parentTaskId),
     });
     if (!copy) throw new Error('Could not create the next task');
     const links = await tx.select(entityTags, { where: eq(entityTags.entityId, completed.id) });
@@ -127,15 +129,29 @@ export const recurrenceImplementations = [
     scope.transaction(async (tx) => {
       const { data } = await applyChange(tx, id, patch);
       // Only the user's own live copies that are not done; anything else is left alone
+      // and only real copies: same repeat rule and same parent as the reopened task
       const copies = removeIds.filter((copyId) => copyId !== id);
-      if (copies.length > 0) {
+      if (copies.length > 0 && data.recurrenceRule) {
         const found = await tx.select(tasks, {
-          where: and(inArray(tasks.id, copies), tx.isLive(tasks), ne(tasks.status, 'done')),
+          where: and(
+            inArray(tasks.id, copies),
+            tx.isLive(tasks),
+            ne(tasks.status, 'done'),
+            eq(tasks.recurrenceRule, data.recurrenceRule),
+            data.parentTaskId
+              ? eq(tasks.parentTaskId, data.parentTaskId)
+              : isNull(tasks.parentTaskId),
+          ),
         });
         const ids = found.map((row) => row.id);
         if (ids.length > 0) {
-          await tx.softDelete(tasks, inArray(tasks.id, ids));
-          await tx.softDelete(entities, inArray(entities.id, ids));
+          // The subtasks of a removed copy go with it
+          const children = await tx.select(tasks, {
+            where: and(inArray(tasks.parentTaskId, ids), tx.isLive(tasks)),
+          });
+          const all = [...ids, ...children.map((row) => row.id)];
+          await tx.softDelete(tasks, inArray(tasks.id, all));
+          await tx.softDelete(entities, inArray(entities.id, all));
         }
       }
       return { data, undo: null };
