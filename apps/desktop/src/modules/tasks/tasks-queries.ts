@@ -117,6 +117,7 @@ export function applyPatch(
   if (patch.dueAt !== undefined) next.dueAt = patch.dueAt;
   if (patch.dueAllDay !== undefined) next.dueAllDay = patch.dueAllDay;
   if (patch.position !== undefined) next.position = patch.position;
+  if (patch.recurrenceRule !== undefined) next.recurrenceRule = patch.recurrenceRule;
   if (patch.reminderAt !== undefined) next.reminderAt = patch.reminderAt;
   if (patch.tagIds !== undefined) {
     // Tags show at once; one the cache does not know yet appears after the refetch
@@ -293,6 +294,31 @@ export function useTaskActions() {
     onSettled: () => refresh(),
   });
 
+  /** Make `blockerId` block the task (the detail panel's "Blocked by" row). */
+  const addBlocker = useMutation({
+    mutationFn: ({ id, blockerId }: { id: string; blockerId: string }) =>
+      api.request<TaskWriteResult>('POST', `/tasks/${id}/blockers`, { body: { blockerId } }),
+    onSuccess: ({ undo }) => {
+      offerUndo('Blocker added.', undo);
+    },
+    onError: (error) => {
+      fail(error);
+    },
+    onSettled: () => refresh(),
+  });
+
+  const removeBlocker = useMutation({
+    mutationFn: ({ id, blockerId }: { id: string; blockerId: string }) =>
+      api.request<TaskWriteResult>('DELETE', `/tasks/${id}/blockers/${blockerId}`),
+    onSuccess: ({ undo }) => {
+      offerUndo('Blocker removed.', undo);
+    },
+    onError: (error) => {
+      fail(error);
+    },
+    onSettled: () => refresh(),
+  });
+
   const archive = useMutation({
     mutationFn: (id: string) => api.request<TaskWriteResult>('POST', `/tasks/${id}/archive`),
     onMutate: async (id) => {
@@ -316,5 +342,5 @@ export function useTaskActions() {
     },
   });
 
-  return { create, update, complete, move, remove, archive, unarchive };
+  return { create, update, complete, move, addBlocker, removeBlocker, remove, archive, unarchive };
 }

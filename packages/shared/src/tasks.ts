@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { defineAction, type UndoDescriptor } from './actions';
+import { recurrenceRuleSchema } from './recurrence';
 import { MAX_TAGS_PER_TASK, tagRefSchema } from './tags';
 
 /** Where a task is on the board (docs/features/tasks.md). */
@@ -71,9 +72,15 @@ export const createTaskInput = z
     reminderAt: isoTime.nullable().optional(),
     parentTaskId: z.uuid().optional(),
     tagIds: tagIds.optional(),
+    /** One of the repeat presets (see recurrence.ts). A repeating task needs a due date. */
+    recurrenceRule: recurrenceRuleSchema.optional(),
   })
   .refine((input) => !input.dueAllDay || Boolean(input.dueAt), {
     message: 'An all-day task needs a due date',
+    path: ['dueAt'],
+  })
+  .refine((input) => !input.recurrenceRule || Boolean(input.dueAt), {
+    message: 'A repeating task needs a due date',
     path: ['dueAt'],
   });
 export type CreateTaskInput = z.infer<typeof createTaskInput>;
@@ -91,6 +98,8 @@ const editableFields = {
   reminderAt: isoTime.nullable().optional(),
   /** Replaces the task's tags with exactly these. */
   tagIds: tagIds.optional(),
+  /** One of the repeat presets, or null to stop repeating. A repeating task needs a due date. */
+  recurrenceRule: recurrenceRuleSchema.nullable().optional(),
   /** Where the task sits in the manual order (smaller is higher). tasks.move works this out. */
   position: z.number().min(-1e9).max(1e9).optional(),
 };
@@ -166,6 +175,20 @@ export const moveTaskInput = z
   );
 export type MoveTaskInput = z.infer<typeof moveTaskInput>;
 
+/** Make `blockerId` block task `id` (the task cannot be completed until the blocker is done). */
+export const blockerInput = z.object({ id: taskId, blockerId: taskId });
+export type BlockerInput = z.infer<typeof blockerInput>;
+
+/**
+ * The undo of completing a repeating task: puts the old values back (like tasks.update) and removes
+ * the copies that completing it created.
+ */
+export const reopenTaskInput = z.object({
+  id: taskId,
+  ...editableFields,
+  removeIds: z.array(taskId).max(10),
+});
+
 export const taskIdInput = z.object({ id: taskId });
 export const prioritizeTaskInput = z.object({ id: taskId, priority: taskPrioritySchema });
 
@@ -218,6 +241,26 @@ export const taskActions = {
     description: 'Move a task: change its place in the order, its status, or its due date.',
     permission: 'write',
     input: moveTaskInput,
+  }),
+  addBlocker: defineAction({
+    name: 'tasks.addBlocker',
+    description:
+      'Make one task block another: the blocked task cannot be completed until it is done.',
+    permission: 'write',
+    input: blockerInput,
+  }),
+  removeBlocker: defineAction({
+    name: 'tasks.removeBlocker',
+    description: 'Stop one task from blocking another.',
+    permission: 'write',
+    input: blockerInput,
+  }),
+  reopen: defineAction({
+    name: 'tasks.reopen',
+    description:
+      'Undo the completion of a repeating task: restore the old values and remove the copies it created.',
+    permission: 'write',
+    input: reopenTaskInput,
   }),
   prioritize: defineAction({
     name: 'tasks.prioritize',

@@ -1,5 +1,7 @@
-import type { TaskBlocker } from '@personal-os/shared';
+import { taskActions, type TaskBlocker } from '@personal-os/shared';
+import { HttpError } from '../lib/http-error';
 import type { UserScope } from '../lib/user-scope';
+import { implement } from './registry';
 
 /**
  * Task dependencies (links with relation "blocks").
@@ -19,3 +21,18 @@ export function loadBlockers(
 export function assertNotBlocked(_scope: UserScope, _taskId: string): Promise<void> {
   return Promise.resolve();
 }
+
+/**
+ * tasks.addBlocker / tasks.removeBlocker: a link with relation "blocks" from the blocker (source)
+ * to the blocked task (target). Refuses a task blocking itself and any cycle (A blocks B blocks A,
+ * or longer). Each one's undo is the other.
+ * CONTRACT STUB: the Feature 3 server-dev agent implements them.
+ */
+export const dependencyImplementations = [
+  implement(taskActions.addBlocker, () => {
+    throw new HttpError(501, 'not_implemented', 'Blockers are not built yet');
+  }),
+  implement(taskActions.removeBlocker, () => {
+    throw new HttpError(501, 'not_implemented', 'Blockers are not built yet');
+  }),
+];

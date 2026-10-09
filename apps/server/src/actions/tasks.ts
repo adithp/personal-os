@@ -204,6 +204,7 @@ export interface Patch {
   reminderAt?: string | null;
   tagIds?: string[];
   position?: number;
+  recurrenceRule?: string | null;
 }
 
 /** Applies a change to one task and works out how to put it back. */
@@ -248,6 +249,18 @@ export async function applyChange(
     });
     change('priority', patch.priority, current.priority, { priority: patch.priority });
     change('position', patch.position, current.position, { position: patch.position });
+    change('recurrenceRule', patch.recurrenceRule, current.recurrenceRule, {
+      recurrenceRule: patch.recurrenceRule,
+    });
+    const finalRule =
+      patch.recurrenceRule !== undefined ? patch.recurrenceRule : current.recurrenceRule;
+    if (
+      (patch.recurrenceRule !== undefined || patch.dueAt !== undefined) &&
+      finalRule &&
+      !finalDueAt
+    ) {
+      throw new HttpError(400, 'validation_error', 'A repeating task needs a due date');
+    }
     change('dueAt', dueAtChange, iso(current.dueAt), {
       dueAt: dueAtChange ? new Date(dueAtChange) : null,
     });
@@ -287,10 +300,14 @@ export async function applyChange(
     }
     if (tagIds !== undefined) await setTags(tx, id, tagIds);
     // Any change to done (the checkbox, the status control, a drag, the AI) makes the next copy
-    if (completing && updated.recurrenceRule) {
-      await spawnNextOccurrence(tx, updated, new Date());
-    }
-    const undo: UndoDescriptor = { action: 'tasks.update', input: { id, ...previous } };
+    const copy =
+      completing && updated.recurrenceRule
+        ? await spawnNextOccurrence(tx, updated, new Date())
+        : null;
+    // Undoing the completion of a repeating task also removes the copy it created (decision 47)
+    const undo: UndoDescriptor = copy
+      ? { action: 'tasks.reopen', input: { id, ...previous, removeIds: [copy.id] } }
+      : { action: 'tasks.update', input: { id, ...previous } };
     return { data: await detailed(tx, updated), undo };
   });
 }
@@ -392,6 +409,7 @@ export const taskImplementations = [
           ? new Date(input.dueAllDay ? istDayStart(input.dueAt) : input.dueAt)
           : null,
         dueAllDay: input.dueAllDay ?? false,
+        recurrenceRule: input.recurrenceRule ?? null,
         reminderAt: input.reminderAt ? new Date(input.reminderAt) : null,
         parentTaskId,
         position: await nextPosition(tx, parentTaskId),

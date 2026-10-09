@@ -70,7 +70,19 @@ export function createFakeApi(initial: Task[] = [], initialTags: Tag[] = []) {
   let failure: ApiError | null = null;
   let delayMs = 0;
 
+  /** Blocked task id -> the ids of the tasks that block it. */
+  const blockers = new Map<string, Set<string>>();
+
   const liveTasks = () => [...store.values()].filter((task) => !deleted.has(task.id));
+
+  /** The blockers of a task that are not done, as the API returns them. */
+  const unfinishedBlockers = (id: string): Task['blockedBy'] =>
+    [...(blockers.get(id) ?? [])].flatMap((blockerId) => {
+      const blocker = store.get(blockerId);
+      return blocker && !deleted.has(blockerId) && blocker.status !== 'done'
+        ? [{ id: blocker.id, title: blocker.title }]
+        : [];
+    });
 
   /** The task as the API returns it: with its subtask counts. */
   const view = (task: Task): Task => {
@@ -79,6 +91,8 @@ export function createFakeApi(initial: Task[] = [], initialTags: Tag[] = []) {
       ...task,
       subtaskCount: children.length,
       subtasksDone: children.filter((child) => child.status === 'done').length,
+      // Blockers added through the API are live; a task made with blockedBy keeps its fixed list
+      blockedBy: blockers.has(task.id) ? unfinishedBlockers(task.id) : task.blockedBy,
     };
   };
 
@@ -96,6 +110,12 @@ export function createFakeApi(initial: Task[] = [], initialTags: Tag[] = []) {
 
   const patchTask = (id: string, patch: Record<string, unknown>) => {
     const current = find(id);
+    if (patch.status === 'done' && current.status !== 'done') {
+      const open = unfinishedBlockers(id);
+      if (open.length > 0) {
+        throw new ApiError(409, 'blocked', `Blocked by: ${open.map((b) => b.title).join(', ')}`);
+      }
+    }
     const previous: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(patch)) {
       if (key === 'id' || value === undefined) continue;
@@ -168,6 +188,47 @@ export function createFakeApi(initial: Task[] = [], initialTags: Tag[] = []) {
       const task = makeTask({ ...(rest as Partial<Task>), title, tags: tagRefs(tagIds) });
       store.set(task.id, task);
       return { item: view(task), undo: { action: 'tasks.delete', input: { id: task.id } } };
+    }
+
+    const blockerRoute = /^\/tasks\/([^/]+)\/blockers(?:\/([^/]+))?$/.exec(path);
+    if (blockerRoute) {
+      const id = blockerRoute[1] ?? '';
+      const blockerId =
+        blockerRoute[2] ?? (typeof body.blockerId === 'string' ? body.blockerId : '');
+      find(id);
+      find(blockerId);
+      const set = blockers.get(id) ?? new Set<string>();
+      if (method === 'POST') {
+        // A task cannot block itself, and no cycle is allowed (A blocks B blocks A, or longer)
+        const reaches = (from: string, to: string, seen = new Set<string>()): boolean => {
+          if (from === to) return true;
+          if (seen.has(from)) return false;
+          seen.add(from);
+          return [...blockers.entries()].some(
+            ([blocked, by]) => by.has(from) && reaches(blocked, to, seen),
+          );
+        };
+        if (id === blockerId || reaches(id, blockerId)) {
+          throw new ApiError(
+            409,
+            'circular_dependency',
+            'That would make the tasks wait for each other',
+          );
+        }
+        set.add(blockerId);
+        blockers.set(id, set);
+        return {
+          item: view(find(id)),
+          undo: { action: 'tasks.removeBlocker', input: { id, blockerId } },
+        };
+      }
+      if (method === 'DELETE') {
+        set.delete(blockerId);
+        return {
+          item: view(find(id)),
+          undo: { action: 'tasks.addBlocker', input: { id, blockerId } },
+        };
+      }
     }
 
     const one = /^\/tasks\/([^/]+)(?:\/(complete|archive|unarchive|move))?$/.exec(path);

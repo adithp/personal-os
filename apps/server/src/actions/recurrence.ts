@@ -1,5 +1,8 @@
 import type { TaskRow } from '@personal-os/db';
+import { taskActions } from '@personal-os/shared';
+import { HttpError } from '../lib/http-error';
 import type { UserScope } from '../lib/user-scope';
+import { implement } from './registry';
 
 /**
  * Recurring tasks.
@@ -19,3 +22,15 @@ export function spawnNextOccurrence(
 ): Promise<TaskRow | null> {
   return Promise.resolve(null);
 }
+
+/**
+ * tasks.reopen (the undo of completing a repeating task): restores the old values through
+ * applyChange in tasks.ts and soft-deletes the copies in `removeIds`, in one transaction. Its own
+ * undo is null.
+ * CONTRACT STUB: the Feature 3 server-dev agent implements it.
+ */
+export const recurrenceImplementations = [
+  implement(taskActions.reopen, () => {
+    throw new HttpError(501, 'not_implemented', 'Reopening is not built yet');
+  }),
+];

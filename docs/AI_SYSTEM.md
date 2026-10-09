@@ -45,7 +45,7 @@ The UI and the AI call the same actions.
 
 Every action is recorded in ai_action_log (Step 3). Until then the registry only tells observers after each action (success or failure); no log table exists yet.
 
-Today: read = tasks.list, tasks.get, tags.list; write = tasks.create, tasks.update, tasks.archive, tasks.unarchive, tasks.complete, tasks.move, tasks.prioritize, tasks.restore, tags.create, tags.update; destructive = tasks.delete. The app's buttons run actions with confirmed = true (a button press is the confirmation), so deleting in the app does not prompt; a call from the AI without confirmation is stopped by the registry (409 confirmation_required) until the user confirms.
+Today: read = tasks.list, tasks.get, tags.list; write = tasks.create, tasks.update, tasks.archive, tasks.unarchive, tasks.complete, tasks.move, tasks.addBlocker, tasks.removeBlocker, tasks.reopen, tasks.prioritize, tasks.restore, tags.create, tags.update; destructive = tasks.delete. The app's buttons run actions with confirmed = true (a button press is the confirmation), so deleting in the app does not prompt; a call from the AI without confirmation is stopped by the registry (409 confirmation_required) until the user confirms.
 
 `tasks.move` (write): puts a task between two neighbours (`afterId` above, `beforeId` below) and can change its status and due date in the same step through the same code as tasks.update. The new position is the middle between the neighbours; when the gap is smaller than 1e-6 the siblings are renumbered first. The undo is a tasks.update with the old status, dates and position (tasks.update accepts `position`, from -1e9 to 1e9); the renumbered siblings are not restored (their order does not change).
 
