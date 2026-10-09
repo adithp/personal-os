@@ -9,6 +9,8 @@ export interface PopoverProps {
   /** What the button shows. */
   trigger: ReactNode;
   triggerClassName?: string;
+  /** Turns the button off. */
+  disabled?: boolean;
   /** The popup content; call `close` to close it and return focus to the button. */
   children: (close: () => void) => ReactNode;
 }
@@ -19,7 +21,14 @@ const ITEMS = '[role="menuitemcheckbox"],[role="menuitemradio"],[role="menuitem"
  * A small popup built with plain React. Escape closes it (and is swallowed, so the panel stays
  * open), so does leaving it with Tab or a click outside. Arrow keys move between its items.
  */
-export function Popover({ label, popupLabel, trigger, triggerClassName, children }: PopoverProps) {
+export function Popover({
+  label,
+  popupLabel,
+  trigger,
+  triggerClassName,
+  disabled,
+  children,
+}: PopoverProps) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const popup = useRef<HTMLDivElement>(null);
@@ -72,6 +81,7 @@ export function Popover({ label, popupLabel, trigger, triggerClassName, children
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         aria-label={label}
+        disabled={disabled}
         onClick={() => {
           setOpen((value) => !value);
         }}
@@ -86,7 +96,7 @@ export function Popover({ label, popupLabel, trigger, triggerClassName, children
           role="menu"
           aria-label={popupLabel}
           tabIndex={-1}
-          className="absolute top-full left-0 z-30 mt-1 flex min-w-[200px] flex-col gap-1 rounded-card border-[0.5px] border-glass-border glass-strong p-1.5"
+          className="absolute top-full left-0 z-30 mt-1 flex min-w-[200px] flex-col gap-1 rounded-card glass-strong p-1.5"
         >
           {/* close only touches the button ref when called from an event */}
           {/* eslint-disable-next-line react-hooks/refs */}

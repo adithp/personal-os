@@ -10,7 +10,9 @@ import { IconX } from '@tabler/icons-react';
 import { useEffect, type KeyboardEvent, type ReactNode } from 'react';
 import { ApiError } from '../../../api/api-client';
 import { useTask, useTaskActions, type TaskPatch } from '../tasks-queries';
+import { BlockersSection } from './blockers-section';
 import { DueFields, ReminderField } from './date-fields';
+import { RepeatField } from './repeat-field';
 import { SubtaskList } from './subtask-list';
 import { TagSection } from './tag-section';
 import { NotesField, TitleField } from './text-fields';
@@ -149,14 +151,17 @@ function DetailBody({ task, onClose }: { task: Task; onClose: () => void }) {
       </Row>
 
       <Row label="Repeat">
-        {task.recurrenceRule ? (
-          <p className="text-body text-fg-secondary">{task.recurrenceRule}</p>
-        ) : null}
-        <p className="text-small text-fg-muted">Not available yet</p>
+        <RepeatField
+          dueAt={task.dueAt}
+          recurrenceRule={task.recurrenceRule}
+          onChange={(recurrenceRule) => {
+            save({ recurrenceRule });
+          }}
+        />
       </Row>
 
       <Row label="Blocked by">
-        <p className="text-small text-fg-muted">Not available yet</p>
+        <BlockersSection taskId={task.id} blockedBy={task.blockedBy} />
       </Row>
 
       <Row label="Tags">
