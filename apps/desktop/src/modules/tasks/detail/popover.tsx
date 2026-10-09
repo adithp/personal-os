@@ -11,6 +11,8 @@ export interface PopoverProps {
   triggerClassName?: string;
   /** Turns the button off. */
   disabled?: boolean;
+  /** The id of text that describes the button (for example why it is off). */
+  describedBy?: string;
   /** The popup content; call `close` to close it and return focus to the button. */
   children: (close: () => void) => ReactNode;
 }
@@ -27,6 +29,7 @@ export function Popover({
   trigger,
   triggerClassName,
   disabled,
+  describedBy,
   children,
 }: PopoverProps) {
   const [open, setOpen] = useState(false);
@@ -82,10 +85,16 @@ export function Popover({
         aria-controls={open ? id : undefined}
         aria-label={label}
         disabled={disabled}
+        aria-describedby={describedBy}
         onClick={() => {
           setOpen((value) => !value);
         }}
-        className={cx('max-w-full rounded-[8px] focus-ring', triggerClassName)}
+        className={cx(
+          'max-w-full focus-ring',
+          // A radius from the caller wins, so two radius classes never fight
+          !triggerClassName?.includes('rounded-') && 'rounded-[8px]',
+          triggerClassName,
+        )}
       >
         {trigger}
       </button>
@@ -110,6 +119,7 @@ export function Popover({
 export interface PopoverItemProps {
   role: 'menuitemcheckbox' | 'menuitemradio' | 'menuitem';
   checked?: boolean;
+  id?: string;
   onSelect: () => void;
   'aria-label'?: string;
   className?: string;
@@ -121,6 +131,7 @@ export function PopoverItem({
   role,
   checked,
   onSelect,
+  id,
   className,
   children,
   ...aria
@@ -128,6 +139,7 @@ export function PopoverItem({
   return (
     <button
       type="button"
+      id={id}
       role={role}
       aria-checked={role === 'menuitem' ? undefined : checked}
       tabIndex={-1}

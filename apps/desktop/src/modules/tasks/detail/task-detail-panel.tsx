@@ -136,7 +136,12 @@ function DetailBody({ task, onClose }: { task: Task; onClose: () => void }) {
           dueAt={task.dueAt}
           dueAllDay={task.dueAllDay}
           onChange={(patch) => {
-            save(patch);
+            // The server refuses a repeating task without a due date, so clearing it stops the repeat
+            save(
+              patch.dueAt === null && task.recurrenceRule
+                ? { ...patch, recurrenceRule: null }
+                : patch,
+            );
           }}
         />
       </Row>
