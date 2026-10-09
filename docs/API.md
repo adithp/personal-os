@@ -19,7 +19,8 @@ CORS: the allowed origins come from CORS_ORIGINS (comma-separated); the default 
 | 404 | unknown_action | POST /undo with an action name that does not exist |
 | 409 | conflict | A tag rename onto an existing name |
 | 409 | confirmation_required | An external or destructive action without confirmation (the app's buttons confirm, so it never hits this) |
-| 409 | blocked | Reserved for completing a blocked task (Feature 3; nothing throws it yet) |
+| 409 | blocked | Completing a blocked task (complete, update to done, move into Done); the message lists the blockers |
+| 409 | circular_dependency | Adding a blocker that would make tasks wait for each other |
 | 500 | internal_error | Anything else; the body never leaks details |
 | 503 | schema_behind | The database is missing migrations (see above) |
 
@@ -33,7 +34,7 @@ Resources: /tasks, /habits, /habit-logs, /notes, /note-folders, /note-templates,
 Responses:
 - List: `{ "items": [...] }` (tasks: filters `status`, `priority`, `tagId` (each repeatable), `dueFrom`, `dueTo`, `noDate`, `completedAfter`, `completedBefore`, `parent` (`none` = top-level, the default, or a task id for its subtasks), `archived`, `sort`, `order`, `limit`, `offset`).
 - Task list details: `sort` is position (default), dueAt, priority, createdAt, or title (dueAt always puts tasks without a date last); `order` is asc (default) or desc; `limit` defaults to 500 (max 1000) and `offset` to 0; `dueFrom` is inclusive and `dueTo` exclusive (so are `completedAfter` and `completedBefore`); `noDate=true` returns only tasks with no due date; `archived=true` returns only archived tasks (default false); `status`, `priority`, and `tagId` accept one value or a repeated key.
-- A task carries `tags`, `subtaskCount`, `subtasksDone`, `blockedBy` (always empty until Feature 3), and `dueAllDay`.
+- A task carries `tags`, `subtaskCount`, `subtasksDone`, `blockedBy` (the unfinished tasks that block it), and `dueAllDay`.
 - Get: `{ "item": {...} }`.
 - Create, update, complete, delete: `{ "item": {...}, "undo": { "action", "input" } | null }`. Create answers 201. Delete is a soft delete.
 - `undo` is the way to reverse the change: send it as the body of `POST /undo`.
@@ -51,7 +52,7 @@ Responses:
 | POST | /tasks/:id/archive | Archive a task (returns the task and an undo) |
 | POST | /tasks/:id/unarchive | Bring an archived task back |
 | POST | /tasks/:id/complete | Mark a task done (returns the task and an undo) |
-| POST | /tasks/:id/blockers | Body `{ blockerId }`: make that task block this one. 400 for itself, 409 `circular_dependency` for a cycle, 404 unknown. Returns the task and an undo (Feature 3: answers 501 until built) |
+| POST | /tasks/:id/blockers | Body `{ blockerId }`: make that task block this one. 400 for itself, 409 `circular_dependency` for a cycle, 404 unknown. Adding the same link again changes nothing. Returns the task and an undo |
 | DELETE | /tasks/:id/blockers/:blockerId | Stop that task from blocking this one (returns the task and an undo) |
 | POST | /tasks/:id/move | Drag and drop: body `status`, `dueAt`, `dueAllDay`, `afterId` (task just above), `beforeId` (task just below), at least one; returns the task and an undo. The position goes between the two neighbours; 400 when a neighbour is the task itself, has a different parent, or `afterId` is not above `beforeId`; 404 for an unknown, deleted or other user's task or neighbour. The status and dates change exactly like in PATCH /tasks/:id |
 | POST | /undo | Run the `undo` returned by a write: body `{ "action": "tasks.restore", "input": { "id": "..." } }`. Only write and destructive actions can be run this way; anything else answers 400 cannot_undo |

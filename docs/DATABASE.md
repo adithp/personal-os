@@ -35,7 +35,7 @@ Each module table uses the same id as its entity row.
 - tasks: id (same as its entities row), title, description, status (todo, doing, done), priority (1–4, 1 is the most urgent), due_at, reminder_at, recurrence_rule (RRULE text), parent_task_id (one level only), position, completed_at, archived_at, deleted_at
 - project_id and category are added in Step 5 (tags cover grouping until then).
 - A task is the entity with the same id and the same owner (composite foreign key). Deleting an entity deletes its task. A task cannot be its own parent, and a subtask's parent must belong to the same user.
-- Dependencies are links with relation = blocks. The behavior (blocking completion, cycle checks) is built in Feature 3; no blocks link is created yet.
+- Dependencies are links with relation = blocks. The source is the blocker and the target the blocked task. Removing a blocker soft-deletes the link (the unique index covers live links only, so it can be added again). A done or deleted blocker no longer blocks; an archived one does. Cycles and self links are refused by the server.
 - due_all_day (boolean, default false): an all-day task stores the start of that day in India time in due_at and shows the date only.
 - Soft-deleting a task also soft-deletes its entities row; restoring brings both back. Renaming a task updates entities.title. Subtasks are not touched when their parent is soft-deleted (they are only reachable through the parent); a hard delete of the parent removes them (tasks_parent_fk cascades).
 - Checks and indexes: priority between 1 and 4 (tasks_priority_range), indexes on user, user and status, user and due date, and parent.

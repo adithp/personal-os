@@ -49,3 +49,15 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: sortableKeyboardCoordinates reads element rects and jsdom returns zeros; with a DragOverlay dnd-kit measures the overlay node, so it needs the lifted card rect too
 - Fix: Mock getBoundingClientRect for columns, cards and the [data-drag-overlay] element (see board-view.test.tsx and drag-drop.test.tsx)
 - Prevention: documented, testing-patterns pitfalls
+
+### 2026-10-09: Page tests passed alone but timed out in a full run
+- Symptom: Two my-tasks page tests failed with a 5 s timeout in pnpm test and passed when run alone
+- Cause: The full run starts the server tests too and the machine is busy
+- Fix: testTimeout is 20 s in apps/desktop/vitest.config.ts; run the failing file alone before calling a failure real
+- Prevention: guarded, apps/desktop/vitest.config.ts
+
+### 2026-10-09: Build the promises of a rejection test lazily
+- Symptom: Vitest reported Unhandled Rejection for tests that expected errors
+- Cause: An array of registry.run(...) promises that reject was awaited one by one, so the later ones rejected unhandled
+- Fix: Use an array of functions and call them one after the other
+- Prevention: documented, testing-patterns pitfalls

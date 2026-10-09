@@ -41,7 +41,7 @@ Every time something cost a retry or a fix, we record it here so it never happen
 | 2026-10 | api-route | Fastify hooks apply only to the scope they are added in | guarded | apps/server/src/routes/v1.ts (requireLogin as a function) and the auth tests on every route |
 | 2026-10-09 | data-hooks | A failed optimistic change rolled back unrelated cache entries | documented | data-hooks SKILL (snapshot only entries that contain the task) |
 | 2026-10-09 | data-hooks | Two quick tag changes overwrote each other | guarded | apps/desktop/src/modules/tasks/detail/task-detail-review-fixes.test.tsx |
-| 2026-10-09 | time-and-money | rrule treats dates as floating UTC, which shifts days around midnight India time | documented | time-and-money SKILL (guard planned in the Feature 3 tests) |
+| 2026-10-09 | time-and-money | rrule treats dates as floating UTC, which shifts days around midnight India time | guarded | apps/server/src/actions/recurrence.test.ts (00:10 IST and month-end cases) |
 | 2026-10-09 | time-and-money | All-day due dates must be stored as the start of the India day | guarded | apps/server/src/actions/tasks.ts (normalises) and its tests |
 | 2026-10-09 | time-and-money | Typing a year in a date-time box passes through invalid years | guarded | task-detail tests (draft saved on blur or Enter) |
 | 2026-10-08 | docs-sync | Docs drifted from the code (hosting moved from Oracle to AWS in some files only) | guarded | scripts/docs-check.mjs, docs/doc-map.json, .githooks/commit-msg, CI |
@@ -53,3 +53,5 @@ Every time something cost a retry or a fix, we record it here so it never happen
 | 2026-10-09 | orchestrate-feature | Two agents built the same drag handle twice and one copy missed the guards | documented | orchestrate-feature pitfalls |
 | 2026-10-09 | ui-design-system | Do not add border-[0.5px] next to the glass utilities | documented | ui-design-system pitfalls |
 | 2026-10-09 | data-hooks | Two equal positions broke a move with a 400 | guarded | apps/server/src/actions/task-moves.test.ts |
+| 2026-10-09 | testing-patterns | Page tests passed alone but timed out in a full run | guarded | apps/desktop/vitest.config.ts |
+| 2026-10-09 | testing-patterns | Build the promises of a rejection test lazily | documented | testing-patterns pitfalls |

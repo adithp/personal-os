@@ -31,7 +31,7 @@ Work on one step at a time. Use each step daily before starting the next.
 ## Step 2 – Tasks and notes
 - [x] Tasks list: create, edit, complete, delete, priorities, deadlines, reminder date, undo
 - [x] Tasks redesign Feature 1: side panel, Overview, My tasks (Cards and List), detail panel, subtasks, tags, archive
-- [ ] Tasks: recurring and dependencies in the UI (Feature 3; the server only has stubs)
+- [ ] Tasks: recurring and dependencies (Feature 3)
 - [x] Task views: Board (kanban) and drag and drop (Feature 2)
 - [ ] Tasks: quick add with dates, #tags and priority (Feature 4)
 - [ ] Tasks: favorites and manage tags (Feature 5)
