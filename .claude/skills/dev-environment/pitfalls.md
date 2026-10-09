@@ -91,3 +91,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: the shell heredoc passed the text to Python, where a doubled backslash followed by n became a real newline
 - Fix: write the script with the Write tool (a .py file) and run it, or build the escape with chr(92)
 - Prevention: documented, dev-environment pitfalls
+
+### 2026-10-09: A Python script without an encoding corrupted a file with non-ASCII characters
+- Symptom: the ellipsis in a UI text became a broken character and later replacements did not match
+- Cause: open() without encoding uses the Windows default (cp1252)
+- Fix: git checkout the file; always open(..., encoding='utf-8') and assert every replacement matched
+- Prevention: documented, dev-environment pitfalls
