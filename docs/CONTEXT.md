@@ -87,7 +87,7 @@ Full product details: `docs/PRD.md`. Build order: `docs/ROADMAP.md`. Decisions w
 - **Step 2, Tasks feature 1:** built, tested and approved by me. ROADMAP.md is ticked.
 - **Decisions 52 to 55:** up to 5 agents at once; Recharts instead of ECharts; keep dnd-kit, rrule and chrono-node; the drag and drop rules.
 - **Design-consistency job** (design audit, design:check, shared-components rule, design-reviewer checklist): I send it before feature 3 (feature 2 was built first because I said to start).
-- **Tasks feature 2 (Board and drag and drop):** built and merged on step-2-tasks-notes; reviews and the feature report in progress, waiting for my check and "next". The dashboard Today's tasks tile is real now. Features 3 to 8 follow in ROADMAP order, one prompt each.
+- **Tasks feature 2 (Board and drag and drop):** built, tested and approved by me (ROADMAP ticked). The dashboard Today's tasks tile is real. Next in order: feature 3 (dependencies and recurring), then 4 to 8, one prompt each; the design-consistency job comes before feature 3.
 - **Discuss skill and this CONTEXT.md:** done.
 - **Pending later:** Notes features, realtime, redeploying AWS, Step 3 (AI + OmniRoute + Tailscale), Step 4 (Google), and the rest of the roadmap.
 
