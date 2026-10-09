@@ -9,6 +9,7 @@ import {
 } from '@personal-os/shared';
 import { Input, cx } from '@personal-os/ui';
 import { IconChevronDown } from '@tabler/icons-react';
+import { useId } from 'react';
 import { istDay, toIstDate } from '../dates';
 import { Popover, PopoverItem } from './popover';
 import { useDraft } from './use-draft';
@@ -79,17 +80,17 @@ function MonthDayBox({ day, onCommit }: { day: number; onCommit: (day: number) =
  */
 export function RepeatField({ dueAt, recurrenceRule, onChange }: RepeatFieldProps) {
   const current = recurrenceRule ? parseRecurrence(recurrenceRule) : null;
-
-  if (recurrenceRule && !current) {
-    return <p className="text-body break-all text-fg-secondary">{recurrenceRule}</p>;
-  }
+  const hintId = useId();
+  const keepId = useId();
+  // A rule that is not a preset keeps the menu, so Does not repeat and the presets stay reachable
+  const custom = Boolean(recurrenceRule && !current);
 
   const kind: Kind = current?.freq ?? 'none';
   const summary = recurrenceRule ? describeRecurrence(recurrenceRule) : 'Does not repeat';
   const disabled = !dueAt && !recurrenceRule;
 
   const choose = (next: Kind) => {
-    if (next === kind) return;
+    if (next === kind && !custom) return;
     if (next === 'none') {
       onChange(null);
       return;
@@ -116,7 +117,8 @@ export function RepeatField({ dueAt, recurrenceRule, onChange }: RepeatFieldProp
         label={`Repeat: ${summary}`}
         popupLabel="Repeat options"
         disabled={disabled}
-        triggerClassName="inline-flex h-8 items-center gap-2 rounded-[10px] bg-input px-3 text-body text-fg disabled:opacity-50"
+        describedBy={disabled ? hintId : undefined}
+        triggerClassName="inline-flex h-8 items-center gap-2 rounded-[10px] bg-input px-3 text-body text-fg hover:bg-glass disabled:opacity-50"
         trigger={
           <>
             <span aria-hidden className="truncate">
@@ -144,16 +146,24 @@ export function RepeatField({ dueAt, recurrenceRule, onChange }: RepeatFieldProp
           </>
         )}
       </Popover>
-      {disabled ? <p className="text-small text-fg-muted">Set a due date to repeat</p> : null}
+      {custom ? <p className="text-small text-fg-muted">Custom rule</p> : null}
+      {disabled ? (
+        <p id={hintId} className="text-small text-fg-muted">
+          Set a due date to repeat
+        </p>
+      ) : null}
       {current?.freq === 'weekly' ? (
         <div role="group" aria-label="Repeat on" className="flex flex-wrap gap-1">
           {WEEKDAYS.map((day) => {
             const on = current.days.includes(day);
+            const last = on && current.days.length === 1;
             return (
               <button
                 key={day}
                 type="button"
                 aria-pressed={on}
+                aria-disabled={last ? true : undefined}
+                aria-describedby={last ? keepId : undefined}
                 onClick={() => {
                   toggleDay(current.days, day);
                 }}
@@ -167,6 +177,11 @@ export function RepeatField({ dueAt, recurrenceRule, onChange }: RepeatFieldProp
             );
           })}
         </div>
+      ) : null}
+      {current?.freq === 'weekly' && current.days.length === 1 ? (
+        <p id={keepId} className="text-small text-fg-muted">
+          Keep at least one day
+        </p>
       ) : null}
       {current?.freq === 'monthly' ? (
         <MonthDayBox

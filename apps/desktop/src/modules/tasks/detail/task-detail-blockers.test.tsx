@@ -49,8 +49,6 @@ describe('TaskDetailPanel: blocked by', () => {
     ]);
     await user.clear(search);
     await user.type(search, 'report');
-    await user.keyboard('{ArrowDown}');
-    expect(screen.getByRole('menuitem', { name: 'Write the report' })).toHaveFocus();
     await user.keyboard('{Enter}');
     await waitFor(() => {
       expect(posts(fake)).toHaveLength(1);
@@ -98,7 +96,66 @@ describe('TaskDetailPanel: blocked by', () => {
     const { user } = await openLoaded(fake, task.id);
     await user.click(screen.getByRole('button', { name: 'Add blocker' }));
     await user.type(await screen.findByRole('textbox', { name: 'Search tasks' }), 'zzz');
-    expect(screen.getByText('No matching tasks.')).toBeVisible();
+    expect(screen.getByRole('status')).toHaveTextContent('No tasks match your search.');
+  });
+
+  it('says so when there are no other open tasks', async () => {
+    const task = makeTask({ title: 'Alone' });
+    const { user } = await openLoaded(createFakeApi([task]), task.id);
+    await user.click(screen.getByRole('button', { name: 'Add blocker' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('You have no other open tasks.');
+  });
+
+  it('shows the first match as active and arrow keys move it', async () => {
+    const { task, other, fake } = setup();
+    const { user } = await openLoaded(fake, task.id);
+    await user.click(screen.getByRole('button', { name: 'Add blocker' }));
+    const search = await screen.findByRole('textbox', { name: 'Search tasks' });
+    const first = await screen.findByRole('menuitem', { name: 'Write the report' });
+    expect(search).toHaveAttribute('aria-activedescendant', first.id);
+    expect(first).toHaveClass('bg-input');
+    await user.keyboard('{ArrowDown}');
+    const second = screen.getByRole('menuitem', { name: 'Book flights' });
+    expect(search).toHaveAttribute('aria-activedescendant', second.id);
+    expect(search).toHaveFocus();
+    await user.keyboard('{Enter}');
+    await waitFor(() => {
+      expect(posts(fake)[0]?.body).toEqual({ blockerId: other.id });
+    });
+  });
+
+  it('shows the server message and Try again when the tasks cannot be loaded', async () => {
+    const { task, other, fake } = setup();
+    const { user } = await openLoaded(fake, task.id);
+    fake.failNext(500, 'internal', 'Tasks are down');
+    await user.click(screen.getByRole('button', { name: 'Add blocker' }));
+    expect(await screen.findByText('Tasks are down')).toBeVisible();
+    expect(screen.queryByText('No tasks match your search.')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('menuitem', { name: other.title })).toBeVisible();
+  });
+
+  it('after removing a blocker focus moves to the next chip, the previous one, then Add blocker', async () => {
+    const { task, blocker, other, third, fake } = setup();
+    for (const id of [blocker.id, other.id, third.id]) {
+      await fake.api.request('POST', `/tasks/${task.id}/blockers`, { body: { blockerId: id } });
+    }
+    const { user } = await openLoaded(fake, task.id);
+    const remove = (title: string) =>
+      screen.getByRole('button', { name: `Remove blocker ${title}` });
+    expect(remove('Write the report').className).toContain('size-5');
+    await user.click(remove('Book flights'));
+    await waitFor(() => {
+      expect(remove('Buy gloves')).toHaveFocus();
+    });
+    await user.click(remove('Buy gloves'));
+    await waitFor(() => {
+      expect(remove('Write the report')).toHaveFocus();
+    });
+    await user.click(remove('Write the report'));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Add blocker' })).toHaveFocus();
+    });
   });
 
   it('Escape closes the popup but not the panel', async () => {

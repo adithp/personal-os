@@ -120,11 +120,41 @@ describe('TaskDetailPanel: repeat', () => {
     expect(screen.getByText('Set a due date to repeat')).toBeVisible();
   });
 
-  it('shows a rule that is not a preset as read-only text', async () => {
+  it('shows a custom rule as Repeats with a quiet note and keeps the menu', async () => {
     const task = makeTask({ dueAt: DUE_TUESDAY, recurrenceRule: 'FREQ=WEEKLY;INTERVAL=2' });
+    const fake = createFakeApi([task]);
+    const { user } = await openLoaded(fake, task.id);
+    expect(screen.queryByText('FREQ=WEEKLY;INTERVAL=2')).not.toBeInTheDocument();
+    expect(screen.getByText('Custom rule')).toBeVisible();
+    await chooseOption(user, 'Does not repeat');
+    await waitFor(() => {
+      expect(lastPatch(fake)).toEqual({ recurrenceRule: null });
+    });
+  });
+
+  it('the last weekday chip is aria-disabled with a hint', async () => {
+    const task = makeTask({ dueAt: DUE_TUESDAY, recurrenceRule: 'FREQ=WEEKLY;BYDAY=TU' });
+    const { user } = await openLoaded(createFakeApi([task]), task.id);
+    const chip = screen.getByRole('button', { name: 'Tue' });
+    expect(chip).toHaveAttribute('aria-disabled', 'true');
+    const hint = screen.getByText('Keep at least one day');
+    expect(chip).toHaveAttribute('aria-describedby', hint.id);
+    await user.click(screen.getByRole('button', { name: 'Mon' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Tue' })).not.toHaveAttribute('aria-disabled');
+    });
+    expect(screen.queryByText('Keep at least one day')).not.toBeInTheDocument();
+  });
+
+  it('uses one radius class and a hover style on the trigger, and describes why it is off', async () => {
+    const task = makeTask();
     await openLoaded(createFakeApi([task]), task.id);
-    expect(screen.getByText('FREQ=WEEKLY;INTERVAL=2')).toBeVisible();
-    expect(screen.queryByRole('button', { name: /^Repeat:/ })).not.toBeInTheDocument();
+    const trigger = screen.getByRole('button', { name: /^Repeat:/ });
+    expect(trigger.className).toContain('rounded-[10px]');
+    expect(trigger.className).not.toContain('rounded-[8px]');
+    expect(trigger.className).toContain('hover:');
+    const hint = screen.getByText('Set a due date to repeat');
+    expect(trigger).toHaveAttribute('aria-describedby', hint.id);
   });
 
   it('works with the keyboard: Enter opens, arrows move, Enter picks, Escape closes only the menu', async () => {

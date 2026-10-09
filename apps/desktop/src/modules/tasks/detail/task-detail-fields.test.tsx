@@ -30,10 +30,11 @@ describe('TaskDetailPanel: layout', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the repeat rule as text when there is one', async () => {
+  it('shows a custom repeat rule as Custom rule, never as raw text', async () => {
     const task = makeTask({ recurrenceRule: 'FREQ=WEEKLY' });
     await openLoaded(createFakeApi([task]), task.id);
-    expect(screen.getByText('FREQ=WEEKLY')).toBeInTheDocument();
+    expect(screen.getByText('Custom rule')).toBeInTheDocument();
+    expect(screen.queryByText('FREQ=WEEKLY')).not.toBeInTheDocument();
   });
 
   it('uses theme tokens only (no hard-coded colors in the panel classes)', async () => {
@@ -311,6 +312,17 @@ describe('TaskDetailPanel: due date', () => {
     expect(await screen.findByLabelText('Due')).toHaveValue('');
     expect(screen.getByRole('switch', { name: 'All day' })).not.toBeChecked();
     expect(screen.queryByRole('button', { name: 'Clear due date' })).not.toBeInTheDocument();
+  });
+
+  it('Clear on a repeating task also stops the repeat in the same update', async () => {
+    const task = makeTask({ dueAt: '2025-10-06T20:00:00.000Z', recurrenceRule: 'FREQ=DAILY' });
+    const fake = createFakeApi([task]);
+    const { user } = await openLoaded(fake, task.id);
+    await user.click(screen.getByRole('button', { name: 'Clear due date' }));
+    await waitFor(() => {
+      expect(lastPatch(fake)).toEqual({ dueAt: null, dueAllDay: false, recurrenceRule: null });
+    });
+    expect(await screen.findByRole('button', { name: 'Repeat: Does not repeat' })).toBeVisible();
   });
 });
 
