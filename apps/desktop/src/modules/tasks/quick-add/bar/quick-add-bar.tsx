@@ -1,5 +1,6 @@
 import { IconArrowRight, IconPlus } from '@tabler/icons-react';
 import {
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -31,15 +32,48 @@ export function QuickAddBar({ autoFocus = false, inputRef }: QuickAddBarProps) {
   const [title, setTitle] = useState('');
   const [ignored, setIgnored] = useState<ReadonlySet<string>>(() => new Set());
   const [focused, setFocused] = useState(false);
+  const [announced, setAnnounced] = useState('');
   const box = useRef<HTMLInputElement | null>(null);
+  // The latest text, readable from the async error callback without a state updater
+  const latestTitle = useRef('');
+  const announceNow = useRef(false);
 
-  useImperativeHandle(inputRef, () => box.current ?? document.createElement('input'));
+  useImperativeHandle(inputRef, () => box.current as unknown as HTMLInputElement, []);
 
   const parsed = useMemo(() => parseQuickAdd(title, now, ignored), [title, now, ignored]);
   const empty = title.trim() === '';
   const noTitle = !empty && parsed.title === '';
 
+  const summary =
+    parsed.parts.length > 0
+      ? `Understood: ${parsed.parts.map((part) => part.label).join(', ')}`
+      : '';
+  // Screen readers hear the summary 500 ms after typing stops, or at once after an ignore
+  useEffect(() => {
+    const delay = announceNow.current ? 0 : 500;
+    announceNow.current = false;
+    const timer = setTimeout(() => {
+      setAnnounced(summary);
+    }, delay);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [summary]);
+
+  const changeTitle = (next: string) => {
+    latestTitle.current = next;
+    setTitle(next);
+    // Forget ignored parts whose words are gone, so typing them again shows the chip again
+    setIgnored((current) => {
+      if (current.size === 0) return current;
+      const present = new Set(parseQuickAdd(next, new Date()).parts.map(partKey));
+      const kept = [...current].filter((key) => present.has(key));
+      return kept.length === current.size ? current : new Set(kept);
+    });
+  };
+
   const ignore = (part: QuickAddPart) => {
+    announceNow.current = true;
     setIgnored((current) => new Set(current).add(partKey(part)));
     box.current?.focus();
   };
@@ -49,24 +83,27 @@ export function QuickAddBar({ autoFocus = false, inputRef }: QuickAddBarProps) {
     if (empty || noTitle) return;
     const typed = title;
     const keptIgnored = ignored;
-    const input: CreateTaskInput = { title: parsed.title };
-    if (parsed.dueAt !== null) {
-      input.dueAt = parsed.dueAt;
-      input.dueAllDay = parsed.dueAllDay;
+    // Parse again with the real clock: the shared one can be a minute old (typed 23:59, sent after midnight)
+    const fresh = parseQuickAdd(title, new Date(), ignored);
+    const input: CreateTaskInput = { title: fresh.title };
+    if (fresh.dueAt !== null) {
+      input.dueAt = fresh.dueAt;
+      input.dueAllDay = fresh.dueAllDay;
     }
-    if (parsed.priority !== null) input.priority = parsed.priority;
-    if (parsed.tagNames.length > 0) input.tagNames = parsed.tagNames;
-    if (parsed.recurrenceRule !== null) input.recurrenceRule = parsed.recurrenceRule;
+    if (fresh.priority !== null) input.priority = fresh.priority;
+    if (fresh.tagNames.length > 0) input.tagNames = fresh.tagNames;
+    if (fresh.recurrenceRule !== null) input.recurrenceRule = fresh.recurrenceRule;
+    latestTitle.current = '';
     setTitle('');
     setIgnored(new Set());
     box.current?.focus();
     create.mutate(input, {
       onError: () => {
-        setTitle((current) => {
-          if (current !== '') return current;
-          setIgnored(keptIgnored);
-          return typed;
-        });
+        // Give the text back only if the user has not typed something new meanwhile
+        if (latestTitle.current !== '') return;
+        latestTitle.current = typed;
+        setTitle(typed);
+        setIgnored(keptIgnored);
       },
     });
   };
@@ -101,7 +138,7 @@ export function QuickAddBar({ autoFocus = false, inputRef }: QuickAddBarProps) {
           }}
           className="h-full min-w-0 flex-1 bg-transparent text-body text-fg outline-none placeholder:text-fg-muted"
           onChange={(event) => {
-            setTitle(event.target.value);
+            changeTitle(event.target.value);
           }}
         />
         <button
@@ -120,15 +157,18 @@ export function QuickAddBar({ autoFocus = false, inputRef }: QuickAddBarProps) {
           <IconArrowRight size={15} stroke={2.25} aria-hidden />
         </button>
       </form>
-      <UnderstoodChips parts={parsed.parts} onIgnore={ignore} />
-      {noTitle ? (
-        <p id="quick-add-no-title" className="px-2 text-small text-fg-muted">
-          Add a title
+      <div className="flex min-h-5 flex-col gap-1.5">
+        <UnderstoodChips parts={parsed.parts} onIgnore={ignore} />
+        <p id="quick-add-no-title" role="status" className="px-2 text-small text-fg-secondary">
+          {noTitle ? 'Add a title' : ''}
         </p>
-      ) : null}
-      {focused && empty ? (
-        <p className="px-2 text-small text-fg-muted">Try: Pay rent every month #home !high</p>
-      ) : null}
+        {focused && empty ? (
+          <p className="px-2 text-small text-fg-secondary">Try: Pay rent every month #home !high</p>
+        ) : null}
+      </div>
+      <p role="status" className="sr-only">
+        {announced}
+      </p>
     </div>
   );
 }
