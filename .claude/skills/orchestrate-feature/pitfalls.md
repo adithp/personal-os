@@ -31,3 +31,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: The Board agent could not see the Cards and List code being written in parallel, so it copied the pattern without the later fixes
 - Fix: One shared hook (my-tasks/use-drag.tsx) for all views, the archived guard passed to the Board, and Board tests that run through the whole page
 - Prevention: documented: when views share behaviour, put it in the contract (shared hook or component) before the agents start, and test each view through the page
+
+### 2026-10-12: A fresh agent worktree needs pnpm install as its own first command
+- Symptom: prettier, tsc or node scripts failed in a new worktree ("Can't resolve @fontsource", "tsc not recognized")
+- Cause: node_modules are not in a new worktree and the combined first command was refused
+- Fix: Run pnpm install alone first
+- Prevention: documented: the agent prompts say it; orchestrate-feature pitfalls

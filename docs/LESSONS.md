@@ -56,3 +56,5 @@ Every time something cost a retry or a fix, we record it here so it never happen
 | 2026-10-09 | testing-patterns | Page tests passed alone but timed out in a full run | guarded | apps/desktop/vitest.config.ts |
 | 2026-10-09 | testing-patterns | Build the promises of a rejection test lazily | documented | testing-patterns pitfalls |
 | 2026-10-09 | dev-environment | A Python edit script without an encoding corrupted non-ASCII text | documented | dev-environment pitfalls |
+| 2026-10-12 | time-and-money | chrono en.GB reads "oct 12" as the year 2012 | guarded | apps/desktop/src/modules/tasks/quick-add/parse.test.ts |
+| 2026-10-12 | orchestrate-feature | A fresh agent worktree needs pnpm install as its own first command | documented | orchestrate-feature pitfalls |

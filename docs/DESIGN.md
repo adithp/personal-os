@@ -146,7 +146,7 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 - Switch 36×20, lavender when on. Slider 160 px wide, accent colored. Progress bar 5 px. Module avatar 26 px.
 
 ### Quick add bar (Tasks)
-- A glass bar 40 px high, radius 16, with a thin inner top highlight. Left: a 24 px input-colored square with a plus icon. Middle: a borderless text field ("Add a task…"). Right: a 28 px lavender gradient send button with an arrow (accent glow), at 45% opacity and disabled while the field is empty. On focus the border turns accent. Enter adds.
+- A glass bar 40 px high, radius 16, with a thin inner top highlight. Left: a 24 px input-colored square with a plus icon. Middle: a borderless text field ("Add a task…"). Right: a 28 px lavender gradient send button with an arrow (accent glow), at 45% opacity and disabled while the field is empty. On focus the border turns accent. Enter adds. Under the bar, when the text contains something understood (date, priority, tag, repeat), a quiet row of small chips shows it (kind icon, label, and an x "Ignore ..."; same size and radius as tag chips, no new colors). When the box is focused and empty a small muted line suggests "Try: Pay rent every month #home !high"; when only a date or tag is typed and no title, send is disabled and "Add a title" shows.
 
 ### Toast
 - Glass-strong, radius 10, padding 16×8, centered 96 px above the bottom (above the dock): the message, an optional accent action button (Undo), and a dismiss X. Info toasts use text-primary, error toasts text-danger (announced as alerts). They stay 5 s, or 8 s with an action; the timer waits while the mouse is over a toast or focus is inside it. At most 3 at once; the oldest drops.

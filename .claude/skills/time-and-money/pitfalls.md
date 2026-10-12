@@ -19,3 +19,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: The browser fires change for each valid intermediate value
 - Fix: Keep a draft and save on blur or Enter only
 - Prevention: guarded, task-detail tests (draft saved on blur or Enter)
+
+### 2026-10-12: chrono en.GB reads "oct 12" as the year 2012
+- Symptom: Typing "oct 12" gave October 2012
+- Cause: In en.GB the month-day parser skips year-like dates, so the month-year parser wins; plain en reads "5/10" month first
+- Fix: Use a clone of en.GB with that one parser swapped for the one from en.casual
+- Prevention: guarded, the date table in quick-add/parse.test.ts ("oct 12", "12 oct", "5/11")

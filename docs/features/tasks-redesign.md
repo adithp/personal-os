@@ -4,8 +4,8 @@ This is the approved plan for the Tasks module redesign (Asana-style, dark glass
 
 ## Status
 - Feature 1 is built (side panel, Overview, My tasks Cards and List, detail panel, subtasks, tags, archive); Repeat and Blocked by were placeholders then and are real since Feature 3.
-- Feature 2 is built (Board view; drag and drop in Cards, List and Board; the tasks.move action). Feature 3 is built (dependencies and recurring tasks, with the Repeat and Blocked by rows). Feature 4: the quick-add bar is title only and quick-add/parse.ts does not exist. Feature 5: modules/tasks/favorites/* are stubs; manage-tags/ does not exist. Features 6 to 8 are not started (Inbox, Reporting, Goals show a "Coming soon" page).
-- @dnd-kit (core, sortable, utilities) is installed (Feature 2); rrule 2.8.1 is installed in the server (Feature 3); chrono-node and recharts are not installed yet.
+- Feature 2 is built (Board view; drag and drop in Cards, List and Board; the tasks.move action). Feature 3 is built (dependencies and recurring tasks, with the Repeat and Blocked by rows). Feature 4 is built (the quick-add bar understands dates, tags, priority and repeats). Feature 5: modules/tasks/favorites/* are stubs; manage-tags/ does not exist. Features 6 to 8 are not started (Inbox, Reporting, Goals show a "Coming soon" page).
+- @dnd-kit (core, sortable, utilities) is installed (Feature 2); rrule 2.8.1 (server, Feature 3) and chrono-node 2.10.2 (desktop, Feature 4) are installed; recharts is not installed yet.
 
 ## Screens
 - **Inner side panel** (inside the Tasks page; the bottom dock stays the main navigation): Overview, My tasks, Inbox (count), Reporting, Goals, Portfolios (disabled, "Soon", Step 5), and a Favorites list with a + button. Collapsible. Inbox, Reporting, Goals and the Favorites + button are disabled with "Soon" until their feature is built (`modules/tasks/features.ts`).
