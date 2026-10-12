@@ -19,3 +19,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: The check required afterId to be strictly above beforeId before the rebalance could repair the tie
 - Fix: Only an inverted order is refused; ties are rebalanced first (tasks.move) and position is limited to +/-1e9
 - Prevention: guarded, apps/server/src/actions/task-moves.test.ts
+
+### 2026-10-12: Never call another setState inside a state updater function
+- Symptom: The error path of the quick add bar called setIgnored inside setTitle(current => ...)
+- Cause: Updaters must be pure; React may run them twice
+- Fix: Read the latest value through a ref and call the setters side by side
+- Prevention: guarded, quick-add-bar-fixes.test.tsx

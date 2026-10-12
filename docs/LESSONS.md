@@ -58,3 +58,7 @@ Every time something cost a retry or a fix, we record it here so it never happen
 | 2026-10-09 | dev-environment | A Python edit script without an encoding corrupted non-ASCII text | documented | dev-environment pitfalls |
 | 2026-10-12 | time-and-money | chrono en.GB reads "oct 12" as the year 2012 | guarded | apps/desktop/src/modules/tasks/quick-add/parse.test.ts |
 | 2026-10-12 | orchestrate-feature | A fresh agent worktree needs pnpm install as its own first command | documented | orchestrate-feature pitfalls |
+| 2026-10-12 | time-and-money | The first date of a repeat typed in quick add must follow the same short-month rule as the server | guarded | apps/desktop/src/modules/tasks/quick-add/parse.test.ts |
+| 2026-10-12 | time-and-money | chrono marks a lone month name as day 1 with a certain day | guarded | apps/desktop/src/modules/tasks/quick-add/parse.test.ts |
+| 2026-10-12 | data-hooks | Never call another setState inside a state updater function | guarded | apps/desktop/src/modules/tasks/quick-add/bar/quick-add-bar-fixes.test.tsx |
+| 2026-10-12 | dev-environment | eslint --fix can turn x as T into x! and break two other lint rules | documented | dev-environment pitfalls |

@@ -97,3 +97,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: open() without encoding uses the Windows default (cp1252)
 - Fix: git checkout the file; always open(..., encoding='utf-8') and assert every replacement matched
 - Prevention: documented, dev-environment pitfalls
+
+### 2026-10-12: eslint --fix can turn x as T into x! and break two other lint rules
+- Symptom: Lint failed after --fix
+- Cause: The non-nullable-type-assertion-style autofix
+- Fix: Use a typed helper that throws, and check the diff after --fix
+- Prevention: documented, dev-environment pitfalls

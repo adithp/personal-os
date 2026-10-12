@@ -25,3 +25,15 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: In en.GB the month-day parser skips year-like dates, so the month-year parser wins; plain en reads "5/10" month first
 - Fix: Use a clone of en.GB with that one parser swapped for the one from en.casual
 - Prevention: guarded, the date table in quick-add/parse.test.ts ("oct 12", "12 oct", "5/11")
+
+### 2026-10-12: The first date of a repeat typed in quick add must follow the same short-month rule as the server
+- Symptom: "every month on the 31st" typed on 1 November gave 31 December while the server gives 30 November for later copies
+- Cause: The parser skipped short months, the server uses the last day
+- Fix: Clamp the day to the month length in the parser
+- Prevention: guarded, quick-add/parse.test.ts
+
+### 2026-10-12: chrono marks a lone month name as day 1 with a certain day
+- Symptom: "Call April about rent" got a due date of 1 April
+- Cause: isCertain(day) is true for a month name alone
+- Fix: A match with a month name counts only when the text has a digit
+- Prevention: guarded, quick-add/parse.test.ts
