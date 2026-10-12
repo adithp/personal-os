@@ -77,11 +77,10 @@ describe('the understood chips', () => {
     expect(screen.queryByRole('button', { name: /^Ignore/ })).not.toBeInTheDocument();
   });
 
-  it('shows a chip with its label and an Ignore button for each kind, announced politely', async () => {
+  it('shows a chip with its label and an Ignore button for each kind, ', async () => {
     const { user } = await openMyTasks();
     await user.type(addBox(), 'Pay rent all');
     const row = screen.getByRole('group', { name: 'Understood from your text' });
-    expect(row).toHaveAttribute('aria-live', 'polite');
     for (const part of Object.values(PARTS)) {
       expect(within(row).getByText(part.label)).toBeInTheDocument();
       expect(within(row).getByRole('button', { name: `Ignore ${part.text}` })).toBeInTheDocument();

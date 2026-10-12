@@ -21,7 +21,6 @@ export function UnderstoodChips({ parts, onIgnore }: UnderstoodChipsProps) {
     <div
       role="group"
       aria-label="Understood from your text"
-      aria-live="polite"
       className="flex flex-wrap items-center gap-1.5 px-2 empty:hidden"
     >
       {parts.map((part) => {
@@ -32,11 +31,13 @@ export function UnderstoodChips({ parts, onIgnore }: UnderstoodChipsProps) {
             className="inline-flex h-5 max-w-full items-center gap-1 rounded-[8px] bg-input pr-0.5 pl-2 text-small font-medium text-fg-secondary"
           >
             <Icon size={12} aria-hidden />
-            <span className="truncate">{part.label}</span>
+            <span className="truncate" title={part.label}>
+              {part.label}
+            </span>
             <button
               type="button"
               aria-label={`Ignore ${part.text}`}
-              className="flex size-4 shrink-0 items-center justify-center rounded-[6px] text-fg-muted focus-ring hover:text-fg"
+              className="-my-0.5 flex size-6 shrink-0 items-center justify-center rounded-[8px] text-fg-secondary focus-ring hover:bg-glass-strong hover:text-fg"
               onClick={() => {
                 onIgnore(part);
               }}
