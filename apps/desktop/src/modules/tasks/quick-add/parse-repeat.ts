@@ -104,11 +104,10 @@ export function firstOccurrence(recurrence: Recurrence, fromDay: number): number
   }
   if (recurrence.freq === 'monthly') {
     const { year, month } = dayParts(fromDay);
-    // The 31st skips short months, so look up to a year ahead
-    for (let ahead = 0; ahead < 13; ahead++) {
+    // Like the server: in a month without day 29, 30 or 31 the last day of the month is used
+    for (let ahead = 0; ahead < 2; ahead++) {
       const length = new Date(Date.UTC(year, month + ahead + 1, 0)).getUTCDate();
-      if (recurrence.day > length) continue;
-      const day = Date.UTC(year, month + ahead, recurrence.day) / DAY_MS;
+      const day = Date.UTC(year, month + ahead, Math.min(recurrence.day, length)) / DAY_MS;
       if (day >= fromDay) return day;
     }
   }

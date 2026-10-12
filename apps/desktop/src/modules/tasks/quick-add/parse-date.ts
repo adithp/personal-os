@@ -22,6 +22,12 @@ const parser = (() => {
 /** Single words that are usually not a date ("may", "second", "now", "a"). */
 const AMBIGUOUS = new Set(['may', 'march', 'sat', 'sun', 'second', 'now', 'a']);
 
+/** Short weekday forms alone ("mon", "fri") are usually not a date; a full name or "next mon" is. */
+const SHORT_WEEKDAYS = new Set(['mon', 'tue', 'tues', 'wed', 'thu', 'thur', 'thurs', 'fri']);
+
+const MONTH_NAME =
+  /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i;
+
 export interface DateMatch {
   start: number;
   end: number;
@@ -46,6 +52,9 @@ export function findDate(text: string, now: Date): DateMatch | null {
       if (AMBIGUOUS.has(result.text.trim().toLowerCase())) continue;
       const certain = (key: Parameters<typeof result.start.isCertain>[0]) =>
         result.start.isCertain(key);
+      if (SHORT_WEEKDAYS.has(result.text.trim().toLowerCase())) continue;
+      // "Call April", "Meet June": chrono marks a lone month as the 1st (certain), so ask for a number
+      if (MONTH_NAME.test(result.text) && !/\d/.test(result.text)) continue;
       return {
         start: result.index,
         end: result.index + result.text.length,
