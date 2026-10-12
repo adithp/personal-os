@@ -23,7 +23,7 @@ export function toTag(row: TagRow): Tag {
 const sameName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
 /** True for Postgres "unique violation" (23505), however the driver wraps the error. */
-function isUniqueViolation(error: unknown): boolean {
+export function isUniqueViolation(error: unknown): boolean {
   let current: unknown = error;
   while (current instanceof Error) {
     if ((current as Error & { code?: string }).code === '23505') return true;
@@ -40,24 +40,30 @@ function liveTags(scope: UserScope): Promise<TagRow[]> {
   });
 }
 
+/**
+ * Finds the user's live tag with this name (ignoring capitals) or creates it, with the given color
+ * or the next palette color. Runs in the caller's transaction.
+ */
+export async function findOrCreateTag(
+  tx: UserScope,
+  name: string,
+  color?: string,
+): Promise<{ tag: TagRow; created: boolean }> {
+  const all = await liveTags(tx);
+  const existing = all.find((tag) => sameName(tag.name, name));
+  if (existing) return { tag: existing, created: false };
+  const [created] = await tx.insert(tags, { name, color: color ?? nextTagColor(all.length) });
+  if (!created) throw new Error('Could not create the tag');
+  return { tag: created, created: true };
+}
+
 export const tagImplementations = [
   implement(tagActions.list, async ({ scope }) => ({
     data: (await liveTags(scope)).map(toTag),
   })),
 
   implement(tagActions.create, async ({ scope }, input) => {
-    const attempt = () =>
-      scope.transaction(async (tx) => {
-        const all = await liveTags(tx);
-        const existing = all.find((tag) => sameName(tag.name, input.name));
-        if (existing) return { tag: existing, created: false };
-        const [created] = await tx.insert(tags, {
-          name: input.name,
-          color: input.color ?? nextTagColor(all.length),
-        });
-        if (!created) throw new Error('Could not create the tag');
-        return { tag: created, created: true };
-      });
+    const attempt = () => scope.transaction((tx) => findOrCreateTag(tx, input.name, input.color));
     let row: Awaited<ReturnType<typeof attempt>>;
     try {
       row = await attempt();
