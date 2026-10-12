@@ -1,4 +1,5 @@
-import { entities, tasks } from '@personal-os/db';
+import { entities, tags as tagsTable, tasks } from '@personal-os/db';
+import { TAG_PALETTE } from '@personal-os/shared';
 import { createTestDb, createTestUser, type TestDb } from '@personal-os/db/testing';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -901,5 +902,116 @@ describe('all-day due dates are always stored as the start of the India day', ()
   it('leaves timed tasks alone', async () => {
     const { task } = await create(alice(), { title: 'Timed', dueAt: '2025-10-07T10:00:00.000Z' });
     expect(task.dueAt).toBe('2025-10-07T10:00:00.000Z');
+  });
+});
+
+describe('tasks.create with tagNames', () => {
+  const tagRows = async () =>
+    (await t.db.select().from(tagsTable)).sort((a, b) => a.name.localeCompare(b.name));
+
+  it('creates new tags with cycling palette colors and returns them on the task', async () => {
+    const names = Array.from({ length: 11 }, (_, i) => `tag${String(i).padStart(2, '0')}`);
+    const { task } = await create(alice(), { title: 'x', tagNames: names });
+    const rows = await tagRows();
+    expect(rows).toHaveLength(11);
+    // The names are made in order, so tag00 gets the first color and tag10 wraps to it again
+    expect(rows.map((row) => row.color)).toEqual(
+      names.map((_, i) => TAG_PALETTE[i % TAG_PALETTE.length]),
+    );
+    expect((await getFull(alice(), task.id)).tags).toHaveLength(11);
+  });
+
+  it('reuses an existing tag whatever the capitals', async () => {
+    const work = await tag(alice(), 'Work');
+    const { task } = await create(alice(), { title: 'x', tagNames: ['wORK'] });
+    expect(await tagRows()).toHaveLength(1);
+    expect((await getFull(alice(), task.id)).tags.map((x) => x.id)).toEqual([work.id]);
+  });
+
+  it('mixes tagIds and tagNames without duplicates', async () => {
+    const a = await tag(alice(), 'a');
+    const { task } = await create(alice(), {
+      title: 'x',
+      tagIds: [a.id],
+      tagNames: ['A', 'b', 'B'],
+    });
+    expect((await getFull(alice(), task.id)).tags.map((x) => x.name)).toEqual(['a', 'b']);
+    expect(await tagRows()).toHaveLength(2);
+  });
+
+  it('refuses more than 20 tags in total and creates nothing', async () => {
+    const ids: string[] = [];
+    for (let i = 0; i < 15; i += 1) ids.push((await tag(alice(), `old${String(i)}`)).id);
+    const names = Array.from({ length: 6 }, (_, i) => `new${String(i)}`);
+    const error = await httpError(
+      registry.run(alice(), 'tasks.create', { title: 'x', tagIds: ids, tagNames: names }),
+    );
+    expect(error.statusCode).toBe(400);
+    expect(error.message).toBe('A task can have at most 20 tags');
+    expect(await tagRows()).toHaveLength(15);
+    expect(await t.db.select().from(tasks)).toHaveLength(0);
+  });
+
+  it('leaves no new tags when the create fails afterwards', async () => {
+    const missing = await httpError(
+      registry.run(alice(), 'tasks.create', {
+        title: 'x',
+        tagNames: ['fresh'],
+        parentTaskId: MISSING,
+      }),
+    );
+    expect(missing.statusCode).toBe(404);
+    const { task: parent } = await create(alice(), { title: 'parent' });
+    const { task: child } = await create(alice(), { title: 'child', parentTaskId: parent.id });
+    const deep = await httpError(
+      registry.run(alice(), 'tasks.create', {
+        title: 'x',
+        tagNames: ['fresh'],
+        parentTaskId: child.id,
+      }),
+    );
+    expect(deep.statusCode).toBe(400);
+    expect(await tagRows()).toHaveLength(0);
+  });
+
+  it('does not reuse or change another user’s tag with the same name', async () => {
+    const bobs = await tag(bob(), 'Shared', '#123456');
+    const { task } = await create(alice(), { title: 'x', tagNames: ['shared'] });
+    const rows = await tagRows();
+    expect(rows).toHaveLength(2);
+    const mine = (await getFull(alice(), task.id)).tags;
+    expect(mine).toHaveLength(1);
+    expect(mine[0]?.id).not.toBe(bobs.id);
+    expect(rows.find((row) => row.id === bobs.id)).toMatchObject({
+      name: 'Shared',
+      color: '#123456',
+    });
+  });
+
+  it('works for subtasks', async () => {
+    const { task: parent } = await create(alice(), { title: 'parent' });
+    const { task } = await create(alice(), {
+      title: 'child',
+      parentTaskId: parent.id,
+      tagNames: ['sub'],
+    });
+    expect((await getFull(alice(), task.id)).tags.map((x) => x.name)).toEqual(['sub']);
+  });
+
+  it('refuses names with a space or #', async () => {
+    for (const name of ['a b', '#a', 'a#', '']) {
+      const error = await failure(
+        registry.run(alice(), 'tasks.create', { title: 'x', tagNames: [name] }),
+      );
+      expect(error).toBeInstanceOf(ZodError);
+    }
+    expect(await tagRows()).toHaveLength(0);
+  });
+
+  it('undo deletes the task and keeps the created tags', async () => {
+    const { undo } = await create(alice(), { title: 'x', tagNames: ['keep'] });
+    await registry.run(alice(), undo?.action ?? '', undo?.input);
+    expect(await list(alice())).toHaveLength(0);
+    expect(await tagRows()).toHaveLength(1);
   });
 });

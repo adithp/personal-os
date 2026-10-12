@@ -1,5 +1,6 @@
 import { entities, entityTags, tags, tasks, type TaskRow } from '@personal-os/db';
 import {
+  MAX_TAGS_PER_TASK,
   taskActions,
   type Task,
   type TaskStatus,
@@ -25,6 +26,7 @@ import type { UserScope } from '../lib/user-scope';
 import { spawnNextOccurrence } from './recurrence';
 import { assertNotBlocked, loadBlockers } from './task-dependencies';
 import { implement, type ActionOutcome } from './registry';
+import { findOrCreateTag, isUniqueViolation } from './tags';
 
 /** Gap between positions. Moving a task later puts it between its neighbours. */
 export const POSITION_STEP = 1024;
@@ -396,38 +398,57 @@ export const taskImplementations = [
   })),
 
   implement(taskActions.create, async ({ scope }, input) => {
-    const row = await scope.transaction(async (tx) => {
-      if (input.parentTaskId) {
-        const parent = await findTask(tx, input.parentTaskId);
-        if (parent.parentTaskId) {
-          throw new HttpError(400, 'validation_error', 'Subtasks go one level deep only');
+    const run = () =>
+      scope.transaction(async (tx) => {
+        if (input.parentTaskId) {
+          const parent = await findTask(tx, input.parentTaskId);
+          if (parent.parentTaskId) {
+            throw new HttpError(400, 'validation_error', 'Subtasks go one level deep only');
+          }
         }
-      }
-      const tagIds = await checkTagIds(tx, input.tagIds ?? []);
-      const parentTaskId = input.parentTaskId ?? null;
-      const [entity] = await tx.insert(entities, { type: 'task', title: input.title });
-      if (!entity) throw new Error('Could not create the task');
-      const status = input.status ?? 'todo';
-      const [created] = await tx.insert(tasks, {
-        id: entity.id,
-        title: input.title,
-        description: input.description ?? null,
-        status,
-        priority: input.priority ?? 4,
-        dueAt: input.dueAt
-          ? new Date(input.dueAllDay ? istDayStart(input.dueAt) : input.dueAt)
-          : null,
-        dueAllDay: input.dueAllDay ?? false,
-        recurrenceRule: input.recurrenceRule ?? null,
-        reminderAt: input.reminderAt ? new Date(input.reminderAt) : null,
-        parentTaskId,
-        position: await nextPosition(tx, parentTaskId),
-        completedAt: status === 'done' ? new Date() : null,
+        const checkedIds = await checkTagIds(tx, input.tagIds ?? []);
+        // Tags made from names are created in this transaction, so a failed create leaves none.
+        // Undoing the create (tasks.delete) keeps them: they are ordinary tags the user may reuse.
+        const tagIds = [...checkedIds];
+        for (const name of input.tagNames ?? []) {
+          const { tag } = await findOrCreateTag(tx, name);
+          if (!tagIds.includes(tag.id)) tagIds.push(tag.id);
+        }
+        if (tagIds.length > MAX_TAGS_PER_TASK) {
+          throw new HttpError(400, 'validation_error', 'A task can have at most 20 tags');
+        }
+        const parentTaskId = input.parentTaskId ?? null;
+        const [entity] = await tx.insert(entities, { type: 'task', title: input.title });
+        if (!entity) throw new Error('Could not create the task');
+        const status = input.status ?? 'todo';
+        const [created] = await tx.insert(tasks, {
+          id: entity.id,
+          title: input.title,
+          description: input.description ?? null,
+          status,
+          priority: input.priority ?? 4,
+          dueAt: input.dueAt
+            ? new Date(input.dueAllDay ? istDayStart(input.dueAt) : input.dueAt)
+            : null,
+          dueAllDay: input.dueAllDay ?? false,
+          recurrenceRule: input.recurrenceRule ?? null,
+          reminderAt: input.reminderAt ? new Date(input.reminderAt) : null,
+          parentTaskId,
+          position: await nextPosition(tx, parentTaskId),
+          completedAt: status === 'done' ? new Date() : null,
+        });
+        if (!created) throw new Error('Could not create the task');
+        await setTags(tx, created.id, tagIds);
+        return created;
       });
-      if (!created) throw new Error('Could not create the task');
-      await setTags(tx, created.id, tagIds);
-      return created;
-    });
+    let row: TaskRow;
+    try {
+      row = await run();
+    } catch (error) {
+      // Two creates with the same new tag name at once: the second hits the unique index. Run again.
+      if (!input.tagNames?.length || !isUniqueViolation(error)) throw error;
+      row = await run();
+    }
     return {
       data: await detailed(scope, row),
       undo: { action: 'tasks.delete', input: { id: row.id } },

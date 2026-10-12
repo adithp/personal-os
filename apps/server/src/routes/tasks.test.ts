@@ -109,6 +109,21 @@ describe('POST /tasks', () => {
     expect(body.undo).toEqual({ action: 'tasks.delete', input: { id: body.item.id } });
   });
 
+  it('creates the tags named in tagNames and returns them', async () => {
+    const response = await call('POST', '/tasks', alice, {
+      title: 'x',
+      tagNames: ['Home', 'home'],
+    });
+    expect(response.statusCode).toBe(201);
+    const body = response.json<{ item: { tags: { name: string }[] } }>();
+    expect(body.item.tags.map((tag) => tag.name)).toEqual(['Home']);
+  });
+
+  it('answers 400 for a tag name with a space', async () => {
+    const response = await call('POST', '/tasks', alice, { title: 'x', tagNames: ['a b'] });
+    expect(response.statusCode).toBe(400);
+  });
+
   it('answers 400 with the error format for bad input', async () => {
     for (const payload of [{}, { title: '' }, { title: 'x', priority: 9 }]) {
       const response = await call('POST', '/tasks', alice, payload);
