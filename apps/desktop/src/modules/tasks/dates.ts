@@ -66,7 +66,7 @@ const dayMonthYear = new Intl.DateTimeFormat('en-IN', {
   year: 'numeric',
 });
 
-const clock = (ms: number) =>
+export const clock = (ms: number) =>
   time.format(ms).replace(/\s?([ap])m/i, (_m, c: string) => ` ${c.toUpperCase()}M`);
 
 export interface DueLabel {

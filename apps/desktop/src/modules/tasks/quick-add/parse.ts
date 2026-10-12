@@ -4,7 +4,7 @@ import {
   TASK_PRIORITY_LABELS,
   type TaskPriority,
 } from '@personal-os/shared';
-import { dueLabel, istDay, istDayStartPlus, startOfIstDay } from '../dates';
+import { clock, dueLabel, istDay, istDayStartPlus, startOfIstDay } from '../dates';
 import { findDate } from './parse-date';
 import { findRepeat, firstOccurrence, resolveRepeat } from './parse-repeat';
 
@@ -54,6 +54,12 @@ const PRIORITY_WORDS: Record<string, TaskPriority> = { urgent: 1, high: 2, mediu
 const BLANK = '\u0001';
 const blank = (text: string, start: number, end: number) =>
   text.slice(0, start) + BLANK.repeat(end - start) + text.slice(end);
+
+/** The chip text for a date: the usual due wording, plus the time for a timed date on a farther day. */
+function dateChipLabel(dueAt: string, now: Date, allDay: boolean): string {
+  const text = dueLabel(dueAt, now, false, allDay).text;
+  return allDay || /\d:\d\d/.test(text) ? text : `${text}, ${clock(Date.parse(dueAt))}`;
+}
 
 /**
  * `now` is the current time (the dates are worked out in India time, Asia/Kolkata).
@@ -153,7 +159,7 @@ export function parseQuickAdd(
       text: date.text,
       start: date.start,
       end: date.end,
-      label: dueLabel(dueAt, now, false, dueAllDay).text,
+      label: dateChipLabel(dueAt, now, dueAllDay),
     });
   }
 

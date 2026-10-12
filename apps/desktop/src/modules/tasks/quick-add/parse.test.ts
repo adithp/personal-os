@@ -229,7 +229,7 @@ describe('repeat', () => {
       dueAllDay: false,
     });
     expect(result.parts.map((part) => part.kind)).toEqual(['repeat', 'date']);
-    expect(result.parts[1]?.label).toBe('Mon, 13 Oct');
+    expect(result.parts[1]?.label).toBe('Mon, 13 Oct, 9:00 AM');
   });
 
   it('puts a daily time on today', () => {
@@ -371,5 +371,13 @@ describe('strange input', () => {
       recurrenceRule: null,
       parts: [],
     });
+  });
+});
+
+describe('date chip label', () => {
+  it('shows the time for a timed date on a farther day', () => {
+    const result = parse('standup every monday at 9am');
+    const date = result.parts.find((part) => part.kind === 'date');
+    expect(date?.label).toMatch(/9:00 AM$/);
   });
 });
