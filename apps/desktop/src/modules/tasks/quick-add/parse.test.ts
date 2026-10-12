@@ -115,6 +115,48 @@ describe('dates and times', () => {
     }
   });
 
+  it('does not read a month name or a short weekday on its own', () => {
+    for (const input of [
+      'Call April about rent',
+      'Meet June',
+      'August Rush',
+      'Dec',
+      'mar',
+      'jan',
+      'mon',
+      'tue',
+      'wed',
+      'thu',
+      'fri',
+      'lunch with Mon',
+    ]) {
+      const result = parse(input);
+      expect(result.dueAt, input).toBeNull();
+      expect(result.title).toBe(input);
+    }
+  });
+
+  it('still reads months with a day or year, and weekdays with a word or in full', () => {
+    for (const text of [
+      'april 3',
+      '3 april 2026',
+      'dec 5',
+      'on mon',
+      'next mon',
+      'this fri',
+      'friday',
+    ]) {
+      const result = parse(`Pay ${text}`);
+      expect(result.parts.map((part) => part.kind)).toEqual(['date']);
+      expect(result.title).toBe('Pay');
+    }
+    expect(parse('Pay dec 2026').dueAt).not.toBeNull();
+  });
+
+  it('leaves slash fractions to the user to ignore', () => {
+    expect(parse('1/2 cup flour').parts.map((part) => part.kind)).toEqual(['date']);
+  });
+
   it('still reads a month with a day, and a year in range only', () => {
     expect(parse('party may 20').parts[0]?.kind).toBe('date');
     expect(parse('old 1 jan 1999').dueAt).toBeNull();
@@ -236,14 +278,35 @@ describe('repeat', () => {
     expect(parse('pills daily 9pm')).toMatchObject({ dueAt: '2025-10-07T15:30:00.000Z' });
   });
 
-  it('skips months without the day for the 31st', () => {
+  it('uses the last day of a short month for the 31st', () => {
     const now = new Date('2025-10-31T18:40:00.000Z'); // 1 Nov, 00:10 IST
-    expect(parse('x every month on the 31st', now).dueAt).toBe('2025-12-30T18:30:00.000Z');
+    expect(parse('x every month on the 31st', now).dueAt).toBe('2025-11-29T18:30:00.000Z'); // 30 Nov
     const monthEnd = new Date('2025-01-31T06:30:00.000Z');
     expect(parse('x every month', monthEnd)).toMatchObject({
       recurrenceRule: 'FREQ=MONTHLY;BYMONTHDAY=31',
       dueAt: '2025-01-30T18:30:00.000Z',
     });
+  });
+
+  it.each([
+    ['2025-02-10', '31st', '2025-02-27T18:30:00.000Z'], // 28 Feb, not a leap year
+    ['2025-02-10', '30th', '2025-02-27T18:30:00.000Z'],
+    ['2025-02-10', '29th', '2025-02-27T18:30:00.000Z'],
+    ['2028-02-10', '31st', '2028-02-28T18:30:00.000Z'], // 29 Feb, leap year
+    ['2028-02-10', '29th', '2028-02-28T18:30:00.000Z'],
+    ['2028-02-10', '30th', '2028-02-28T18:30:00.000Z'],
+    ['2025-04-10', '31st', '2025-04-29T18:30:00.000Z'], // 30 Apr
+    ['2025-03-10', '31st', '2025-03-30T18:30:00.000Z'], // 31 Mar
+    ['2025-04-30', '30th', '2025-04-29T18:30:00.000Z'], // today is the 30th
+    ['2025-03-01', '29th', '2025-03-28T18:30:00.000Z'], // 29 Mar
+  ])('on %s "every month on the %s" starts on %s', (date, day, dueAt) => {
+    const now = new Date(`${date}T06:30:00.000Z`);
+    expect(parse(`x every month on the ${day}`, now).dueAt).toBe(dueAt);
+  });
+
+  it('moves to the clamped day of next month once this month has passed', () => {
+    const now = new Date('2025-01-31T12:30:00.000Z'); // 31 Jan evening IST: still the 31st
+    expect(parse('x every month on the 30th', now).dueAt).toBe('2025-02-27T18:30:00.000Z');
   });
 
   it('finds the next Monday over a leap day', () => {
