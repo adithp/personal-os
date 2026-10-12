@@ -87,3 +87,17 @@ describe('task input with tags, subtasks, and all-day dates', () => {
     expect(listTasksInput.safeParse({ priority: '9' }).success).toBe(false);
   });
 });
+
+describe('tag names with invisible characters', () => {
+  it('are refused (zero-width space, bidi overrides, byte order mark, control characters)', () => {
+    for (const name of ['work\u200B', '\u202Ework', 'wo\u0007rk', 'wo\uFEFFrk', 'wo\u2060rk']) {
+      expect(createTagInput.safeParse({ name }).success, JSON.stringify(name)).toBe(false);
+    }
+  });
+
+  it('still accept normal names and the joiners that Indic scripts need', () => {
+    expect(createTagInput.safeParse({ name: 'work' }).success).toBe(true);
+    expect(createTagInput.safeParse({ name: 'काम' }).success).toBe(true);
+    expect(createTagInput.safeParse({ name: 'ക\u200Dര' }).success).toBe(true);
+  });
+});

@@ -1,6 +1,6 @@
 import { tags, type TagRow } from '@personal-os/db';
 import { nextTagColor, tagActions, type Tag } from '@personal-os/shared';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { HttpError } from '../lib/http-error';
 import type { UserScope } from '../lib/user-scope';
 import { implement } from './registry';
@@ -49,10 +49,14 @@ export async function findOrCreateTag(
   name: string,
   color?: string,
 ): Promise<{ tag: TagRow; created: boolean }> {
-  const all = await liveTags(tx);
-  const existing = all.find((tag) => sameName(tag.name, name));
+  // Compared in the database with lower(), like the unique index, so they cannot disagree
+  const [existing] = await tx.select(tags, {
+    where: and(tx.isLive(tags), sql`lower(${tags.name}) = lower(${name})`),
+    limit: 1,
+  });
   if (existing) return { tag: existing, created: false };
-  const [created] = await tx.insert(tags, { name, color: color ?? nextTagColor(all.length) });
+  const count = (await liveTags(tx)).length;
+  const [created] = await tx.insert(tags, { name, color: color ?? nextTagColor(count) });
   if (!created) throw new Error('Could not create the tag');
   return { tag: created, created: true };
 }

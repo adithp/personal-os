@@ -33,7 +33,11 @@ export const tagName = z
   .trim()
   .min(1, 'Tag name is required')
   .max(TAG_NAME_MAX)
-  .refine((name) => !/[\s#]/.test(name), 'A tag name has no spaces or # characters');
+  .refine((name) => !/[\s#]/.test(name), 'A tag name has no spaces or # characters')
+  .refine(
+    (name) => !/[\p{Cc}\u200B\u2060\uFEFF\u202A-\u202E\u2066-\u2069]/u.test(name),
+    'A tag name has no invisible or control characters' /* zero-width joiners stay: Indic scripts need them */,
+  );
 const tagColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Color must look like #F7D96B');
 
 /** A tag as the API returns it. */
