@@ -85,11 +85,12 @@ Full product details: `docs/PRD.md`. Build order: `docs/ROADMAP.md`. Decisions w
 - **Step 1:** done (shell, dock, login, settings, dashboard, palette, server, database, infra).
 - **Skills, agents, lessons and docs-sync job:** done (commit f7a746d).
 - **Step 2, Tasks feature 1:** built, tested and approved by me. ROADMAP.md is ticked.
-- **Decisions 52 to 57:** up to 5 agents at once; Recharts instead of ECharts; keep dnd-kit, rrule and chrono-node; the drag and drop rules; the dependency and recurring rules; the quick add rules.
+- **Decisions 52 to 58:** up to 5 agents at once; Recharts instead of ECharts; keep dnd-kit, rrule and chrono-node; the drag and drop rules; the dependency and recurring rules; the quick add rules.
 - **Design-consistency job** (design audit, design:check, shared-components rule, design-reviewer checklist): still unsent: I send it when I want it.
 - **Tasks feature 2 (Board and drag and drop):** built, tested and approved by me (ROADMAP ticked). The dashboard Today's tasks tile is real. Next in order: feature 3 (dependencies and recurring), then 4 to 8, one prompt each; the design-consistency job comes before feature 3.
 - **Tasks feature 3 (dependencies and recurring):** built, tested and approved by me (ROADMAP ticked). Then feature 4 (quick add).
 - **Tasks feature 4 (quick add):** built and merged; reviews and the feature report in progress, waiting for my check and "next". Then 5 to 8, one at a time.
+- **Autonomous loop (decision 58):** I am away; features 5 (favorites and manage tags), 6 (inbox) and 7 (reporting) are built one after the other without waiting for "next", each after a research memo (docs/design/research/). Features 4 to 7 wait for my check; nothing is ticked in ROADMAP.md until I say "next". Reports are in docs/reports/.
 - **Discuss skill and this CONTEXT.md:** done.
 - **Pending later:** Notes features, realtime, redeploying AWS, Step 3 (AI + OmniRoute + Tailscale), Step 4 (Google), and the rest of the roadmap.
 
