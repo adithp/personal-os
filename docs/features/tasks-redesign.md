@@ -47,6 +47,9 @@ Decisions come from the research memo `docs/design/research/tasks-favorites.md` 
 ## Feature 6 contract (committed before the agent starts)
 Decisions come from the research memo `docs/design/research/tasks-inbox.md` (decision 58). No new server action: the Inbox uses `tasks.move` (dates), `tasks.update` through the new `useTaskActions().setTags` (adds a tag and shows an "Tag added." Undo toast), `tasks.complete`, `tasks.archive`, `tasks.delete`. `modules/tasks/inbox/use-inbox.ts` gives the list and count from the open-tasks cache (`inboxTasks()`); `inbox/inbox-page.tsx` is a stub behind the route `/tasks/inbox`; `TaskRow` takes `actions` (a slot for the quick actions) and `hideDelete`; `QuickAddBar` takes `onAdded(input)` so the Inbox can say where a dated or tagged task went. `TASK_FEATURES.inbox` stays false until the page is merged.
 
+## Feature 7 contract (committed before the agents start)
+Decisions come from the research memo `docs/design/research/tasks-reporting.md` (decision 58). Shared `task-report.ts` (`taskReportInput`, `taskReportSchema`, action `tasks.report`, read); server stubs `actions/task-report.ts` and `routes/task-report.ts` (`GET /tasks/report?period=week|month`, 501 until built; computes from rows read through `scope.select` and counted in code, no raw SQL); desktop `reporting/use-report.ts` (`useReport(period)`, key under `TASKS_KEY` so task changes refresh it), `reporting/reporting-page.tsx` stub behind the route, `recharts` 3.10.1 installed, and the mock API answers `GET /tasks/report` from `makeReport()` / `setReport()`. `TASK_FEATURES.reporting` stays false until the page is merged.
+
 ## Build order and ownership
 Ownership is per feature: within one feature no two agents own the same file. Only the orchestrator edits migrations, `packages/shared/src/index.ts`, route files and `routeTree.gen.ts`, `features.ts`, `fake-api.ts`, docs, `ROADMAP.md`, `DECISIONS.md`, `CLAUDE.md`.
 

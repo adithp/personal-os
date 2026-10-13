@@ -8,6 +8,7 @@ import { favoriteRoutes } from './favorites';
 import { tagRoutes } from './tags';
 import { taskDependencyRoutes } from './task-dependencies';
 import { taskMoveRoutes } from './task-moves';
+import { taskReportRoutes } from './task-report';
 import { taskRoutes } from './tasks';
 import { undoRoutes } from './undo';
 
@@ -36,6 +37,7 @@ export const v1Routes: FastifyPluginAsync<V1Options> = async (app, { verifier, d
     if (db && registry) {
       taskRoutes(protectedApp, { db, registry });
       taskMoveRoutes(protectedApp, { db, registry });
+      taskReportRoutes(protectedApp, { db, registry });
       taskDependencyRoutes(protectedApp, { db, registry });
       tagRoutes(protectedApp, { db, registry });
       favoriteRoutes(protectedApp, { db, registry });

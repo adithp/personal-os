@@ -14,4 +14,5 @@ export * from './money';
 export * from './settings';
 export * from './tag-management';
 export * from './tags';
+export * from './task-report';
 export * from './tasks';

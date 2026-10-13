@@ -5,6 +5,7 @@ import { recurrenceImplementations } from './recurrence';
 import { tagManagementImplementations } from './tag-management';
 import { dependencyImplementations } from './task-dependencies';
 import { taskMoveImplementations } from './task-moves';
+import { taskReportImplementations } from './task-report';
 import { taskImplementations } from './tasks';
 
 export * from './registry';
@@ -15,6 +16,7 @@ export function createRegistry(observers: readonly ActionObserver[] = []): Actio
     [
       ...taskImplementations,
       ...taskMoveImplementations,
+      ...taskReportImplementations,
       ...dependencyImplementations,
       ...recurrenceImplementations,
       ...tagImplementations,

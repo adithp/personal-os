@@ -1,4 +1,12 @@
-import type { Favorite, FavoriteView, Tag, Task, UndoDescriptor } from '@personal-os/shared';
+import type {
+  Favorite,
+  FavoriteView,
+  ReportPeriod,
+  Tag,
+  Task,
+  TaskReport,
+  UndoDescriptor,
+} from '@personal-os/shared';
 import {
   MAX_FAVORITES,
   nextTagColor,
@@ -68,6 +76,34 @@ const asArray = (value: unknown): string[] =>
  * real routes: soft delete, archive, subtasks (one level), tags, counts, filters, undo descriptors,
  * and completedAt. Tests read `calls` and `tasks`. (Dependencies and recurrence arrive in Feature 3.)
  */
+/** An empty report for a period (a Monday-to-Sunday week or a 31-day month); override what a test needs. */
+export function makeReport(
+  period: ReportPeriod = 'week',
+  overrides: Partial<TaskReport> = {},
+): TaskReport {
+  const zero = { done: 0, onTime: 0, late: 0, noDueDate: 0 };
+  const length = period === 'week' ? 7 : 31;
+  const days = Array.from({ length }, (_, index) => ({
+    date: `2025-10-${String(period === 'week' ? 6 + index : 1 + index).padStart(2, '0')}`,
+    ...zero,
+  }));
+  return {
+    period,
+    timeZone: 'Asia/Kolkata',
+    today: '2025-10-07',
+    start: days[0]?.date ?? '2025-10-06',
+    end: days.at(-1)?.date ?? '2025-10-12',
+    days,
+    totals: { ...zero, added: 0 },
+    previous: { ...zero, added: 0, start: '2025-09-29', end: '2025-09-30' },
+    overdueNow: 0,
+    byTag: [],
+    otherTagsDone: 0,
+    noTagDone: 0,
+    ...overrides,
+  };
+}
+
 export function makeFavorite(overrides: Partial<Favorite> = {}): Favorite {
   counter += 1;
   return {
@@ -100,6 +136,8 @@ export function createFakeApi(
   const calls: Call[] = [];
   let failure: ApiError | null = null;
   let failureAnyPath = false;
+  /** What GET /tasks/report answers; tests set it with setReport. */
+  let reportOverride: TaskReport | null = null;
   let delayMs = 0;
 
   /** Blocked task id -> the ids of the tasks that block it. */
@@ -210,6 +248,10 @@ export function createFakeApi(
   const handle = (method: string, path: string, options: RequestOptions): unknown => {
     const body = (options.body ?? {}) as Record<string, unknown>;
 
+    if (method === 'GET' && path === '/tasks/report') {
+      const period = options.query?.period === 'month' ? 'month' : 'week';
+      return { item: reportOverride?.period === period ? reportOverride : makeReport(period) };
+    }
     if (method === 'GET' && path === '/tasks') return { items: list(options.query) };
 
     if (method === 'POST' && path === '/tasks') {
@@ -541,6 +583,10 @@ export function createFakeApi(
         .sort((a, b) => a.position - b.position)
         .map(view),
     tags: () => [...tagStore.values()],
+    /** What GET /tasks/report answers for its period (other periods get an empty report). */
+    setReport: (report: TaskReport) => {
+      reportOverride = report;
+    },
     /** The next call fails with this error (only once). Favorites requests are skipped unless anyPath. */
     failNext: (status: number, code: string, message: string, anyPath = false) => {
       failure = new ApiError(status, code, message);
