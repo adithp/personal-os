@@ -26,6 +26,7 @@ describe('entity types and link relations (docs/DATABASE.md)', () => {
       'person',
       'client',
       'tag',
+      'goal',
     ]);
   });
 

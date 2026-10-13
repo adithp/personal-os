@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mockup: Notes (stages N1 to N4)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      /* Tokens copied from packages/ui/src/styles/tokens.css (demo only) */
+      :root,
+      [data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #15171c;
+        --glass: rgba(255, 255, 255, 0.07);
+        --glass-border: rgba(255, 255, 255, 0.12);
+        --glass-strong: rgba(40, 43, 50, 0.92);
+        --text-primary: #f2f2f2;
+        --text-secondary: rgba(255, 255, 255, 0.65);
+        --text-muted: rgba(255, 255, 255, 0.45);
+        --text-on-tile: #1c1c1c;
+        --danger: #f28b82;
+        --input-bg: rgba(255, 255, 255, 0.06);
+        --tint: rgba(21, 23, 28, 0.55);
+        --wallpaper-default:
+          radial-gradient(ellipse 80% 60% at 15% 0%, #3d3a70 0%, transparent 60%),
+          radial-gradient(ellipse 70% 50% at 90% 15%, #1f5466 0%, transparent 60%),
+          radial-gradient(ellipse 90% 60% at 50% 100%, #2a2440 0%, transparent 70%),
+          linear-gradient(180deg, #1c1f2b 0%, #15171c 100%);
+      }
+      [data-theme='light'] {
+        color-scheme: light;
+        --bg: #eef0f3;
+        --glass: rgba(255, 255, 255, 0.65);
+        --glass-border: rgba(0, 0, 0, 0.07);
+        --glass-strong: rgba(255, 255, 255, 0.85);
+        --text-primary: #1c1c1c;
+        --text-secondary: rgba(0, 0, 0, 0.6);
+        --text-muted: rgba(0, 0, 0, 0.4);
+        --danger: #c5221f;
+        --input-bg: rgba(0, 0, 0, 0.04);
+        --tint: rgba(238, 240, 243, 0.55);
+        --wallpaper-default:
+          radial-gradient(ellipse 80% 60% at 15% 0%, #d9defc 0%, transparent 60%),
+          radial-gradient(ellipse 70% 50% at 90% 15%, #fde0cc 0%, transparent 60%),
+          radial-gradient(ellipse 90% 60% at 50% 100%, #d4efe4 0%, transparent 70%),
+          linear-gradient(180deg, #f5f6f9 0%, #eef0f3 100%);
+      }
+      :root {
+        --module-tasks: #f7d96b;
+        --module-notes: #f0c9a0;
+        --module-mail: #93d3f5;
+        --module-projects: #f4a9c4;
+        --module-money: #9ee0c8;
+        --module-assistant: #c9b4f7;
+        --accent: var(--module-assistant);
+        --glass-blur: 24px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, 'Segoe UI', system-ui, sans-serif;
+        font-size: 13px;
+        color: var(--text-primary);
+        background: var(--wallpaper-default);
+        background-attachment: fixed;
+        min-height: 100vh;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: 0;
+        cursor: pointer;
+      }
+      .glass {
+        background: var(--glass);
+        border: 0.5px solid var(--glass-border);
+        backdrop-filter: blur(var(--glass-blur));
+        -webkit-backdrop-filter: blur(var(--glass-blur));
+      }
+      .strong {
+        background: var(--glass-strong);
+        border: 0.5px solid var(--glass-border);
+        backdrop-filter: blur(var(--glass-blur));
+      }
+      .muted {
+        color: var(--text-muted);
+      }
+      .secondary {
+        color: var(--text-secondary);
+      }
+      .small {
+        font-size: 11px;
+      }
+      svg {
+        width: 16px;
+        height: 16px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.5;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex-shrink: 0;
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* Mockup controls (not part of the design) */
+      .controls {
+        position: fixed;
+        top: 6px;
+        right: 12px;
+        display: flex;
+        gap: 6px;
+        z-index: 50;
+      }
+      .controls button {
+        height: 26px;
+        padding: 0 10px;
+        border-radius: 8px;
+        font-size: 11px;
+      }
+      .controls button[aria-pressed='true'] {
+        background: var(--accent);
+        color: var(--text-on-tile);
+      }
+
+      /* Window */
+      .window {
+        height: 100vh;
+        min-height: 640px;
+        display: flex;
+        flex-direction: column;
+        background: var(--tint);
+      }
+      .titlebar {
+        height: 40px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        padding: 0 14px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .page {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        gap: 12px;
+        padding: 4px 16px 80px;
+      }
+
+      /* Inner side panel (same rows as Tasks) */
+      .side {
+        width: 224px;
+        flex-shrink: 0;
+        border-radius: 16px;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        overflow-y: auto;
+      }
+      .row {
+        height: 32px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 10px;
+        border-radius: 8px;
+        color: var(--text-secondary);
+        width: 100%;
+        text-align: left;
+      }
+      .row:hover {
+        background: var(--input-bg);
+        color: var(--text-primary);
+      }
+      .row.active {
+        background: var(--input-bg);
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      .row .count {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--text-muted);
+        font-weight: 400;
+      }
+      .side-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 10px 4px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .ghost {
+        width: 24px;
+        height: 24px;
+        border-radius: 7px;
+        display: grid;
+        place-items: center;
+        color: var(--text-muted);
+      }
+      .ghost:hover {
+        background: var(--input-bg);
+        color: var(--text-primary);
+      }
+      .tree .row {
+        height: 28px;
+      }
+      .indent1 {
+        padding-left: 28px;
+      }
+      .tag-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 4px;
+        flex-shrink: 0;
+      }
+      .side .spacer {
+        flex: 1;
+      }
+      .module-mark {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px 10px;
+        font-weight: 600;
+      }
+      .module-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        background: var(--module-notes);
+        color: var(--text-on-tile);
+        display: grid;
+        place-items: center;
+      }
+      .module-icon svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      /* Note list */
+      .list {
+        width: 272px;
+        flex-shrink: 0;
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .list-head {
+        padding: 14px 14px 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .list-head h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .icon-btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        background: var(--glass);
+        border: 0.5px solid var(--glass-border);
+        color: var(--text-secondary);
+      }
+      .icon-btn:hover {
+        color: var(--text-primary);
+      }
+      .icon-btn.on {
+        background: var(--accent);
+        color: var(--text-on-tile);
+        border-color: transparent;
+      }
+      .filter {
+        margin: 0 14px 8px;
+        height: 30px;
+        border-radius: 10px;
+        background: var(--input-bg);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 10px;
+        color: var(--text-muted);
+      }
+      .notes {
+        overflow-y: auto;
+        padding: 0 6px 8px;
+      }
+      .note-row {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 9px 10px;
+        border-radius: 10px;
+      }
+      .note-row:hover {
+        background: var(--input-bg);
+      }
+      .note-row.active {
+        background: var(--input-bg);
+        box-shadow: inset 2px 0 0 var(--module-notes);
+      }
+      .note-title {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .note-title svg {
+        width: 12px;
+        height: 12px;
+        color: var(--text-muted);
+      }
+      .note-meta {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* Editor */
+      .editor {
+        flex: 1;
+        min-width: 0;
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .ed-bar {
+        height: 46px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 12px 0 20px;
+        flex-shrink: 0;
+      }
+      .crumb {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .status {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-right: 6px;
+      }
+      .ed-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 6px 40px 24px;
+      }
+      .ed-inner {
+        max-width: 680px;
+        margin: 0 auto;
+      }
+      .title-input {
+        font-size: 22px;
+        font-weight: 600;
+        margin: 4px 0 14px;
+        outline: none;
+      }
+      .prose {
+        line-height: 1.65;
+        color: var(--text-primary);
+      }
+      .prose h2 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 18px 0 6px;
+      }
+      .prose p {
+        margin: 0 0 10px;
+      }
+      .prose ul {
+        margin: 0 0 10px;
+        padding-left: 20px;
+      }
+      .check {
+        list-style: none;
+        padding-left: 0 !important;
+      }
+      .check li {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+      }
+      .box {
+        width: 14px;
+        height: 14px;
+        border-radius: 4px;
+        border: 1.5px solid var(--text-muted);
+        margin-top: 4px;
+        flex-shrink: 0;
+      }
+      .box.done {
+        background: var(--module-notes);
+        border-color: var(--module-notes);
+      }
+      .check li.done span {
+        color: var(--text-muted);
+        text-decoration: line-through;
+      }
+      .wl {
+        color: var(--text-primary);
+        border-bottom: 1.5px solid var(--module-notes);
+        cursor: pointer;
+        padding: 0 1px;
+      }
+      .wl.unresolved {
+        color: var(--text-secondary);
+        border-bottom: 1.5px dashed var(--text-muted);
+      }
+      .tag {
+        display: inline-block;
+        height: 20px;
+        line-height: 20px;
+        padding: 0 6px;
+        border-radius: 8px;
+        color: var(--text-on-tile);
+        font-size: 11px;
+        font-weight: 500;
+        vertical-align: 1px;
+      }
+      code {
+        font-family: 'Cascadia Code', Consolas, monospace;
+        font-size: 12px;
+        background: var(--input-bg);
+        border-radius: 6px;
+        padding: 1px 5px;
+      }
+      .caret {
+        display: inline-block;
+        width: 1px;
+        height: 15px;
+        background: var(--accent);
+        vertical-align: -2px;
+      }
+      .ed-foot {
+        padding: 8px 20px 12px;
+        font-size: 11px;
+        color: var(--text-muted);
+        display: flex;
+        gap: 12px;
+      }
+
+      /* [[ suggestion menu */
+      .suggest {
+        position: absolute;
+        width: 260px;
+        border-radius: 16px;
+        padding: 6px;
+        z-index: 10;
+        display: none;
+      }
+      .show-suggest .suggest {
+        display: block;
+      }
+      .suggest .item {
+        height: 28px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 8px;
+        border-radius: 8px;
+        color: var(--text-secondary);
+      }
+      .suggest .item.sel {
+        background: var(--input-bg);
+        color: var(--text-primary);
+      }
+      .suggest .hint {
+        padding: 6px 8px 2px;
+        font-size: 11px;
+        color: var(--text-muted);
+        border-top: 0.5px solid var(--glass-border);
+        margin-top: 4px;
+      }
+      .typing {
+        display: none;
+      }
+      .show-suggest .typing {
+        display: inline;
+      }
+
+      /* Right panel */
+      .right {
+        width: 264px;
+        flex-shrink: 0;
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .seg {
+        margin: 12px;
+        display: flex;
+        gap: 2px;
+        padding: 2px;
+        border-radius: 10px;
+        background: var(--input-bg);
+      }
+      .seg button {
+        flex: 1;
+        height: 28px;
+        border-radius: 8px;
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
+      .seg button[aria-selected='true'] {
+        background: var(--accent);
+        color: var(--text-on-tile);
+        font-weight: 500;
+      }
+      .tab {
+        display: none;
+        overflow-y: auto;
+        padding: 0 12px 12px;
+      }
+      .tab.on {
+        display: block;
+      }
+      .sec {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin: 6px 2px 6px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .card {
+        border-radius: 12px;
+        padding: 10px;
+        margin-bottom: 6px;
+        background: var(--input-bg);
+      }
+      .card .t {
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .card .t svg {
+        width: 13px;
+        height: 13px;
+        color: var(--text-muted);
+      }
+      .card .c {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+        line-height: 1.5;
+      }
+      .card .c b {
+        font-weight: 500;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--module-notes);
+      }
+      .out {
+        height: 28px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 4px;
+        color: var(--text-secondary);
+      }
+      .out .create {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .out.unres {
+        color: var(--text-muted);
+      }
+      .outline a {
+        display: block;
+        height: 26px;
+        line-height: 26px;
+        color: var(--text-secondary);
+        text-decoration: none;
+        padding: 0 4px;
+        border-radius: 6px;
+      }
+      .outline a:hover {
+        background: var(--input-bg);
+        color: var(--text-primary);
+      }
+      .outline .h3 {
+        padding-left: 16px;
+      }
+      .ver {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 34px;
+        padding: 0 8px;
+        border-radius: 8px;
+        width: 100%;
+        text-align: left;
+      }
+      .ver:hover,
+      .ver.sel {
+        background: var(--input-bg);
+      }
+      .ver .when {
+        font-weight: 500;
+      }
+      .ver .why {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .ver .delta {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      /* Version preview bar and diff (History tab) */
+      .vbar {
+        display: none;
+        margin: 0 12px 4px 12px;
+        border-radius: 12px;
+        padding: 8px 10px;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
+      }
+      .history-on .vbar {
+        display: flex;
+      }
+      .btn {
+        height: 28px;
+        padding: 0 10px;
+        border-radius: 10px;
+        font-size: 11px;
+      }
+      .btn.primary {
+        background: var(--accent);
+        color: var(--text-on-tile);
+        font-weight: 500;
+      }
+      .btn.secondary {
+        background: var(--glass);
+        border: 0.5px solid var(--glass-border);
+      }
+      .switch {
+        width: 28px;
+        height: 16px;
+        border-radius: 8px;
+        background: var(--accent);
+        position: relative;
+        display: inline-block;
+        vertical-align: middle;
+      }
+      .switch::after {
+        content: '';
+        position: absolute;
+        right: 2px;
+        top: 2px;
+        width: 12px;
+        height: 12px;
+        border-radius: 6px;
+        background: var(--text-on-tile);
+      }
+      .diff {
+        display: none;
+      }
+      .history-on .diff {
+        display: block;
+      }
+      .history-on .live {
+        display: none;
+      }
+      .add {
+        background: color-mix(in srgb, var(--accent) 22%, transparent);
+        border-radius: 6px;
+        padding: 1px 6px 1px 4px;
+        display: block;
+        margin: 0 0 4px;
+      }
+      .del {
+        color: var(--danger);
+        text-decoration: line-through;
+        padding: 1px 6px 1px 4px;
+        display: block;
+        margin: 0 0 4px;
+      }
+      .sign {
+        display: inline-block;
+        width: 14px;
+        color: var(--text-muted);
+        text-decoration: none;
+      }
+
+      /* Dock placeholder */
+      .dock {
+        position: fixed;
+        left: 50%;
+        bottom: 10px;
+        transform: translateX(-50%);
+        height: 60px;
+        border-radius: 18px;
+        padding: 0 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .dock span {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: block;
+        position: relative;
+      }
+      .dock span.on::after {
+        content: '';
+        position: absolute;
+        left: 16px;
+        bottom: -7px;
+        width: 4px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--text-secondary);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <button class="glass" id="t-dark" aria-pressed="true">Dark</button>
+      <button class="glass" id="t-light" aria-pressed="false">Light</button>
+      <button class="glass" id="t-suggest" aria-pressed="false">Show [[ menu</button>
+    </div>
+
+    <div class="window" id="win">
+      <div class="titlebar">Personal OS</div>
+      <div class="page">
+        <!-- Inner side panel -->
+        <aside class="side glass" aria-label="Notes navigation">
+          <div class="module-mark">
+            <span class="module-icon"
+              ><svg viewBox="0 0 24 24">
+                <path d="M5 3h11l3 3v15H5z" />
+                <path d="M9 7h6M9 11h6M9 15h4" /></svg
+            ></span>
+            Notes
+          </div>
+          <button class="row active">
+            <svg viewBox="0 0 24 24">
+              <path d="M5 3h11l3 3v15H5z" />
+              <path d="M9 9h6M9 13h6" />
+            </svg>
+            All notes <span class="count">128</span>
+          </button>
+          <button class="row">
+            <svg viewBox="0 0 24 24">
+              <rect x="4" y="5" width="16" height="16" rx="2" />
+              <path d="M16 3v4M8 3v4M4 11h16" />
+            </svg>
+            Today <span class="count">13 Oct</span>
+          </button>
+
+          <div class="side-head">
+            Folders
+            <button class="ghost" aria-label="New folder">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+          </div>
+          <div class="tree">
+            <button class="row">
+              <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></svg>
+              College <span class="count">34</span>
+            </button>
+            <button class="row">
+              <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
+              Projects <span class="count">21</span>
+            </button>
+            <button class="row indent1">
+              <svg viewBox="0 0 24 24"><path d="M5 4h4l3 3h7v12H5z" /></svg>
+              Cybersecurity <span class="count">12</span>
+            </button>
+            <button class="row indent1">
+              <svg viewBox="0 0 24 24"><path d="M5 4h4l3 3h7v12H5z" /></svg>
+              Freelance <span class="count">9</span>
+            </button>
+            <button class="row">
+              <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></svg>
+              Reading <span class="count">17</span>
+            </button>
+          </div>
+
+          <div class="side-head">Tags</div>
+          <button class="row">
+            <span class="tag-dot" style="background: var(--module-mail)"></span> security
+            <span class="count">14</span>
+          </button>
+          <button class="row">
+            <span class="tag-dot" style="background: var(--module-projects)"></span> python
+            <span class="count">9</span>
+          </button>
+          <button class="row">
+            <span class="tag-dot" style="background: var(--module-money)"></span> ideas
+            <span class="count">6</span>
+          </button>
+
+          <div class="spacer"></div>
+          <button class="row">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 4h16v6H4zM6 10v10h12V10" />
+              <path d="M10 14h4" />
+            </svg>
+            Templates
+          </button>
+          <button class="row">
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3"
+              />
+            </svg>
+            Trash <span class="count">3</span>
+          </button>
+        </aside>
+
+        <!-- Note list -->
+        <section class="list glass" aria-label="Notes in Cybersecurity">
+          <div class="list-head">
+            <div style="flex: 1; min-width: 0">
+              <h2>Cybersecurity</h2>
+              <div class="small muted">12 notes · Last edited</div>
+            </div>
+            <button class="icon-btn" aria-label="Sort">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 6h10M4 12h7M4 18h4M17 4v16M14 17l3 3 3-3" />
+              </svg>
+            </button>
+            <button class="icon-btn" aria-label="New note (N)">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+          </div>
+          <div class="filter">
+            <svg viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="6" />
+              <path d="M20 20l-4-4" />
+            </svg>
+            Filter notes
+          </div>
+          <div class="notes">
+            <button class="note-row">
+              <div class="note-title">
+                <svg viewBox="0 0 24 24"><path d="M15 4l5 5-4 1-4 4-1 5-6-6 5-1 4-4z" /></svg
+                >Reading list
+              </div>
+              <div class="note-meta">2 Oct · Practical Malware Analysis, The Web App…</div>
+            </button>
+            <button class="note-row active">
+              <div class="note-title">Network scanning</div>
+              <div class="note-meta">Just now · Notes from the lab on Nmap and how…</div>
+            </button>
+            <button class="note-row">
+              <div class="note-title">Authentication</div>
+              <div class="note-meta">Yesterday · Sessions vs tokens, password hashing…</div>
+            </button>
+            <button class="note-row">
+              <div class="note-title">TryHackMe rooms</div>
+              <div class="note-meta">11 Oct · Done: Nmap, Burp basics. Next: OWASP…</div>
+            </button>
+            <button class="note-row">
+              <div class="note-title">Firewall rules</div>
+              <div class="note-meta">9 Oct · iptables chains, default deny, logging…</div>
+            </button>
+            <button class="note-row">
+              <div class="note-title">OWASP Top 10</div>
+              <div class="note-meta">4 Oct · Broken access control is now first…</div>
+            </button>
+            <button class="note-row">
+              <div class="note-title">CTF writeup: picoCTF</div>
+              <div class="note-meta">28 Sep · The flag was hidden in a cookie…</div>
+            </button>
+          </div>
+        </section>
+
+        <!-- Editor -->
+        <section class="editor glass" aria-label="Note editor" id="editor">
+          <div class="ed-bar">
+            <span class="crumb">Projects / Cybersecurity</span>
+            <span class="status" id="status">Saved</span>
+            <button class="icon-btn on" aria-label="Hide right panel" aria-pressed="true">
+              <svg viewBox="0 0 24 24">
+                <rect x="4" y="4" width="16" height="16" rx="2" />
+                <path d="M15 4v16" />
+              </svg>
+            </button>
+            <button class="icon-btn" aria-label="More">
+              <svg viewBox="0 0 24 24">
+                <circle cx="5" cy="12" r="1" />
+                <circle cx="12" cy="12" r="1" />
+                <circle cx="19" cy="12" r="1" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="vbar strong" role="status">
+            <span><b style="font-weight: 500">Version from 13 Oct, 14:32</b></span>
+            <span class="muted">Show changes <span class="switch" aria-hidden="true"></span></span>
+            <span style="flex: 1"></span>
+            <button class="btn secondary" data-close-history>Close</button>
+            <button class="btn primary">Restore</button>
+          </div>
+
+          <div class="ed-body">
+            <div class="ed-inner" style="position: relative">
+              <div class="title-input" contenteditable="true" spellcheck="false">
+                Network scanning
+              </div>
+
+              <div class="prose live">
+                <p>
+                  Notes from the lab on Nmap and how it fits with
+                  <span class="wl">Firewall rules</span>. See also
+                  <span class="wl">Authentication</span> for the login part.
+                  <span class="tag" style="background: var(--module-mail)">#security</span>
+                </p>
+                <h2>Basic scans</h2>
+                <ul>
+                  <li><code>nmap -sS 10.0.0.0/24</code> for a quiet SYN scan</li>
+                  <li>
+                    Service versions with <code>-sV</code>, then compare with
+                    <span class="wl unresolved">CVE notes</span>
+                  </li>
+                </ul>
+                <h2>To do</h2>
+                <ul class="check">
+                  <li class="done">
+                    <span class="box done"></span><span>Finish the TryHackMe Nmap room</span>
+                  </li>
+                  <li>
+                    <span class="box"></span
+                    ><span>Write up the results for <span class="wl">TryHackMe rooms</span></span>
+                  </li>
+                </ul>
+                <p>
+                  Next: link this to <span class="typing">[[Fire<span class="caret"></span></span
+                  ><span class="muted" id="nexthint">the project page.</span>
+                </p>
+
+                <div
+                  class="suggest strong"
+                  style="left: 120px; top: 318px"
+                  role="listbox"
+                  aria-label="Link to a note"
+                >
+                  <div class="item sel" role="option" aria-selected="true">
+                    <svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z" /></svg>Firewall rules
+                    <span class="small muted" style="margin-left: auto">Cybersecurity</span>
+                  </div>
+                  <div class="item" role="option">
+                    <svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z" /></svg>Firebase setup
+                    <span class="small muted" style="margin-left: auto">Freelance</span>
+                  </div>
+                  <div class="item" role="option">
+                    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>Create "Fire"
+                  </div>
+                  <div class="hint">↑ ↓ to move · Enter to link · Esc to close</div>
+                </div>
+              </div>
+
+              <!-- Version preview with changes (History tab) -->
+              <div class="prose diff" aria-label="Changes from this version to now">
+                <p>
+                  Notes from the lab on Nmap and how it fits with
+                  <span class="wl">Firewall rules</span>.
+                </p>
+                <span class="add"
+                  ><span class="sign">+</span>See also Authentication for the login part.
+                  #security</span
+                >
+                <h2>Basic scans</h2>
+                <ul>
+                  <li><code>nmap -sS 10.0.0.0/24</code> for a quiet SYN scan</li>
+                </ul>
+                <span class="del"><span class="sign">−</span>Try masscan for the whole range</span>
+                <span class="add"
+                  ><span class="sign">+</span>Service versions with -sV, then compare with CVE
+                  notes</span
+                >
+                <h2>To do</h2>
+                <span class="add"
+                  ><span class="sign">+</span>Write up the results for TryHackMe rooms</span
+                >
+              </div>
+            </div>
+          </div>
+          <div class="ed-foot"><span>214 words</span><span>Edited just now</span></div>
+        </section>
+
+        <!-- Right panel -->
+        <aside class="right glass" aria-label="Note details">
+          <div class="seg" role="tablist" aria-label="Right panel">
+            <button role="tab" aria-selected="true" data-tab="links">Links</button>
+            <button role="tab" aria-selected="false" data-tab="outline">Outline</button>
+            <button role="tab" aria-selected="false" data-tab="history">History</button>
+          </div>
+
+          <div class="tab on" id="tab-links" role="tabpanel">
+            <div class="sec"><span>Backlinks</span><span>3</span></div>
+            <div class="card">
+              <div class="t">
+                <svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z" /></svg>TryHackMe rooms
+              </div>
+              <div class="c">
+                …the Nmap room covers what I wrote in <b>Network scanning</b>, plus timing flags.
+              </div>
+            </div>
+            <div class="card">
+              <div class="t">
+                <svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z" /></svg>2026-10-12
+              </div>
+              <div class="c">
+                Lab day. Updated <b>Network scanning</b> with the SYN scan results.
+              </div>
+            </div>
+            <div class="card">
+              <div class="t">
+                <svg viewBox="0 0 24 24"><path d="M5 3h11l3 3v15H5z" /></svg>Firewall rules
+              </div>
+              <div class="c">Test every rule change with a scan (see <b>Network scanning</b>).</div>
+            </div>
+
+            <div class="sec" style="margin-top: 14px">
+              <span>Outgoing links</span><span>4</span>
+            </div>
+            <div class="out">
+              <svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8" /></svg>Firewall rules
+            </div>
+            <div class="out">
+              <svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8" /></svg>Authentication
+            </div>
+            <div class="out">
+              <svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8" /></svg>TryHackMe rooms
+            </div>
+            <div class="out unres">
+              <svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8" /></svg>CVE notes
+              <button class="create">Create</button>
+            </div>
+
+            <div class="sec" style="margin-top: 14px"><span>Tags</span></div>
+            <span class="tag" style="background: var(--module-mail)">security</span>
+          </div>
+
+          <div class="tab outline" id="tab-outline" role="tabpanel">
+            <div class="sec"><span>Headings</span></div>
+            <a href="#">Basic scans</a>
+            <a href="#">To do</a>
+          </div>
+
+          <div class="tab" id="tab-history" role="tabpanel">
+            <div class="sec"><span>Today</span></div>
+            <button class="ver">
+              <span class="when">Now</span><span class="why">current</span>
+            </button>
+            <button class="ver sel">
+              <span class="when">14:32</span><span class="delta">+38 / −6 words</span>
+            </button>
+            <button class="ver">
+              <span class="when">11:05</span><span class="delta">+112 words</span>
+            </button>
+            <div class="sec" style="margin-top: 10px"><span>Yesterday</span></div>
+            <button class="ver">
+              <span class="when">21:47</span><span class="why">before restore</span
+              ><span class="delta">−20 words</span>
+            </button>
+            <button class="ver">
+              <span class="when">18:10</span><span class="delta">+64 words</span>
+            </button>
+            <div class="sec" style="margin-top: 10px"><span>10 Oct</span></div>
+            <button class="ver">
+              <span class="when">09:22</span><span class="delta">+20 words</span>
+            </button>
+            <p class="small muted" style="margin: 12px 4px 0; line-height: 1.5">
+              A version is kept when you start editing after a 10 minute pause. The last 50 are
+              kept.
+            </p>
+          </div>
+        </aside>
+      </div>
+
+      <div class="dock strong" aria-hidden="true">
+        <span style="background: #e8e8e8"></span>
+        <span style="background: var(--module-tasks)"></span>
+        <span style="background: #c6e46e"></span>
+        <span class="on" style="background: var(--module-notes)"></span>
+        <span style="background: #b8c4f7"></span>
+        <span style="background: #f6a462"></span>
+        <span style="background: var(--module-mail)"></span>
+        <span style="background: #c5ccd6"></span>
+        <span style="background: var(--module-projects)"></span>
+        <span style="background: var(--module-money)"></span>
+      </div>
+    </div>
+
+    <script>
+      const root = document.documentElement;
+      const win = document.getElementById('win');
+      const dark = document.getElementById('t-dark');
+      const light = document.getElementById('t-light');
+      const sug = document.getElementById('t-suggest');
+      function theme(t) {
+        root.dataset.theme = t;
+        dark.setAttribute('aria-pressed', String(t === 'dark'));
+        light.setAttribute('aria-pressed', String(t === 'light'));
+      }
+      dark.onclick = () => theme('dark');
+      light.onclick = () => theme('light');
+      sug.onclick = () => {
+        const on = win.classList.toggle('show-suggest');
+        sug.setAttribute('aria-pressed', String(on));
+        document.getElementById('nexthint').style.display = on ? 'none' : '';
+        document.getElementById('status').textContent = on ? 'Saving…' : 'Saved';
+      };
+      const tabs = document.querySelectorAll('[data-tab]');
+      function show(name) {
+        tabs.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+        ['links', 'outline', 'history'].forEach((n) =>
+          document.getElementById('tab-' + n).classList.toggle('on', n === name),
+        );
+        win.classList.toggle('history-on', name === 'history');
+      }
+      tabs.forEach((b) => (b.onclick = () => show(b.dataset.tab)));
+      document.querySelector('[data-close-history]').onclick = () => show('links');
+    </script>
+  </body>
+</html>

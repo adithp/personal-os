@@ -15,6 +15,7 @@ import { ApiError, type RequestOptions } from '../../api/api-client';
 import { useApi } from '../../api/api-context';
 import { useToasts } from '../../store/toast-store';
 import { startOfIstDay } from './dates';
+import { GOALS_KEY } from './query-keys';
 
 /**
  * Server data for the Tasks module (the hook signatures are part of the Feature 1 contract).
@@ -178,7 +179,12 @@ export function useTaskActions() {
   const client = useQueryClient();
   const toast = useToasts.getState;
 
-  const refresh = () => client.invalidateQueries({ queryKey: TASKS_KEY });
+  const refresh = async () => {
+    await Promise.all([
+      client.invalidateQueries({ queryKey: TASKS_KEY }),
+      client.invalidateQueries({ queryKey: GOALS_KEY }),
+    ]);
+  };
 
   const runUndo = async (descriptor: UndoDescriptor) => {
     try {

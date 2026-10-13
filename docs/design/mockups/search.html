@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mockup: Full-text search in the command palette</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      /* Tokens copied from packages/ui/src/styles/tokens.css (demo only) */
+      :root,
+      [data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #15171c;
+        --glass: rgba(255, 255, 255, 0.07);
+        --glass-border: rgba(255, 255, 255, 0.12);
+        --glass-strong: rgba(40, 43, 50, 0.92);
+        --text-primary: #f2f2f2;
+        --text-secondary: rgba(255, 255, 255, 0.65);
+        --text-muted: rgba(255, 255, 255, 0.45);
+        --text-on-tile: #1c1c1c;
+        --danger: #f28b82;
+        --input-bg: rgba(255, 255, 255, 0.06);
+        --tint: rgba(21, 23, 28, 0.55);
+        --wallpaper-default:
+          radial-gradient(ellipse 80% 60% at 15% 0%, #3d3a70 0%, transparent 60%),
+          radial-gradient(ellipse 70% 50% at 90% 15%, #1f5466 0%, transparent 60%),
+          radial-gradient(ellipse 90% 60% at 50% 100%, #2a2440 0%, transparent 70%),
+          linear-gradient(180deg, #1c1f2b 0%, #15171c 100%);
+      }
+      [data-theme='light'] {
+        color-scheme: light;
+        --bg: #eef0f3;
+        --glass: rgba(255, 255, 255, 0.65);
+        --glass-border: rgba(0, 0, 0, 0.07);
+        --glass-strong: rgba(255, 255, 255, 0.85);
+        --text-primary: #1c1c1c;
+        --text-secondary: rgba(0, 0, 0, 0.6);
+        --text-muted: rgba(0, 0, 0, 0.4);
+        --text-on-tile: #1c1c1c;
+        --danger: #c5221f;
+        --input-bg: rgba(0, 0, 0, 0.04);
+        --tint: rgba(238, 240, 243, 0.55);
+        --wallpaper-default:
+          radial-gradient(ellipse 80% 60% at 15% 0%, #d9defc 0%, transparent 60%),
+          radial-gradient(ellipse 70% 50% at 90% 15%, #fde0cc 0%, transparent 60%),
+          radial-gradient(ellipse 90% 60% at 50% 100%, #d4efe4 0%, transparent 70%),
+          linear-gradient(180deg, #f5f6f9 0%, #eef0f3 100%);
+      }
+      :root {
+        --module-dashboard: #e8e8e8;
+        --module-tasks: #f7d96b;
+        --module-habits: #c6e46e;
+        --module-notes: #f0c9a0;
+        --module-graph: #b8c4f7;
+        --module-calendar: #f6a462;
+        --module-mail: #93d3f5;
+        --module-drive: #c5ccd6;
+        --module-projects: #f4a9c4;
+        --module-money: #9ee0c8;
+        --module-assistant: #c9b4f7;
+        --module-settings: #a9a9a9;
+        --accent: var(--module-assistant);
+        --glass-blur: 24px;
+        --duration-fast: 150ms;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, 'Segoe UI', system-ui, sans-serif;
+        font-size: 13px;
+        color: var(--text-primary);
+        background: var(--wallpaper-default);
+        background-attachment: fixed;
+        min-height: 100vh;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+      }
+      svg {
+        width: 14px;
+        height: 14px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      /* Demo controls (not part of the design) */
+      .demo {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        display: flex;
+        gap: 8px;
+        z-index: 60;
+        flex-wrap: wrap;
+        max-width: calc(100vw - 24px);
+      }
+      .demo button {
+        height: 28px;
+        padding: 0 10px;
+        border-radius: 8px;
+        border: 0.5px solid var(--glass-border);
+        background: var(--glass-strong);
+        cursor: pointer;
+        font-size: 11px;
+      }
+      .demo button[aria-pressed='true'] {
+        background: var(--accent);
+        color: #1c1c1c;
+      }
+
+      /* A faint dashboard behind the dimmed overlay */
+      .page {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 96px 24px 0;
+      }
+      .greet {
+        font-size: 22px;
+        font-weight: 600;
+      }
+      .date {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 4px;
+      }
+      .searchbar {
+        margin-top: 16px;
+        height: 40px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 14px;
+        background: var(--glass);
+        border: 0.5px solid var(--glass-border);
+        color: var(--text-muted);
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+      }
+      .cards div {
+        height: 120px;
+        border-radius: 16px;
+      }
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        z-index: 40;
+      }
+
+      /* The palette (DESIGN.md section 9) */
+      .palette {
+        position: fixed;
+        top: 14vh;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 560px;
+        max-width: calc(100vw - 48px);
+        z-index: 50;
+        border-radius: 16px;
+        overflow: hidden;
+        background: var(--glass-strong);
+        border: 0.5px solid var(--glass-border);
+        backdrop-filter: blur(var(--glass-blur));
+        -webkit-backdrop-filter: blur(var(--glass-blur));
+      }
+      .field {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 16px;
+        border-bottom: 0.5px solid var(--glass-border);
+      }
+      .field > svg {
+        width: 18px;
+        height: 18px;
+        color: var(--text-muted);
+        flex-shrink: 0;
+      }
+      .field input {
+        flex: 1;
+        height: 48px;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--text-primary);
+        font: inherit;
+        font-size: 13px;
+      }
+      .field input::placeholder {
+        color: var(--text-muted);
+      }
+      .kbd {
+        display: inline-flex;
+        align-items: center;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 8px;
+        background: var(--input-bg);
+        border: 0.5px solid var(--glass-border);
+        color: var(--text-muted);
+        font-size: 11px;
+      }
+      .kbds {
+        display: flex;
+        gap: 4px;
+      }
+      .list {
+        max-height: 360px;
+        overflow-y: auto;
+        padding: 8px;
+      }
+      .heading {
+        padding: 8px 12px 4px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text-muted);
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 36px;
+        padding: 0 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: opacity var(--duration-fast) ease-out;
+      }
+      .row.two {
+        min-height: 48px;
+      }
+      .row[aria-selected='true'] {
+        background: var(--input-bg);
+      }
+      .sq {
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-on-tile);
+      }
+      .sq.plain {
+        background: var(--input-bg);
+        color: var(--text-secondary);
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+      .text {
+        flex: 1;
+        min-width: 0;
+      }
+      .title,
+      .snippet {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .snippet {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 2px;
+      }
+      .meta {
+        font-size: 11px;
+        color: var(--text-muted);
+        flex-shrink: 0;
+      }
+      .meta.overdue {
+        color: var(--danger);
+      }
+      mark {
+        background: color-mix(in srgb, var(--accent) 30%, transparent);
+        color: inherit;
+        border-radius: 4px;
+        padding: 0 1px;
+      }
+      [data-theme='light'] mark {
+        background: color-mix(in srgb, var(--accent) 50%, transparent);
+      }
+      .stale {
+        opacity: 0.6;
+      }
+      .quiet {
+        padding: 8px 12px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .quiet.error {
+        color: var(--danger);
+      }
+      .empty {
+        padding: 32px 12px;
+        text-align: center;
+        color: var(--text-muted);
+      }
+      .empty small {
+        display: block;
+        margin-top: 4px;
+        font-size: 11px;
+      }
+      .footer {
+        border-top: 0.5px solid var(--glass-border);
+        padding: 8px 16px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .opened {
+        position: fixed;
+        left: 50%;
+        bottom: 96px;
+        transform: translateX(-50%);
+        z-index: 70;
+        padding: 8px 16px;
+        border-radius: 10px;
+        background: var(--glass-strong);
+        border: 0.5px solid var(--glass-border);
+        font-size: 13px;
+        display: none;
+      }
+      .sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .row {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute">
+      <symbol id="i-search" viewBox="0 0 24 24">
+        <path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0-14 0M21 21l-6-6" />
+      </symbol>
+      <symbol id="i-checklist" viewBox="0 0 24 24">
+        <path
+          d="M9.6 4.6l-2.6 2.9-1.5-1.5M9.6 10.6l-2.6 2.9-1.5-1.5M9.6 16.6l-2.6 2.9-1.5-1.5M13 6h7M13 12h7M13 18h7"
+        />
+      </symbol>
+      <symbol id="i-dash" viewBox="0 0 24 24">
+        <path
+          d="M5 4h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1M5 16h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1M15 12h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1M15 4h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1"
+        />
+      </symbol>
+      <symbol id="i-flame" viewBox="0 0 24 24">
+        <path
+          d="M12 10.9c-.1-2.6 1.1-5.4 3-6.9-1 4 3 5 3 9a6 6 0 0 1-12 0c0-1.4.5-2.8 1.5-3.8.3 1.3 1.4 2.4 2.7 2.6.9-.6 1.6-1.8 1.8-2.9"
+        />
+      </symbol>
+      <symbol id="i-notes" viewBox="0 0 24 24">
+        <path
+          d="M5 5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM9 7h6M9 11h6M9 15h4"
+        />
+      </symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24">
+        <path
+          d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM16 3v4M8 3v4M4 11h16"
+        />
+      </symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24">
+        <path d="M12 3h.4a7.5 7.5 0 0 0 8.6 9.6A9 9 0 1 1 12 3z" />
+      </symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="4" />
+        <path
+          d="M3 12h1M12 3v1M20 12h1M12 20v1M5.6 5.6l.7.7M18.4 5.6l-.7.7M17.7 17.7l.7.7M6.3 17.7l-.7.7"
+        />
+      </symbol>
+      <symbol id="i-dock" viewBox="0 0 24 24">
+        <path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 16h16" />
+      </symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3" />
+        <path
+          d="M12 3l1.6 2.3 2.8-.4.6 2.7 2.5 1.3-1.1 2.6 1.1 2.6-2.5 1.3-.6 2.7-2.8-.4L12 21l-1.6-2.3-2.8.4-.6-2.7-2.5-1.3 1.1-2.6-1.1-2.6 2.5-1.3.6-2.7 2.8.4z"
+        />
+      </symbol>
+    </svg>
+
+    <div class="demo" aria-label="Mockup controls">
+      <button id="theme" aria-pressed="false">Light mode</button>
+      <button id="slow" aria-pressed="false">Slow server (1.2 s)</button>
+      <button id="fail" aria-pressed="false">Server error</button>
+      <button data-try="">Empty field</button>
+      <button data-try="re">Type "re"</button>
+      <button data-try="call nai">Type "call nai"</button>
+      <button data-try="#ho">Type "#ho"</button>
+      <button data-try="voice">No result</button>
+      <button id="clear-recent">Clear recent</button>
+    </div>
+
+    <main class="page" aria-hidden="true">
+      <div class="greet">Good evening, Adith</div>
+      <div class="date">Tuesday, 13 October</div>
+      <div class="searchbar">
+        <svg><use href="#i-search" /></svg>Search or type a command<span style="flex: 1"></span
+        ><span class="kbds"><span class="kbd">Ctrl</span><span class="kbd">K</span></span>
+      </div>
+      <div class="cards">
+        <div style="background: var(--module-tasks)"></div>
+        <div style="background: var(--module-mail)"></div>
+        <div style="background: var(--module-money)"></div>
+      </div>
+    </main>
+
+    <div class="overlay"></div>
+    <div class="palette" role="dialog" aria-label="Command palette">
+      <div class="field">
+        <svg aria-hidden="true"><use href="#i-search" /></svg>
+        <input
+          id="q"
+          role="combobox"
+          aria-expanded="true"
+          aria-controls="list"
+          aria-autocomplete="list"
+          placeholder="Search or type a command…"
+          autocomplete="off"
+          autofocus
+        />
+        <span class="kbd">Esc</span>
+      </div>
+      <div class="list" id="list" role="listbox" aria-label="Results"></div>
+      <div class="footer">↑ ↓ to move · Enter to open · Esc to close</div>
+      <div class="sr" role="status" id="live"></div>
+    </div>
+    <div class="opened" id="opened"></div>
+
+    <script>
+      // ---- Demo data (made up) ----
+      const MODULES = [
+        ['dashboard', 'Dashboard', 'i-dash', '1'],
+        ['tasks', 'Tasks', 'i-checklist', '2'],
+        ['habits', 'Habits', 'i-flame', '3'],
+        ['notes', 'Notes', 'i-notes', '4'],
+        ['calendar', 'Calendar', 'i-calendar', '6'],
+        ['settings', 'Settings', 'i-settings', ','],
+      ];
+      const COMMANDS = [
+        ...MODULES.map(([id, name, icon, key]) => ({
+          id: 'open-' + id,
+          group: 'Go to',
+          title: 'Open ' + name,
+          keywords: ['go', 'navigate', 'show', id],
+          module: id,
+          icon,
+          keys: ['Ctrl', key],
+        })),
+        {
+          id: 'theme-dark',
+          group: 'Appearance',
+          title: 'Switch to dark theme',
+          keywords: ['theme', 'night', 'black'],
+          icon: 'i-moon',
+          hint: 'Current',
+        },
+        {
+          id: 'theme-light',
+          group: 'Appearance',
+          title: 'Switch to light theme',
+          keywords: ['theme', 'day', 'bright'],
+          icon: 'i-sun',
+        },
+        {
+          id: 'dock',
+          group: 'Dock',
+          title: 'Toggle dock auto-hide',
+          keywords: ['dock', 'hide', 'bottom', 'bar'],
+          icon: 'i-dock',
+          hint: 'Off',
+        },
+      ];
+      const TASKS = [
+        {
+          id: 't1',
+          title: 'Pay rent to Mr. Nair',
+          description: 'Transfer before the 5th and keep the receipt',
+          status: 'todo',
+          meta: 'Today',
+          overdue: false,
+          updated: 9,
+        },
+        {
+          id: 't2',
+          title: 'Renew passport',
+          description: 'Book a slot at the Kochi passport office',
+          status: 'todo',
+          meta: '20 Oct',
+          updated: 8,
+        },
+        {
+          id: 't3',
+          title: 'Rental agreement scan',
+          description: 'Upload the signed pages to Drive',
+          status: 'todo',
+          archived: true,
+          meta: 'Archived',
+          updated: 3,
+        },
+        {
+          id: 't4',
+          title: 'Call Ravi about the invoice',
+          description: 'He still owes the November payment; ask Mr. Nair too',
+          status: 'todo',
+          meta: '11 Oct',
+          overdue: true,
+          updated: 7,
+        },
+        {
+          id: 't5',
+          title: 'Read chapter 4 of Learning Rust',
+          description: 'Ownership and borrowing, then the exercises',
+          status: 'done',
+          meta: 'Done',
+          updated: 6,
+        },
+        {
+          id: 't6',
+          title: 'Submit college project report',
+          description: 'Send the PDF to the project guide and the HOD',
+          status: 'todo',
+          meta: 'Tomorrow',
+          updated: 5,
+        },
+        {
+          id: 't7',
+          title: 'Reply to the hostel warden',
+          description: '',
+          status: 'todo',
+          meta: 'Subtask',
+          updated: 4,
+        },
+        {
+          id: 't8',
+          title: 'മലയാളം നോട്ടുകൾ revise',
+          description: 'Malayalam exam on Friday',
+          status: 'todo',
+          meta: '17 Oct',
+          updated: 2,
+        },
+      ];
+      const TAGS = [
+        { id: 'g1', name: 'home', color: '#9EE0C8' },
+        { id: 'g2', name: 'college', color: '#B8C4F7' },
+        { id: 'g3', name: 'freelance', color: '#F4A9C4' },
+        { id: 'g4', name: 'renewals', color: '#F6A462' },
+      ];
+      let recent = [
+        { type: 'task', id: 't6', title: 'Submit college project report', meta: 'Tomorrow' },
+        { type: 'tag', id: 'g3', title: 'freelance', color: '#F4A9C4' },
+      ];
+
+      // ---- The same word rule as the app (D10): runs of Unicode letters, marks and digits ----
+      const WORD = /[\p{L}\p{M}\p{N}]+/gu;
+      const words = (text) => text.toLowerCase().match(WORD) || [];
+      const esc = (s) =>
+        s.replace(
+          /[&<>"']/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+        );
+      function highlight(text, query) {
+        const qs = words(query);
+        let out = '';
+        let last = 0;
+        for (const m of text.matchAll(WORD)) {
+          out += esc(text.slice(last, m.index));
+          const w = m[0];
+          const hit = qs
+            .filter((q) => w.toLowerCase().startsWith(q))
+            .sort((a, b) => b.length - a.length)[0];
+          out += hit
+            ? '<mark>' + esc(w.slice(0, hit.length)) + '</mark>' + esc(w.slice(hit.length))
+            : esc(w);
+          last = m.index + w.length;
+        }
+        return out + esc(text.slice(last));
+      }
+      const allPrefix = (qs, text) => {
+        const ws = words(text);
+        return qs.every((q) => ws.some((w) => w.startsWith(q)));
+      };
+
+      // ---- Commands: the existing scoreCommand rule (substring of title or keywords) ----
+      function scoreCommand(c, search) {
+        const ws = search.toLowerCase().split(/\s+/).filter(Boolean);
+        if (!ws.length) return 1;
+        const t = c.title.toLowerCase();
+        const k = c.keywords.join(' ').toLowerCase();
+        if (ws.every((w) => t.includes(w))) return t.startsWith(ws[0]) ? 1 : 0.9;
+        if (ws.every((w) => t.includes(w) || k.includes(w))) return 0.5;
+        return 0;
+      }
+
+      // ---- A fake server: prefix on every word, AND; title weight above description ----
+      function fakeServer(q) {
+        const text = q.replace(/^#/, '');
+        const qs = words(text);
+        const tasks = TASKS.map((t) => {
+          const inTitle = allPrefix(qs, t.title);
+          const inAll = allPrefix(qs, t.title + ' ' + t.description);
+          if (!inAll) return null;
+          let rank = inTitle ? 1 : 0.4;
+          if (t.status === 'done' || t.archived) rank *= 0.5;
+          let snippet = null;
+          if (!inTitle) {
+            const ws = t.description.split(' ');
+            const i = Math.max(
+              0,
+              ws.findIndex((w) => qs.some((q) => w.toLowerCase().startsWith(q))) - 3,
+            );
+            snippet = (i > 0 ? '… ' : '') + ws.slice(i, i + 10).join(' ');
+          }
+          return { type: 'task', ...t, rank, snippet };
+        })
+          .filter(Boolean)
+          .sort((a, b) => b.rank - a.rank || b.updated - a.updated)
+          .slice(0, 5);
+        const tags =
+          qs.length === 1
+            ? TAGS.filter((g) => g.name.startsWith(qs[0]))
+                .map((g) => ({ type: 'tag', id: g.id, title: g.name, color: g.color }))
+                .slice(0, 5)
+            : [];
+        const groups = [];
+        if (tasks.length) groups.push({ type: 'task', items: tasks });
+        if (tags.length) groups.push({ type: 'tag', items: tags });
+        return { q, groups };
+      }
+
+      // ---- State ----
+      const input = document.getElementById('q');
+      const list = document.getElementById('list');
+      const live = document.getElementById('live');
+      let results = null; // last answer shown
+      let resultsFor = '';
+      let pending = false;
+      let showSearching = false;
+      let failed = false;
+      let selected = 0;
+      let items = []; // flat, in screen order
+      let debounceTimer, slowTimer, requestTimer;
+      const opt = { slow: false, fail: false };
+
+      function request(q) {
+        clearTimeout(requestTimer);
+        clearTimeout(slowTimer);
+        pending = true;
+        showSearching = false;
+        slowTimer = setTimeout(() => {
+          showSearching = true;
+          render();
+        }, 300);
+        requestTimer = setTimeout(
+          () => {
+            clearTimeout(slowTimer);
+            pending = false;
+            showSearching = false;
+            if (opt.fail) {
+              failed = true;
+              results = null;
+            } else {
+              failed = false;
+              results = fakeServer(q);
+              resultsFor = q;
+            }
+            render(true);
+          },
+          opt.slow ? 1200 : 90,
+        );
+      }
+
+      function onType() {
+        clearTimeout(debounceTimer);
+        const q = input.value.trim();
+        if (q.replace(/^#/, '').length < 2) {
+          clearTimeout(requestTimer);
+          clearTimeout(slowTimer);
+          pending = false;
+          showSearching = false;
+          results = null;
+          failed = false;
+        } else {
+          pending = true;
+          debounceTimer = setTimeout(() => request(q), 150);
+        }
+        selected = 0;
+        render();
+      }
+
+      const sq = (module, icon) =>
+        `<span class="sq" style="background: var(--module-${module})"><svg><use href="#${icon}"/></svg></span>`;
+      const plainSq = (icon) => `<span class="sq plain"><svg><use href="#${icon}"/></svg></span>`;
+      const tagSq = (color) =>
+        `<span class="sq plain"><span class="dot" style="background:${color}"></span></span>`;
+
+      function rowHtml(item, q, stale) {
+        const i = items.length;
+        items.push(item);
+        const sel = i === selected ? 'true' : 'false';
+        const cls = 'row' + (item.snippet ? ' two' : '') + (stale ? ' stale' : '');
+        let icon,
+          right = '';
+        if (item.kind === 'cmd') {
+          icon = item.module ? sq(item.module, item.icon) : plainSq(item.icon);
+          if (item.hint) right = `<span class="meta">${item.hint}</span>`;
+          if (item.keys)
+            right += `<span class="kbds">${item.keys.map((k) => `<span class="kbd">${k}</span>`).join('')}</span>`;
+        } else if (item.type === 'task') {
+          icon = sq('tasks', 'i-checklist');
+          right = `<span class="meta${item.overdue ? ' overdue' : ''}">${esc(item.meta)}</span>`;
+        } else {
+          icon = tagSq(item.color);
+          right = `<span class="meta">Tag</span>`;
+        }
+        const title =
+          item.kind === 'cmd'
+            ? esc(item.title)
+            : highlight(item.type === 'tag' ? '#' + item.title : item.title, q);
+        const snippet = item.snippet
+          ? `<div class="snippet">${highlight(item.snippet, q)}</div>`
+          : '';
+        return `<div class="${cls}" role="option" id="opt-${i}" aria-selected="${sel}" data-i="${i}">${icon}<div class="text"><div class="title">${title}</div>${snippet}</div>${right}</div>`;
+      }
+
+      function render(announce) {
+        const q = input.value.trim();
+        items = [];
+        let html = '';
+        if (!q) {
+          if (recent.length) {
+            html += `<div class="heading">Recent</div>`;
+            for (const r of recent) html += rowHtml({ ...r, kind: 'hit' }, '', false);
+          }
+        }
+        const cmds = COMMANDS.map((c) => ({ ...c, kind: 'cmd', score: scoreCommand(c, q) })).filter(
+          (c) => c.score > 0,
+        );
+        for (const group of ['Go to', 'Appearance', 'Dock']) {
+          const inGroup = cmds.filter((c) => c.group === group).sort((a, b) => b.score - a.score);
+          if (!inGroup.length) continue;
+          html += `<div class="heading">${group}</div>`;
+          for (const c of inGroup) html += rowHtml(c, q, false);
+        }
+        let dataRows = 0;
+        if (q) {
+          if (failed) {
+            html += `<div class="quiet error">Search is not available right now.</div>`;
+          } else if (results) {
+            const stale = pending && resultsFor !== q;
+            for (const g of results.groups) {
+              html += `<div class="heading">${g.type === 'task' ? 'Tasks' : 'Tags'}</div>`;
+              for (const it of g.items) {
+                html += rowHtml({ ...it, kind: 'hit' }, q, stale);
+                dataRows++;
+              }
+            }
+          } else if (showSearching) {
+            html += `<div class="quiet">Searching…</div>`;
+          }
+          if (!items.length && !failed && !pending && q.replace(/^#/, '').length >= 2) {
+            html += `<div class="empty">Nothing found for "${esc(q)}".<small>Search finds tasks and tags by the start of their words.</small></div>`;
+          } else if (!items.length && !failed && q.replace(/^#/, '').length < 2) {
+            html += `<div class="empty">No commands found.<small>Type 2 or more letters to search your tasks and tags.</small></div>`;
+          }
+        }
+        list.innerHTML = html;
+        if (selected >= items.length) selected = Math.max(0, items.length - 1);
+        input.setAttribute('aria-activedescendant', items.length ? 'opt-' + selected : '');
+        if (announce)
+          live.textContent = failed
+            ? 'Search is not available'
+            : dataRows
+              ? dataRows + ' results'
+              : 'No results';
+      }
+
+      function open(i) {
+        const item = items[i];
+        if (!item) return;
+        let text;
+        if (item.kind === 'cmd') text = 'Runs: ' + item.title;
+        else if (item.type === 'task')
+          text =
+            'Opens Tasks › My tasks with "' +
+            item.title +
+            '" selected' +
+            (item.archived ? ' (archived shown)' : '');
+        else text = 'Opens My tasks filtered by #' + item.title;
+        if (item.kind === 'hit') {
+          recent = [
+            {
+              type: item.type,
+              id: item.id,
+              title: item.title,
+              meta: item.meta,
+              color: item.color,
+              overdue: item.overdue,
+            },
+            ...recent.filter((r) => r.id !== item.id),
+          ].slice(0, 5);
+        }
+        const box = document.getElementById('opened');
+        box.textContent = text + '. The palette closes.';
+        box.style.display = 'block';
+        setTimeout(() => (box.style.display = 'none'), 2200);
+        input.value = '';
+        results = null;
+        selected = 0;
+        render();
+      }
+
+      input.addEventListener('input', onType);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown') {
+          selected = Math.min(items.length - 1, selected + 1);
+          e.preventDefault();
+        } else if (e.key === 'ArrowUp') {
+          selected = Math.max(0, selected - 1);
+          e.preventDefault();
+        } else if (e.key === 'Enter') {
+          open(selected);
+          return;
+        } else if (e.key === 'Escape') {
+          input.value = '';
+          onType();
+          return;
+        } else return;
+        render();
+        document.getElementById('opt-' + selected)?.scrollIntoView({ block: 'nearest' });
+      });
+      list.addEventListener('mousemove', (e) => {
+        const row = e.target.closest('.row');
+        if (row && Number(row.dataset.i) !== selected) {
+          selected = Number(row.dataset.i);
+          render();
+        }
+      });
+      list.addEventListener('click', (e) => {
+        const row = e.target.closest('.row');
+        if (row) open(Number(row.dataset.i));
+      });
+
+      // ---- Demo controls ----
+      const toggle = (id, key, onLabel, offLabel) => {
+        const b = document.getElementById(id);
+        b.addEventListener('click', () => {
+          opt[key] = !opt[key];
+          b.setAttribute('aria-pressed', String(opt[key]));
+          if (onLabel) b.textContent = opt[key] ? onLabel : offLabel;
+          onType();
+          input.focus();
+        });
+      };
+      document.getElementById('theme').addEventListener('click', (e) => {
+        const light = document.documentElement.dataset.theme === 'dark';
+        document.documentElement.dataset.theme = light ? 'light' : 'dark';
+        e.target.textContent = light ? 'Dark mode' : 'Light mode';
+        input.focus();
+      });
+      toggle('slow', 'slow');
+      toggle('fail', 'fail');
+      document.querySelectorAll('[data-try]').forEach((b) =>
+        b.addEventListener('click', () => {
+          input.value = b.dataset.try;
+          onType();
+          input.focus();
+        }),
+      );
+      document.getElementById('clear-recent').addEventListener('click', () => {
+        recent = [];
+        render();
+        input.focus();
+      });
+      // search.html?q=call%20nai&theme=light opens the mockup with text typed (for reviews)
+      const params = new URLSearchParams(location.search);
+      if (params.get('theme') === 'light') document.getElementById('theme').click();
+      if (params.get('q')) {
+        input.value = params.get('q');
+        onType();
+      } else render();
+    </script>
+  </body>
+</html>

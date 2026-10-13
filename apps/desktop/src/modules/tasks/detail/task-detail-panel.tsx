@@ -5,6 +5,7 @@ import {
   type TaskPriority,
   type TaskStatus,
 } from '@personal-os/shared';
+import { GoalSection } from './goal-section';
 import { Button, GlassCard, IconButton, SegmentedControl } from '@personal-os/ui';
 import { IconX } from '@tabler/icons-react';
 import { useEffect, type KeyboardEvent, type ReactNode } from 'react';
@@ -177,6 +178,8 @@ function DetailBody({ task, onClose }: { task: Task; onClose: () => void }) {
           }}
         />
       </Row>
+
+      <GoalSection task={task} />
 
       {isSubtask ? null : (
         <Row label="Subtasks">

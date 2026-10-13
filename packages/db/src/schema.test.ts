@@ -1,7 +1,7 @@
 import { ENTITY_TYPES, LINK_RELATIONS } from '@personal-os/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { entities, links, taskFavorites } from './schema';
+import { entities, goals, links, taskFavorites } from './schema';
 import {
   asRole,
   createTestDb,
@@ -71,6 +71,8 @@ describe('the generated migrations', () => {
       '0005_tags_updated_at_trigger.sql',
       '0006_task_favorites_table.sql',
       '0007_task_favorites_updated_at_trigger.sql',
+      '0008_goals.sql',
+      '0009_goals_updated_at_trigger.sql',
     ]);
     const all = migrationFiles().flatMap(migrationStatements).join('\n').toUpperCase();
     for (const dangerous of [
@@ -91,6 +93,7 @@ describe('the generated migrations', () => {
     expect(tables.map((r) => r.tablename)).toEqual([
       'entities',
       'entity_tags',
+      'goals',
       'links',
       'tags',
       'task_favorites',
@@ -207,11 +210,12 @@ describe('docs/DATABASE.md rules', () => {
 describe('Row Level Security is on, with an own-rows policy', () => {
   it('is enabled on every table', async () => {
     const result = await rows(
-      "select relname, relrowsecurity from pg_class where relname in ('entities','entity_tags','links','tags','task_favorites','tasks') order by relname",
+      "select relname, relrowsecurity from pg_class where relname in ('entities','entity_tags','goals','links','tags','task_favorites','tasks') order by relname",
     );
     expect(result).toEqual([
       { relname: 'entities', relrowsecurity: true },
       { relname: 'entity_tags', relrowsecurity: true },
+      { relname: 'goals', relrowsecurity: true },
       { relname: 'links', relrowsecurity: true },
       { relname: 'tags', relrowsecurity: true },
       { relname: 'task_favorites', relrowsecurity: true },
@@ -226,6 +230,7 @@ describe('Row Level Security is on, with an own-rows policy', () => {
     expect(policies.map((p) => p.tablename)).toEqual([
       'entities',
       'entity_tags',
+      'goals',
       'links',
       'tags',
       'task_favorites',
@@ -517,5 +522,55 @@ describe('task_favorites', () => {
       asRole(t.db, ALICE, (tx) => tx.insert(taskFavorites).values(favorite(BOB, 'Planted'))),
     );
     expect(message).toMatch(/row-level security/i);
+  });
+});
+
+describe('goals', () => {
+  async function goal(userId: string, title = 'Learn Rust') {
+    const entity = await t.db
+      .insert(entities)
+      .values({ userId, type: 'goal', title })
+      .returning()
+      .then((rows) => rows[0]);
+    if (!entity) throw new Error('no entity');
+    const [row] = await t.db.insert(goals).values({ id: entity.id, userId, title }).returning();
+    if (!row) throw new Error('no goal');
+    return row;
+  }
+
+  it('is an entity of type goal, active by default, deleted with its entity', async () => {
+    const row = await goal(ALICE);
+    expect(row.status).toBe('active');
+    expect(row.closedAt).toBeNull();
+    await t.db.delete(entities).where(eq(entities.id, row.id));
+    expect(await t.db.select().from(goals)).toHaveLength(0);
+  });
+
+  it('accepts a belongs_to link from a task to a goal', async () => {
+    const task = await entity(ALICE, 'A task');
+    const row = await goal(ALICE);
+    const [link] = await t.db
+      .insert(links)
+      .values({ userId: ALICE, sourceId: task.id, targetId: row.id, relation: 'belongs_to' })
+      .returning();
+    expect(link?.relation).toBe('belongs_to');
+  });
+
+  it('refreshes updated_at on update', async () => {
+    const row = await goal(ALICE);
+    await new Promise((resolve) => setTimeout(resolve, 15));
+    const [after] = await t.db
+      .update(goals)
+      .set({ status: 'achieved', closedAt: new Date() })
+      .where(eq(goals.id, row.id))
+      .returning();
+    expect(after?.updatedAt.getTime()).toBeGreaterThan(row.updatedAt.getTime());
+  });
+
+  it('lets a user see only their own goals', async () => {
+    await goal(ALICE, 'Mine');
+    await goal(BOB, 'Theirs');
+    const seen = await asRole(t.db, ALICE, (tx) => tx.select().from(goals));
+    expect(seen.map((row) => row.title)).toEqual(['Mine']);
   });
 });

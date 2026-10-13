@@ -23,6 +23,7 @@ import {
 } from 'drizzle-orm';
 import { HttpError } from '../lib/http-error';
 import type { UserScope } from '../lib/user-scope';
+import { linkTaskToGoal, loadTaskGoals, taskIdsOfGoal } from './goals';
 import { spawnNextOccurrence } from './recurrence';
 import { assertNotBlocked, loadBlockers } from './task-dependencies';
 import { implement, type ActionOutcome } from './registry';
@@ -43,7 +44,7 @@ const iso = (date: Date | null) => (date ? date.toISOString() : null);
 /** The database row as the API returns it, without the tags and counts (see withDetails). */
 export function toTask(
   row: TaskRow,
-  extra: Partial<Pick<Task, 'tags' | 'subtaskCount' | 'subtasksDone' | 'blockedBy'>> = {},
+  extra: Partial<Pick<Task, 'tags' | 'subtaskCount' | 'subtasksDone' | 'blockedBy' | 'goal'>> = {},
 ): Task {
   return {
     id: row.id,
@@ -66,6 +67,7 @@ export function toTask(
     subtaskCount: extra.subtaskCount ?? 0,
     subtasksDone: extra.subtasksDone ?? 0,
     blockedBy: extra.blockedBy ?? [],
+    goal: extra.goal ?? null,
   };
 }
 
@@ -96,10 +98,11 @@ async function loadTags(scope: UserScope, taskIds: string[]): Promise<Map<string
 export async function withDetails(scope: UserScope, rows: TaskRow[]): Promise<Task[]> {
   if (rows.length === 0) return [];
   const ids = rows.map((row) => row.id);
-  const [tagMap, subtasks, blockers] = await Promise.all([
+  const [tagMap, subtasks, blockers, goalMap] = await Promise.all([
     loadTags(scope, ids),
     scope.select(tasks, { where: and(scope.isLive(tasks), inArray(tasks.parentTaskId, ids)) }),
     loadBlockers(scope, ids),
+    loadTaskGoals(scope, ids),
   ]);
   const counts = new Map<string, { total: number; done: number }>();
   for (const sub of subtasks) {
@@ -115,6 +118,7 @@ export async function withDetails(scope: UserScope, rows: TaskRow[]): Promise<Ta
       subtaskCount: counts.get(row.id)?.total,
       subtasksDone: counts.get(row.id)?.done,
       blockedBy: blockers.get(row.id),
+      goal: goalMap.get(row.id),
     }),
   );
 }
@@ -371,9 +375,21 @@ export const taskImplementations = [
       if (taskIdsWithTag.length === 0) return { data: [] };
     }
 
+    // A goal's page lists all its tasks, archived and done ones too (the page groups them)
+    let taskIdsOfTheGoal: string[] | undefined;
+    if (input.goalId) {
+      taskIdsOfTheGoal = await taskIdsOfGoal(scope, input.goalId);
+      if (taskIdsOfTheGoal.length === 0) return { data: [] };
+    }
+
     const where = and(
       scope.isLive(tasks),
-      input.archived ? isNotNull(tasks.archivedAt) : isNull(tasks.archivedAt),
+      input.goalId
+        ? undefined
+        : input.archived
+          ? isNotNull(tasks.archivedAt)
+          : isNull(tasks.archivedAt),
+      taskIdsOfTheGoal ? inArray(tasks.id, taskIdsOfTheGoal) : undefined,
       input.parent === 'none' ? isNull(tasks.parentTaskId) : eq(tasks.parentTaskId, input.parent),
       statuses && statuses.length > 0 ? inArray(tasks.status, statuses) : undefined,
       priorities && priorities.length > 0 ? inArray(tasks.priority, priorities) : undefined,
@@ -439,6 +455,7 @@ export const taskImplementations = [
         });
         if (!created) throw new Error('Could not create the task');
         await setTags(tx, created.id, tagIds);
+        if (input.goalId) await linkTaskToGoal(tx, created.id, input.goalId);
         return created;
       });
     let row: TaskRow;

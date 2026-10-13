@@ -3,3 +3,4 @@ export * from './links';
 export * from './tasks';
 export * from './tags';
 export * from './favorites';
+export * from './goals';

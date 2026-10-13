@@ -14,6 +14,7 @@ export const ENTITY_TYPES = [
   'person',
   'client',
   'tag',
+  'goal',
 ] as const;
 
 /** How two entities are connected. */

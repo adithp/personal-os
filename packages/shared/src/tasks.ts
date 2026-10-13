@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { defineAction, type UndoDescriptor } from './actions';
+import { taskGoalSchema } from './goals';
 import { recurrenceRuleSchema } from './recurrence';
 import { MAX_TAGS_PER_TASK, tagName, tagRefSchema } from './tags';
 
@@ -57,6 +58,8 @@ export const taskSchema = z.object({
   subtasksDone: z.number().int().min(0),
   /** Unfinished tasks that block this one. Empty until dependencies arrive. */
   blockedBy: z.array(z.object({ id: z.uuid(), title: z.string() })),
+  /** The goal the task belongs to, or null (top-level tasks only). */
+  goal: taskGoalSchema.nullable(),
 });
 export type Task = z.infer<typeof taskSchema>;
 export type TaskBlocker = Task['blockedBy'][number];
@@ -82,6 +85,8 @@ export const createTaskInput = z
     tagNames: z.array(tagName).max(MAX_TAGS_PER_TASK).optional(),
     /** One of the repeat presets (see recurrence.ts). A repeating task needs a due date. */
     recurrenceRule: recurrenceRuleSchema.optional(),
+    /** Put the new task in this goal (top-level tasks only). */
+    goalId: z.uuid().optional(),
   })
   .refine((input) => !input.dueAllDay || Boolean(input.dueAt), {
     message: 'An all-day task needs a due date',
@@ -149,6 +154,8 @@ export const listTasksInput = z.object({
   completedBefore: isoTime.optional(),
   /** Whose children to list: "none" (default) is the top-level tasks, or the id of a parent task. */
   parent: z.union([z.literal('none'), z.uuid()]).default('none'),
+  /** Only the tasks of this goal (all statuses, archived too; the parent filter still applies). */
+  goalId: z.uuid().optional(),
   /** false (default): active tasks. true: archived tasks only. */
   archived: flag.default(false),
   sort: z.enum(TASK_SORTS).default('position'),

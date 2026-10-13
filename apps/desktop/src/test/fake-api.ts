@@ -1,5 +1,7 @@
 import type {
   Favorite,
+  Goal,
+  GoalStatus,
   FavoriteView,
   ReportPeriod,
   Tag,
@@ -44,6 +46,7 @@ export function makeTask(overrides: Partial<Task> = {}): Task {
     subtaskCount: 0,
     subtasksDone: 0,
     blockedBy: [],
+    goal: null,
     ...overrides,
   };
 }
@@ -105,6 +108,23 @@ export function makeReport(
   };
 }
 
+/** A goal with sensible defaults (progress is worked out by the mock API from its tasks). */
+export function makeGoal(overrides: Partial<Goal> = {}): Goal {
+  counter += 1;
+  return {
+    id: idFor(counter + 9000),
+    title: `Goal ${String(counter)}`,
+    description: null,
+    targetAt: null,
+    status: 'active',
+    closedAt: null,
+    createdAt: '2025-10-01T00:00:00.000Z',
+    updatedAt: '2025-10-01T00:00:00.000Z',
+    progress: { done: 0, total: 0 },
+    ...overrides,
+  };
+}
+
 export function makeFavorite(overrides: Partial<Favorite> = {}): Favorite {
   counter += 1;
   return {
@@ -124,6 +144,7 @@ export function createFakeApi(
   initial: Task[] = [],
   initialTags: Tag[] = [],
   initialFavorites: Favorite[] = [],
+  initialGoals: Goal[] = [],
 ) {
   const store = new Map<string, Task>(initial.map((task) => [task.id, task]));
   const tagStore = new Map<string, Tag>(initialTags.map((tag) => [tag.id, tag]));
@@ -132,6 +153,12 @@ export function createFakeApi(
     initialFavorites.map((favorite) => [favorite.id, favorite]),
   );
   const favoritesGone = new Set<string>();
+  const goalStore = new Map<string, Goal>(initialGoals.map((goal) => [goal.id, goal]));
+  const goalsGone = new Set<string>();
+  /** Task id -> the id of its goal. A task with a goal in `initial` (task.goal) is linked at start. */
+  const taskGoal = new Map<string, string>(
+    initial.flatMap((task) => (task.goal ? [[task.id, task.goal.id] as [string, string]] : [])),
+  );
   /** Tags removed by delete or merge, kept for the undo. */
   const removedTags = new Map<string, Tag>();
   const calls: Call[] = [];
@@ -144,6 +171,26 @@ export function createFakeApi(
 
   /** Blocked task id -> the ids of the tasks that block it. */
   const blockers = new Map<string, Set<string>>();
+
+  const liveGoals = () => [...goalStore.values()].filter((goal) => !goalsGone.has(goal.id));
+
+  /** done and total over the goal's linked, live, top-level tasks that are not archived (or are done). */
+  const goalProgress = (goalId: string) => {
+    const counted = [...taskGoal.entries()]
+      .filter(([, linked]) => linked === goalId)
+      .flatMap(([taskId]) => {
+        const task = store.get(taskId);
+        return task && !deleted.has(taskId) && task.parentTaskId === null ? [task] : [];
+      })
+      .filter((task) => task.archivedAt === null || task.status === 'done');
+    return { done: counted.filter((task) => task.status === 'done').length, total: counted.length };
+  };
+  const goalView = (goal: Goal): Goal => ({ ...goal, progress: goalProgress(goal.id) });
+  const findGoal = (id: string) => {
+    const goal = goalStore.get(id);
+    if (!goal || goalsGone.has(id)) throw new ApiError(404, 'not_found', 'Goal not found');
+    return goal;
+  };
 
   const liveFavorites = () =>
     [...favoriteStore.values()]
@@ -168,6 +215,10 @@ export function createFakeApi(
       ...task,
       subtaskCount: children.length,
       subtasksDone: children.filter((child) => child.status === 'done').length,
+      goal: (() => {
+        const goal = goalStore.get(taskGoal.get(task.id) ?? '');
+        return goal && !goalsGone.has(goal.id) ? { id: goal.id, title: goal.title } : null;
+      })(),
       // Blockers added through the API are live; a task made with blockedBy keeps its fixed list
       blockedBy: blockers.has(task.id) ? unfinishedBlockers(task.id) : task.blockedBy,
     };
@@ -224,13 +275,18 @@ export function createFakeApi(
     const from = query.dueFrom ? Date.parse(String(query.dueFrom)) : null;
     const to = query.dueTo ? Date.parse(String(query.dueTo)) : null;
     const limit = query.limit === undefined ? 500 : Number(query.limit);
+    const goalId = query.goalId === undefined ? null : String(query.goalId);
 
     return liveTasks()
       .filter((task) => {
         if (parent === 'none' ? task.parentTaskId !== null : task.parentTaskId !== parent) {
           return false;
         }
-        if (archived !== (task.archivedAt !== null)) return false;
+        if (goalId !== null) {
+          if (taskGoal.get(task.id) !== goalId) return false;
+        } else if (archived !== (task.archivedAt !== null)) {
+          return false;
+        }
         if (statuses.length && !statuses.includes(task.status)) return false;
         if (priorities.length && !priorities.includes(task.priority)) return false;
         if (tagIds.length && !task.tags.some((tag) => tagIds.includes(tag.id))) return false;
@@ -265,7 +321,7 @@ export function createFakeApi(
           throw new ApiError(400, 'validation_error', 'Subtasks go one level deep only');
         }
       }
-      const { tagIds, tagNames, ...rest } = body;
+      const { tagIds, tagNames, goalId, ...rest } = body;
       // Tags by name are found (ignoring capitals) or created, like POST /tags
       const named = asArray(tagNames).map((name) => {
         const existing = [...tagStore.values()].find(
@@ -282,6 +338,7 @@ export function createFakeApi(
         tags: tagRefs([...new Set([...asArray(tagIds), ...named])]),
       });
       store.set(task.id, task);
+      if (typeof goalId === 'string') taskGoal.set(task.id, findGoal(goalId).id);
       return { item: view(task), undo: { action: 'tasks.delete', input: { id: task.id } } };
     }
 
@@ -367,6 +424,89 @@ export function createFakeApi(
             .length,
           favoriteCount: liveFavorites().filter((fav) => fav.view.tagIds?.includes(tag.id)).length,
         })),
+      };
+    }
+
+    // ---- goals ----
+    if (method === 'GET' && path === '/goals') {
+      const status = options.query?.status;
+      return {
+        items: liveGoals()
+          .filter((goal) => status === undefined || goal.status === status)
+          .map(goalView),
+      };
+    }
+    if (method === 'POST' && path === '/goals') {
+      const title = typeof body.title === 'string' ? body.title.trim() : '';
+      if (title === '') throw new ApiError(400, 'validation_error', 'Title is required');
+      const goal = makeGoal({
+        title,
+        description: typeof body.description === 'string' ? body.description : null,
+        targetAt: typeof body.targetAt === 'string' ? body.targetAt : null,
+      });
+      goalStore.set(goal.id, goal);
+      return { item: goalView(goal), undo: { action: 'goals.delete', input: { id: goal.id } } };
+    }
+    const goalRoute = /^\/goals\/([^/]+)(?:\/(status))?$/.exec(path);
+    if (goalRoute) {
+      const id = goalRoute[1] ?? '';
+      const current = findGoal(id);
+      if (method === 'GET' && !goalRoute[2]) return { item: goalView(current) };
+      if (method === 'PATCH' && !goalRoute[2]) {
+        const next = { ...current, ...(body as Partial<Goal>), id };
+        goalStore.set(id, next);
+        return {
+          item: goalView(next),
+          undo: {
+            action: 'goals.update',
+            input: {
+              id,
+              title: current.title,
+              description: current.description,
+              targetAt: current.targetAt,
+            },
+          },
+        };
+      }
+      if (method === 'POST' && goalRoute[2] === 'status') {
+        const status = body.status as GoalStatus;
+        if (status === current.status) return { item: goalView(current), undo: null };
+        const closedAt =
+          'closedAt' in body
+            ? (body.closedAt as string | null)
+            : status === 'active'
+              ? null
+              : new Date().toISOString();
+        goalStore.set(id, { ...current, status, closedAt });
+        return {
+          item: goalView(goalStore.get(id) ?? current),
+          undo: {
+            action: 'goals.setStatus',
+            input: { id, status: current.status, closedAt: current.closedAt },
+          },
+        };
+      }
+      if (method === 'DELETE') {
+        goalsGone.add(id);
+        return { item: goalView(current), undo: { action: 'goals.restore', input: { id } } };
+      }
+    }
+    const taskGoalRoute = /^\/tasks\/([^/]+)\/goal$/.exec(path);
+    if (method === 'PUT' && taskGoalRoute) {
+      const taskId = taskGoalRoute[1] ?? '';
+      const task = find(taskId);
+      if (task.parentTaskId !== null) {
+        throw new ApiError(400, 'validation_error', 'Link the parent task instead.');
+      }
+      const before = taskGoal.get(taskId) ?? null;
+      const goalId = typeof body.goalId === 'string' ? findGoal(body.goalId).id : null;
+      if (goalId === before) return { item: goalView(findGoal(goalId ?? '')), undo: null };
+      if (goalId === null) taskGoal.delete(taskId);
+      else taskGoal.set(taskId, goalId);
+      const shown = goalId ?? before ?? '';
+      return {
+        item: goalView(goalStore.get(shown) ?? makeGoal()),
+        undo: { action: 'goals.setTaskGoal', input: { taskId, goalId: before } },
       };
     }
 
@@ -512,6 +652,19 @@ export function createFakeApi(
     if (method === 'POST' && path === '/undo') {
       const { action, input } = body as { action: string; input: Record<string, unknown> };
       const id = String(input.id);
+      if (action === 'goals.restore' || action === 'goals.delete') {
+        if (action === 'goals.restore') goalsGone.delete(id);
+        else goalsGone.add(id);
+        return { item: goalStore.get(id), undo: null };
+      }
+      if (action === 'goals.update') return handle('PATCH', `/goals/${id}`, { body: input });
+      if (action === 'goals.setStatus')
+        return handle('POST', `/goals/${id}/status`, { body: input });
+      if (action === 'goals.setTaskGoal') {
+        return handle('PUT', `/tasks/${String(input.taskId)}/goal`, {
+          body: { goalId: input.goalId },
+        });
+      }
       if (action === 'favorites.restore') {
         favoritesGone.delete(id);
         return { item: favoriteStore.get(id), undo: null };
@@ -520,7 +673,8 @@ export function createFakeApi(
         favoritesGone.add(id);
         return { item: favoriteStore.get(id), undo: null };
       }
-      if (action === 'favorites.update') return handle('PATCH', `/task-favorites/${id}`, input);
+      if (action === 'favorites.update')
+        return handle('PATCH', `/task-favorites/${id}`, { body: input });
       if (action === 'tags.restore' || action === 'tags.unmerge') {
         const tagId = String(action === 'tags.restore' ? input.id : input.sourceId);
         const tag = removedTags.get(tagId);

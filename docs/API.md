@@ -52,6 +52,13 @@ Responses:
 | PATCH | /tags/:id | Rename or recolor a tag |
 | DELETE | /tags/:id | Delete a tag: removed from every task (the tasks stay) and from favorites; returns the tag and an undo |
 | POST | /tags/:id/merge | Body `{ targetId }`: move this tag's tasks and favorites to the target tag and delete this one; returns the target tag and an undo |
+| GET | /goals | Goals with progress: `{ items }`, optional `?status=active|achieved|dropped` (Feature 8: answers 501 until built) |
+| GET | /goals/:id | One goal with progress |
+| POST | /goals | Create (title, description, targetAt); 201 |
+| PATCH | /goals/:id | Change title, notes, target date |
+| POST | /goals/:id/status | Body `{ status }`: achieved, dropped, or active again |
+| DELETE | /goals/:id | Delete (the tasks stay); the undo is goals.restore |
+| PUT | /tasks/:id/goal | Body `{ goalId }` (or null): put the task in a goal, move it, or take it out |
 | GET | /task-favorites | The favorites in their order: `{ items: [...] }` (Feature 5) |
 | POST | /task-favorites | Save a view: body `name`, `view`, optional `color`, `icon`. 201; the same view again returns the existing favorite with a null undo; 409 `favorites_limit` at 12; 400 for an unknown tag id |
 | PATCH | /task-favorites/:id | Rename or change color or icon |

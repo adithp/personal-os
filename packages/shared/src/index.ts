@@ -8,6 +8,7 @@ export * from './auth';
 export * from './entities';
 export * from './env';
 export * from './favorites';
+export * from './goals';
 export * from './modules';
 export * from './recurrence';
 export * from './money';

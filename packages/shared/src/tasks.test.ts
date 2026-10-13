@@ -72,6 +72,7 @@ describe('taskSchema', () => {
       dueAllDay: false,
       reminderAt: null,
       recurrenceRule: null,
+      goal: null,
       parentTaskId: null,
       position: 1024,
       completedAt: null,
