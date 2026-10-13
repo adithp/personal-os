@@ -1,8 +1,10 @@
 import { entityTags, taskFavorites, tags, tasks, type TagRow } from '@personal-os/db';
 import {
+  MAX_FAVORITES,
   MAX_UNDO_TASK_IDS,
   removeTagFromView,
   replaceTagInView,
+  sameFavoriteView,
   tagManagementActions,
   type FavoriteView,
   type TouchedFavorite,
@@ -10,8 +12,9 @@ import {
 import { and, eq, inArray, ne, sql } from 'drizzle-orm';
 import { HttpError } from '../lib/http-error';
 import type { UserScope } from '../lib/user-scope';
+import { liveTagIds, viewWithLiveTags, withFavoritesLock } from './favorites';
 import { implement } from './registry';
-import { isUniqueViolation, toTag } from './tags';
+import { TAG_NAME_INDEX, isUniqueViolation, toTag } from './tags';
 
 /**
  * Deleting and merging tags (docs/design/research/tasks-favorites.md decisions 16 to 18).
@@ -24,7 +27,24 @@ import { isUniqueViolation, toTag } from './tags';
  * name exists again.
  * An undo carries at most MAX_UNDO_TASK_IDS task ids. When more tasks were changed the action
  * still runs but returns no undo (null), so the app offers no Undo for such a huge change.
+ * Known limits: unmerge does not take the target tag away from the tasks (from the input alone we
+ * cannot know which of them had it before the merge); merge does not enforce the 20 tags per task
+ * limit (a task keeps at most the tags it had, since its source link is replaced by the target).
+ * Statements that list task ids work in batches of BATCH ids (Postgres allows 65,535 parameters
+ * per statement). Only links of TASKS are touched: a later entity type such as notes keeps its own
+ * tag links.
  */
+
+const BATCH = 1000;
+
+/** Splits a list into pieces of at most `size` items. */
+export function chunk<T>(items: T[], size = BATCH): T[][] {
+  const pieces: T[][] = [];
+  for (let start = 0; start < items.length; start += size) {
+    pieces.push(items.slice(start, start + size));
+  }
+  return pieces;
+}
 
 const notFound = () => new HttpError(404, 'not_found', 'Tag not found');
 
@@ -34,6 +54,13 @@ async function findLiveTag(tx: UserScope, id: string): Promise<TagRow> {
   if (!row) throw notFound();
   return row;
 }
+
+/** The tag's links to tasks (live, archived or in the trash), never links of other entity types. */
+const taskLinks = (tx: UserScope, tagId: string) =>
+  and(
+    eq(entityTags.tagId, tagId),
+    sql`${entityTags.entityId} in (select ${tasks.id} from ${tasks} where ${tasks.userId} = ${tx.userId})`,
+  ) ?? eq(entityTags.tagId, tagId);
 
 /** The user's live favorites whose view uses this tag. */
 async function favoritesUsing(tx: UserScope, tagId: string) {
@@ -67,50 +94,75 @@ async function reviveTag(tx: UserScope, id: string): Promise<TagRow> {
 }
 
 /**
- * Gives the tag to the listed tasks that do not have it yet. With liveOnly (undo) tasks deleted in
- * the meantime are skipped; a merge passes tasks that come from existing links.
+ * Gives the tag to the listed tasks that do not have it yet. Tasks that no longer exist are
+ * skipped; a task in the trash gets the tag back too (it is still a task of the user).
  */
-async function relinkTasks(
+export async function relinkTasks(
   tx: UserScope,
   tagId: string,
   taskIds: string[],
-  liveOnly: boolean,
+  batch = BATCH,
 ): Promise<void> {
-  if (taskIds.length === 0) return;
-  let ids = taskIds;
-  if (liveOnly) {
-    const live = await tx.select(tasks, {
-      where: and(inArray(tasks.id, taskIds), tx.isLive(tasks)),
+  for (const ids of chunk([...new Set(taskIds)], batch)) {
+    const existing = await tx.select(tasks, { where: inArray(tasks.id, ids) });
+    const existingIds = existing.map((task) => task.id);
+    if (existingIds.length === 0) continue;
+    const have = await tx.select(entityTags, {
+      where: and(eq(entityTags.tagId, tagId), inArray(entityTags.entityId, existingIds)),
     });
-    ids = live.map((task) => task.id);
-  }
-  const have = await tx.select(entityTags, {
-    where: and(eq(entityTags.tagId, tagId), inArray(entityTags.entityId, taskIds)),
-  });
-  const linked = new Set(have.map((link) => link.entityId));
-  await tx.insert(
-    entityTags,
-    ids.filter((entityId) => !linked.has(entityId)).map((entityId) => ({ entityId, tagId })),
-  );
-}
-
-/** Puts favorite views back; un-deletes the ones that were removed. A missing favorite is skipped. */
-async function restoreFavorites(tx: UserScope, touched: TouchedFavorite[]): Promise<void> {
-  for (const { id, view, removed } of touched) {
-    await tx.update(
-      taskFavorites,
-      { view, updatedAt: new Date(), ...(removed ? { deletedAt: null } : {}) },
-      eq(taskFavorites.id, id),
+    const linked = new Set(have.map((link) => link.entityId));
+    await tx.insert(
+      entityTags,
+      existingIds
+        .filter((entityId) => !linked.has(entityId))
+        .map((entityId) => ({ entityId, tagId })),
     );
   }
 }
 
-/** A rename or create racing the restore hits the unique index: same answer as the check. */
+/**
+ * Puts favorite views back. Tag ids that are not live tags any more are dropped from the view (a
+ * view with nothing left is skipped). A removed favorite is only un-deleted when there is room (12
+ * live favorites) and no live favorite has the same view. A missing favorite is skipped.
+ */
+async function restoreFavorites(tx: UserScope, touched: TouchedFavorite[]): Promise<void> {
+  if (touched.length === 0) return;
+  const live = await tx.select(taskFavorites, { where: tx.isLive(taskFavorites) });
+  const liveViews = new Map(live.map((row) => [row.id, row.view]));
+  const rows = await tx.select(taskFavorites, {
+    where: inArray(
+      taskFavorites.id,
+      touched.map((entry) => entry.id),
+    ),
+  });
+  const liveTags = await liveTagIds(tx);
+  for (const { id, view: before, removed } of touched) {
+    const row = rows.find((entry) => entry.id === id);
+    const view = viewWithLiveTags(before, liveTags);
+    if (!row || !view) continue;
+    const isDeleted = row.deletedAt !== null;
+    if (removed && isDeleted) {
+      if (liveViews.size >= MAX_FAVORITES) continue;
+      if ([...liveViews.values()].some((other) => sameFavoriteView(other, view))) continue;
+      liveViews.set(id, view);
+      await tx.update(
+        taskFavorites,
+        { view, updatedAt: new Date(), deletedAt: null },
+        eq(taskFavorites.id, id),
+      );
+    } else {
+      if (!isDeleted) liveViews.set(id, view);
+      await tx.update(taskFavorites, { view, updatedAt: new Date() }, eq(taskFavorites.id, id));
+    }
+  }
+}
+
+/** A rename or create racing the restore hits the tag name index: same answer as the check. */
 async function asConflict<T>(scope: UserScope, tagId: string, work: Promise<T>): Promise<T> {
   try {
     return await work;
   } catch (error) {
-    if (!isUniqueViolation(error)) throw error;
+    if (!isUniqueViolation(error, TAG_NAME_INDEX)) throw error;
     const [row] = await scope.select(tags, { where: eq(tags.id, tagId), limit: 1 });
     throw new HttpError(
       409,
@@ -122,27 +174,33 @@ async function asConflict<T>(scope: UserScope, tagId: string, work: Promise<T>):
 
 export const tagManagementImplementations = [
   implement(tagManagementActions.delete, async ({ scope }, { id }) => {
-    const { tag, taskIds, touched } = await scope.transaction(async (tx) => {
-      const found = await findLiveTag(tx, id);
-      const links = await tx.select(entityTags, { where: eq(entityTags.tagId, id) });
-      await tx.delete(entityTags, eq(entityTags.tagId, id));
-      await tx.softDelete(tags, eq(tags.id, id));
-      const touchedFavorites: TouchedFavorite[] = [];
-      for (const favorite of await favoritesUsing(tx, id)) {
-        const next = removeTagFromView(favorite.view, id);
-        if (next === null) {
-          await tx.softDelete(taskFavorites, eq(taskFavorites.id, favorite.id));
-        } else {
-          await tx.update(
-            taskFavorites,
-            { view: next, updatedAt: new Date() },
-            eq(taskFavorites.id, favorite.id),
-          );
+    const { tag, taskIds, touched } = await withFavoritesLock(scope.userId, () =>
+      scope.transaction(async (tx) => {
+        const found = await findLiveTag(tx, id);
+        const links = await tx.select(entityTags, { where: taskLinks(tx, id) });
+        await tx.delete(entityTags, taskLinks(tx, id));
+        await tx.softDelete(tags, eq(tags.id, id));
+        const touchedFavorites: TouchedFavorite[] = [];
+        for (const favorite of await favoritesUsing(tx, id)) {
+          const next = removeTagFromView(favorite.view, id);
+          if (next === null) {
+            await tx.softDelete(taskFavorites, eq(taskFavorites.id, favorite.id));
+          } else {
+            await tx.update(
+              taskFavorites,
+              { view: next, updatedAt: new Date() },
+              eq(taskFavorites.id, favorite.id),
+            );
+          }
+          touchedFavorites.push({ id: favorite.id, view: favorite.view, removed: next === null });
         }
-        touchedFavorites.push({ id: favorite.id, view: favorite.view, removed: next === null });
-      }
-      return { tag: found, taskIds: links.map((link) => link.entityId), touched: touchedFavorites };
-    });
+        return {
+          tag: found,
+          taskIds: links.map((link) => link.entityId),
+          touched: touchedFavorites,
+        };
+      }),
+    );
     return {
       data: toTag(tag),
       undo:
@@ -156,38 +214,54 @@ export const tagManagementImplementations = [
     const tag = await asConflict(
       scope,
       id,
-      scope.transaction(async (tx) => {
-        const revived = await reviveTag(tx, id);
-        await relinkTasks(tx, id, taskIds, true);
-        await restoreFavorites(tx, favorites);
-        return revived;
-      }),
+      withFavoritesLock(scope.userId, () =>
+        scope.transaction(async (tx) => {
+          const revived = await reviveTag(tx, id);
+          await relinkTasks(tx, id, taskIds);
+          await restoreFavorites(tx, favorites);
+          return revived;
+        }),
+      ),
     );
     return { data: toTag(tag), undo: { action: 'tags.delete', input: { id } } };
   }),
 
   implement(tagManagementActions.merge, async ({ scope }, { sourceId, targetId }) => {
-    const { target, taskIds, touched } = await scope.transaction(async (tx) => {
-      await findLiveTag(tx, sourceId);
-      const targetTag = await findLiveTag(tx, targetId);
-      const links = await tx.select(entityTags, { where: eq(entityTags.tagId, sourceId) });
-      const ids = links.map((link) => link.entityId);
-      // Tasks that already have the target keep their one link; the others get a new one
-      await relinkTasks(tx, targetId, ids, false);
-      await tx.delete(entityTags, eq(entityTags.tagId, sourceId));
-      await tx.softDelete(tags, eq(tags.id, sourceId));
-      const touchedFavorites: TouchedFavorite[] = [];
-      for (const favorite of await favoritesUsing(tx, sourceId)) {
-        const view: FavoriteView = replaceTagInView(favorite.view, sourceId, targetId);
-        await tx.update(
-          taskFavorites,
-          { view, updatedAt: new Date() },
-          eq(taskFavorites.id, favorite.id),
-        );
-        touchedFavorites.push({ id: favorite.id, view: favorite.view, removed: false });
-      }
-      return { target: targetTag, taskIds: ids, touched: touchedFavorites };
-    });
+    const { target, taskIds, touched } = await withFavoritesLock(scope.userId, () =>
+      scope.transaction(async (tx) => {
+        await findLiveTag(tx, sourceId);
+        const targetTag = await findLiveTag(tx, targetId);
+        const links = await tx.select(entityTags, { where: taskLinks(tx, sourceId) });
+        const ids = links.map((link) => link.entityId);
+        // Tasks that already have the target keep their one link; the others get a new one
+        await relinkTasks(tx, targetId, ids);
+        await tx.delete(entityTags, taskLinks(tx, sourceId));
+        await tx.softDelete(tags, eq(tags.id, sourceId));
+        const touchedFavorites: TouchedFavorite[] = [];
+        const live = await tx.select(taskFavorites, { where: tx.isLive(taskFavorites) });
+        const liveViews = new Map(live.map((row) => [row.id, row.view]));
+        for (const favorite of live.filter((row) => row.view.tagIds?.includes(sourceId))) {
+          const view: FavoriteView = replaceTagInView(favorite.view, sourceId, targetId);
+          const clash = [...liveViews].some(
+            ([otherId, other]) => otherId !== favorite.id && sameFavoriteView(other, view),
+          );
+          if (clash) {
+            // Two favorites would show the same view: the changed one goes (unmerge brings it back)
+            await tx.softDelete(taskFavorites, eq(taskFavorites.id, favorite.id));
+            liveViews.delete(favorite.id);
+          } else {
+            await tx.update(
+              taskFavorites,
+              { view, updatedAt: new Date() },
+              eq(taskFavorites.id, favorite.id),
+            );
+            liveViews.set(favorite.id, view);
+          }
+          touchedFavorites.push({ id: favorite.id, view: favorite.view, removed: clash });
+        }
+        return { target: targetTag, taskIds: ids, touched: touchedFavorites };
+      }),
+    );
     return {
       data: toTag(target),
       undo:
@@ -203,12 +277,14 @@ export const tagManagementImplementations = [
     const tag = await asConflict(
       scope,
       sourceId,
-      scope.transaction(async (tx) => {
-        const revived = await reviveTag(tx, sourceId);
-        await relinkTasks(tx, sourceId, taskIds, true);
-        await restoreFavorites(tx, favorites);
-        return revived;
-      }),
+      withFavoritesLock(scope.userId, () =>
+        scope.transaction(async (tx) => {
+          const revived = await reviveTag(tx, sourceId);
+          await relinkTasks(tx, sourceId, taskIds);
+          await restoreFavorites(tx, favorites);
+          return revived;
+        }),
+      ),
     );
     return { data: toTag(tag), undo: null };
   }),

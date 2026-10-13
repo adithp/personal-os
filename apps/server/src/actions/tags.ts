@@ -22,15 +22,30 @@ export function toTag(row: TagRow): Tag {
 
 const sameName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
-/** True for Postgres "unique violation" (23505), however the driver wraps the error. */
-export function isUniqueViolation(error: unknown): boolean {
+/**
+ * True for Postgres "unique violation" (23505), however the driver wraps the error. With
+ * `constraint` only a violation of that index counts (the field is `constraint` in PGlite and
+ * `constraint_name` in postgres-js).
+ */
+export function isUniqueViolation(error: unknown, constraint?: string): boolean {
   let current: unknown = error;
   while (current instanceof Error) {
-    if ((current as Error & { code?: string }).code === '23505') return true;
+    const fields = current as Error & {
+      code?: string;
+      constraint?: string;
+      constraint_name?: string;
+    };
+    if (fields.code === '23505') {
+      if (constraint === undefined) return true;
+      if (fields.constraint === constraint || fields.constraint_name === constraint) return true;
+    }
     current = current.cause;
   }
   return false;
 }
+
+/** The unique index on live tag names per user (see packages/db schema/tags.ts). */
+export const TAG_NAME_INDEX = 'tags_user_name_idx';
 
 /** The user's live tags, oldest first. */
 function liveTags(scope: UserScope): Promise<TagRow[]> {

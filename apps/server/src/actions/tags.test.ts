@@ -7,6 +7,7 @@ import { ZodError } from 'zod';
 import { HttpError } from '../lib/http-error';
 import { createUserScope } from '../lib/user-scope';
 import { createRegistry, type ActionContext } from '.';
+import { TAG_NAME_INDEX, isUniqueViolation } from './tags';
 
 const ALICE = '3f6b2c1e-8d4a-4b7e-9c11-2a5d6e7f8091';
 const BOB = '7a9d4e22-1c3b-4f65-8a0e-b1c2d3e4f506';
@@ -276,5 +277,20 @@ describe('two creates of the same name at once', () => {
     expect(ids[0]).toBe(ids[1]);
     const all = (await registry.run(alice(), 'tags.list', {})).data as { id: string }[];
     expect(all).toHaveLength(1);
+  });
+});
+
+describe('isUniqueViolation', () => {
+  it('matches the tag name index when asked, and no other unique violation', async () => {
+    await createTag(alice(), { name: 'work' });
+    const error = await failure(
+      t.db.execute(
+        sql`insert into tags (user_id, name, color) values (${ALICE}::uuid, 'WORK', '#F7D96B')`,
+      ),
+    );
+    expect(isUniqueViolation(error)).toBe(true);
+    expect(isUniqueViolation(error, TAG_NAME_INDEX)).toBe(true);
+    expect(isUniqueViolation(error, 'some_other_idx')).toBe(false);
+    expect(isUniqueViolation(new Error('x'), TAG_NAME_INDEX)).toBe(false);
   });
 });

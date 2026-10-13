@@ -36,16 +36,25 @@ export const MAX_FAVORITES = 12;
 export const FAVORITE_NAME_MAX = 40;
 
 const favoriteName = z.string().trim().min(1, 'Name is required').max(FAVORITE_NAME_MAX);
-const favoriteColor = z.string().refine((color) => TAG_PALETTE.some((entry) => entry === color), {
-  message: 'Use a color from the palette',
+/** A palette color, matched ignoring case; the palette's own spelling is kept. */
+const favoriteColor = z.string().transform((color, ctx) => {
+  const match = TAG_PALETTE.find((entry) => entry.toLowerCase() === color.toLowerCase());
+  if (match === undefined) {
+    ctx.addIssue({ code: 'custom', message: 'Use a color from the palette' });
+    return z.NEVER;
+  }
+  return match;
 });
 
-/** The saved view. At least one key must be set. */
+/** Removes repeats, keeping the first of each (old clients may send the same value twice). */
+export const uniqueItems = <T>(items: T[]): T[] => [...new Set(items)];
+
+/** The saved view. At least one key must be set. Repeated list values are removed. */
 export const favoriteViewSchema = z
   .object({
-    status: z.array(taskStatusSchema).min(1).max(3).optional(),
-    priority: z.array(taskPrioritySchema).min(1).max(4).optional(),
-    tagIds: z.array(z.uuid()).min(1).max(20).optional(),
+    status: z.array(taskStatusSchema).min(1).max(3).transform(uniqueItems).optional(),
+    priority: z.array(taskPrioritySchema).min(1).max(4).transform(uniqueItems).optional(),
+    tagIds: z.array(z.uuid()).min(1).max(20).transform(uniqueItems).optional(),
     due: z.enum(DUE_FILTERS).optional(),
     archived: z.boolean().optional(),
     group: z.enum(GROUP_KEYS).optional(),

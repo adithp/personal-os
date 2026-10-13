@@ -3,6 +3,7 @@ import {
   favoriteActions,
   MAX_FAVORITES,
   nextTagColor,
+  removeTagFromView,
   sameFavoriteView,
   type Favorite,
   type FavoriteIcon,
@@ -22,6 +23,26 @@ import { implement } from './registry';
  * position between two neighbours like tasks.move. Delete is a soft delete with favorites.restore
  * as its undo.
  */
+
+/**
+ * Favorite writes of one user run one after the other, so the limit of 12 and the "same view
+ * twice" check cannot be raced by two requests. The scope helper has no way to take a Postgres
+ * advisory lock (raw SQL is only allowed in src/lib), so this is a lock inside the server
+ * process, which is enough for the single server we run.
+ */
+const favoriteLocks = new Map<string, Promise<void>>();
+export async function withFavoritesLock<T>(userId: string, work: () => Promise<T>): Promise<T> {
+  const result = (favoriteLocks.get(userId) ?? Promise.resolve()).then(work);
+  const tail = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  favoriteLocks.set(userId, tail);
+  void tail.then(() => {
+    if (favoriteLocks.get(userId) === tail) favoriteLocks.delete(userId);
+  });
+  return result;
+}
 
 const POSITION_STEP = 1024;
 /** Below this gap two positions are too close to put another one between them. */
@@ -89,6 +110,20 @@ async function checkTags(scope: UserScope, view: FavoriteView): Promise<void> {
   if (found.length !== ids.length) throw invalid('Tag not found');
 }
 
+/** The ids of the user's live tags. */
+export async function liveTagIds(scope: UserScope): Promise<Set<string>> {
+  return new Set((await scope.select(tags, { where: scope.isLive(tags) })).map((tag) => tag.id));
+}
+
+/** The view without the tag ids that are not live tags any more; null when nothing is left. */
+export function viewWithLiveTags(view: FavoriteView, live: Set<string>): FavoriteView | null {
+  let next: FavoriteView | null = view;
+  for (const tagId of view.tagIds ?? []) {
+    if (next && !live.has(tagId)) next = removeTagFromView(next, tagId);
+  }
+  return next;
+}
+
 /** The favorite above and the one below a favorite, used to put it back. */
 function neighboursOf(all: TaskFavoriteRow[], id: string): { afterId?: string; beforeId?: string } {
   const index = all.findIndex((row) => row.id === id);
@@ -126,26 +161,28 @@ export const favoriteImplementations = [
   })),
 
   implement(favoriteActions.create, ({ scope }, input) =>
-    scope.transaction(async (tx) => {
-      await checkTags(tx, input.view);
-      const live = await liveFavorites(tx);
-      const same = live.find((row) => sameFavoriteView(row.view, input.view));
-      if (same) return { data: toFavorite(same), undo: null };
-      if (live.length >= MAX_FAVORITES) throw limitReached();
-      const last = live[live.length - 1];
-      const [created] = await tx.insert(taskFavorites, {
-        name: input.name,
-        color: input.color ?? nextTagColor(live.length),
-        icon: input.icon ?? defaultIcon(input.view),
-        view: input.view,
-        position: last ? last.position + POSITION_STEP : POSITION_STEP,
-      });
-      if (!created) throw new Error('Could not create the favorite');
-      return {
-        data: toFavorite(created),
-        undo: { action: 'favorites.delete', input: { id: created.id } },
-      };
-    }),
+    withFavoritesLock(scope.userId, () =>
+      scope.transaction(async (tx) => {
+        await checkTags(tx, input.view);
+        const live = await liveFavorites(tx);
+        const same = live.find((row) => sameFavoriteView(row.view, input.view));
+        if (same) return { data: toFavorite(same), undo: null };
+        if (live.length >= MAX_FAVORITES) throw limitReached();
+        const last = live[live.length - 1];
+        const [created] = await tx.insert(taskFavorites, {
+          name: input.name,
+          color: input.color ?? nextTagColor(live.length),
+          icon: input.icon ?? defaultIcon(input.view),
+          view: input.view,
+          position: last ? last.position + POSITION_STEP : POSITION_STEP,
+        });
+        if (!created) throw new Error('Could not create the favorite');
+        return {
+          data: toFavorite(created),
+          undo: { action: 'favorites.delete', input: { id: created.id } },
+        };
+      }),
+    ),
   ),
 
   implement(favoriteActions.update, ({ scope }, { id, name, color, icon }) =>
@@ -174,61 +211,63 @@ export const favoriteImplementations = [
   ),
 
   implement(favoriteActions.move, ({ scope }, { id, afterId, beforeId }) =>
-    scope.transaction(async (tx) => {
-      const all = await liveFavorites(tx);
-      const moved = all.find((row) => row.id === id);
-      if (!moved) throw notFound();
-      const old = neighboursOf(all, id);
+    withFavoritesLock(scope.userId, () =>
+      scope.transaction(async (tx) => {
+        const all = await liveFavorites(tx);
+        const moved = all.find((row) => row.id === id);
+        if (!moved) throw notFound();
+        const old = neighboursOf(all, id);
 
-      let siblings = all.filter((row) => row.id !== id);
-      const neighbour = (neighbourId: string) => {
-        if (neighbourId === id) throw invalid('A favorite cannot be placed next to itself');
-        const row = siblings.find((entry) => entry.id === neighbourId);
-        if (!row) throw notFound();
-        return row;
-      };
-      const after = afterId === undefined ? undefined : neighbour(afterId);
-      const before = beforeId === undefined ? undefined : neighbour(beforeId);
-      if (after && before && after.position > before.position) {
-        throw invalid('afterId must sit above beforeId');
-      }
-
-      let range = bounds(siblings, afterId, beforeId);
-      if (range.lower !== null && range.upper !== null && range.upper - range.lower < MIN_GAP) {
-        for (const [index, sibling] of siblings.entries()) {
-          await tx.update(
-            taskFavorites,
-            { position: (index + 1) * POSITION_STEP },
-            eq(taskFavorites.id, sibling.id),
-          );
+        let siblings = all.filter((row) => row.id !== id);
+        const neighbour = (neighbourId: string) => {
+          if (neighbourId === id) throw invalid('A favorite cannot be placed next to itself');
+          const row = siblings.find((entry) => entry.id === neighbourId);
+          if (!row) throw notFound();
+          return row;
+        };
+        const after = afterId === undefined ? undefined : neighbour(afterId);
+        const before = beforeId === undefined ? undefined : neighbour(beforeId);
+        if (after && before && after.position > before.position) {
+          throw invalid('afterId must sit above beforeId');
         }
-        siblings = siblings.map((row, index) => ({
-          ...row,
-          position: (index + 1) * POSITION_STEP,
-        }));
-        range = bounds(siblings, afterId, beforeId);
-      }
-      const { lower, upper } = range;
-      if (lower !== null && upper !== null && lower >= upper) {
-        throw invalid('afterId must sit above beforeId');
-      }
-      let position = moved.position;
-      if (lower !== null && upper !== null) position = (lower + upper) / 2;
-      else if (lower !== null) position = lower + POSITION_STEP;
-      else if (upper !== null) position = upper - POSITION_STEP;
 
-      const [updated] = await tx.update(
-        taskFavorites,
-        { position, updatedAt: new Date() },
-        and(eq(taskFavorites.id, id), tx.isLive(taskFavorites)) ?? eq(taskFavorites.id, id),
-      );
-      if (!updated) throw notFound();
-      const hasOld = old.afterId !== undefined || old.beforeId !== undefined;
-      return {
-        data: toFavorite(updated),
-        undo: hasOld ? { action: 'favorites.move', input: { id, ...old } } : null,
-      };
-    }),
+        let range = bounds(siblings, afterId, beforeId);
+        if (range.lower !== null && range.upper !== null && range.upper - range.lower < MIN_GAP) {
+          for (const [index, sibling] of siblings.entries()) {
+            await tx.update(
+              taskFavorites,
+              { position: (index + 1) * POSITION_STEP },
+              eq(taskFavorites.id, sibling.id),
+            );
+          }
+          siblings = siblings.map((row, index) => ({
+            ...row,
+            position: (index + 1) * POSITION_STEP,
+          }));
+          range = bounds(siblings, afterId, beforeId);
+        }
+        const { lower, upper } = range;
+        if (lower !== null && upper !== null && lower >= upper) {
+          throw invalid('afterId must sit above beforeId');
+        }
+        let position = moved.position;
+        if (lower !== null && upper !== null) position = (lower + upper) / 2;
+        else if (lower !== null) position = lower + POSITION_STEP;
+        else if (upper !== null) position = upper - POSITION_STEP;
+
+        const [updated] = await tx.update(
+          taskFavorites,
+          { position, updatedAt: new Date() },
+          and(eq(taskFavorites.id, id), tx.isLive(taskFavorites)) ?? eq(taskFavorites.id, id),
+        );
+        if (!updated) throw notFound();
+        const hasOld = old.afterId !== undefined || old.beforeId !== undefined;
+        return {
+          data: toFavorite(updated),
+          undo: hasOld ? { action: 'favorites.move', input: { id, ...old } } : null,
+        };
+      }),
+    ),
   ),
 
   implement(favoriteActions.delete, async ({ scope }, { id }) => {
@@ -241,18 +280,26 @@ export const favoriteImplementations = [
   }),
 
   implement(favoriteActions.restore, ({ scope }, { id }) =>
-    scope.transaction(async (tx) => {
-      const current = await findFavorite(tx, id, false);
-      if (!current) throw notFound();
-      if (current.deletedAt === null) return { data: toFavorite(current), undo: null };
-      if ((await liveFavorites(tx)).length >= MAX_FAVORITES) throw limitReached();
-      const [restored] = await tx.update(
-        taskFavorites,
-        { deletedAt: null, updatedAt: new Date() },
-        eq(taskFavorites.id, id),
-      );
-      if (!restored) throw notFound();
-      return { data: toFavorite(restored), undo: { action: 'favorites.delete', input: { id } } };
-    }),
+    withFavoritesLock(scope.userId, () =>
+      scope.transaction(async (tx) => {
+        const current = await findFavorite(tx, id, false);
+        if (!current) throw notFound();
+        if (current.deletedAt === null) return { data: toFavorite(current), undo: null };
+        // Tags deleted since are dropped from the view; a view with nothing left cannot come back
+        const view = viewWithLiveTags(current.view, await liveTagIds(tx));
+        if (!view) throw invalid('Tag not found');
+        const live = await liveFavorites(tx);
+        const same = live.find((row) => sameFavoriteView(row.view, view));
+        if (same) return { data: toFavorite(same), undo: null };
+        if (live.length >= MAX_FAVORITES) throw limitReached();
+        const [restored] = await tx.update(
+          taskFavorites,
+          { view, deletedAt: null, updatedAt: new Date() },
+          eq(taskFavorites.id, id),
+        );
+        if (!restored) throw notFound();
+        return { data: toFavorite(restored), undo: { action: 'favorites.delete', input: { id } } };
+      }),
+    ),
   ),
 ];
