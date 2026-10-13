@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineAction } from './actions';
-import { favoriteViewSchema } from './favorites';
+import { favoriteViewSchema, uniqueItems } from './favorites';
 
 /**
  * Deleting and merging tags (Feature 5, docs/design/research/tasks-favorites.md decisions 16 to 18).
@@ -22,7 +22,7 @@ export const deleteTagInput = z.object({ id });
 export const restoreTagInput = z.object({
   id,
   /** The tasks the tag was on. */
-  taskIds: z.array(id).max(MAX_UNDO_TASK_IDS),
+  taskIds: z.array(id).max(MAX_UNDO_TASK_IDS).transform(uniqueItems),
   favorites: z.array(touchedFavoriteSchema).max(12),
 });
 export const mergeTagInput = z
@@ -32,7 +32,7 @@ export const unmergeTagInput = z.object({
   sourceId: id,
   targetId: id,
   /** The tasks that had the source tag (those that also had the target keep the target tag). */
-  taskIds: z.array(id).max(MAX_UNDO_TASK_IDS),
+  taskIds: z.array(id).max(MAX_UNDO_TASK_IDS).transform(uniqueItems),
   /** The favorites the merge changed or removed, with their views before. */
   favorites: z.array(touchedFavoriteSchema).max(12),
 });

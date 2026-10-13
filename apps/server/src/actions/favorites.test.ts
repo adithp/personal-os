@@ -426,4 +426,70 @@ describe('favorites.delete and favorites.restore', () => {
     await run(alice(), 'favorites.delete', { id: firstOf(await list(alice())).id });
     expect((await run(alice(), 'favorites.restore', { id: first.id })).data.id).toBe(first.id);
   });
+
+  it('drops tag ids that were deleted since, and refuses a view with nothing left', async () => {
+    const keep = await makeTag(alice(), 'keep');
+    const gone = await makeTag(alice(), 'gone');
+    const mixed = (await create(alice(), 'M', { tagIds: [keep.id, gone.id] })).data;
+    const only = (await create(alice(), 'O', { tagIds: [gone.id] })).data;
+    await run(alice(), 'favorites.delete', { id: mixed.id });
+    await run(alice(), 'favorites.delete', { id: only.id });
+    await t.db.execute(sql`update tags set deleted_at = now() where id = ${gone.id}`);
+    const restored = await run(alice(), 'favorites.restore', { id: mixed.id });
+    expect(restored.data.view).toEqual({ tagIds: [keep.id] });
+    expect(await status(run(alice(), 'favorites.restore', { id: only.id }))).toBe(400);
+  });
+
+  it('returns the live favorite with the same view instead of a duplicate', async () => {
+    const first = (await create(alice(), 'A', { sort: 'due' })).data;
+    await run(alice(), 'favorites.delete', { id: first.id });
+    const second = (await create(alice(), 'B', { sort: 'due' })).data;
+    const result = await run(alice(), 'favorites.restore', { id: first.id });
+    expect(result.data.id).toBe(second.id);
+    expect(result.undo).toBeNull();
+    expect(await names(alice())).toEqual(['B']);
+  });
+});
+
+describe('favorite colors', () => {
+  it('match the palette ignoring case and store the palette spelling', async () => {
+    const result = await create(
+      alice(),
+      'X',
+      { sort: 'due' },
+      { color: TAG_PALETTE[2].toLowerCase() },
+    );
+    expect(result.data.color).toBe(TAG_PALETTE[2]);
+    const updated = await run(alice(), 'favorites.update', {
+      id: result.data.id,
+      color: TAG_PALETTE[4].toLowerCase(),
+    });
+    expect(updated.data.color).toBe(TAG_PALETTE[4]);
+  });
+});
+
+describe('favorites written at the same time', () => {
+  it('two creates with 11 favorites: one wins, the other gets favorites_limit', async () => {
+    await fill(alice(), MAX_FAVORITES - 1);
+    const results = await Promise.allSettled([
+      create(alice(), 'P', { priority: [1] }),
+      create(alice(), 'Q', { priority: [2] }),
+    ]);
+    expect(results.filter((entry) => entry.status === 'fulfilled')).toHaveLength(1);
+    const rejected = results.find((entry) => entry.status === 'rejected');
+    expect(rejected?.status === 'rejected' && rejected.reason).toMatchObject({
+      statusCode: 409,
+      code: 'favorites_limit',
+    });
+    expect(await list(alice())).toHaveLength(MAX_FAVORITES);
+  });
+
+  it('two identical views at once give one favorite', async () => {
+    const [a, b] = await Promise.all([
+      create(alice(), 'A', { sort: 'due' }),
+      create(alice(), 'B', { sort: 'due' }),
+    ]);
+    expect(a.data.id).toBe(b.data.id);
+    expect(await list(alice())).toHaveLength(1);
+  });
 });
