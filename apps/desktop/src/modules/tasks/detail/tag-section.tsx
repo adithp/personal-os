@@ -10,6 +10,7 @@ import { Input } from '@personal-os/ui';
 import { IconCheck, IconPlus } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../../api/api-client';
+import { useManageTags } from '../manage-tags/manage-tags-store';
 import { TagChip } from '../shared/tag-chip';
 import { useTagActions, useTags } from '../tags-queries';
 import { Popover, PopoverItem } from './popover';
@@ -23,6 +24,7 @@ export interface TagSectionProps {
 /** The recolor menu of one chip: ten swatches and "Remove from task". */
 function ChipMenu({ tag, onRemove }: { tag: TagRef; onRemove: () => void }) {
   const { update } = useTagActions();
+  const openManageTags = useManageTags((state) => state.openManageTags);
   return (
     <Popover
       label={`Tag ${tag.name}`}
@@ -68,6 +70,15 @@ function ChipMenu({ tag, onRemove }: { tag: TagRef; onRemove: () => void }) {
             }}
           >
             Remove from task
+          </PopoverItem>
+          <PopoverItem
+            role="menuitem"
+            onSelect={() => {
+              openManageTags();
+              close();
+            }}
+          >
+            Manage tags…
           </PopoverItem>
         </>
       )}
