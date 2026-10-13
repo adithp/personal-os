@@ -1,10 +1,16 @@
 import { entities, entityTags, tasks, type TaskRow } from '@personal-os/db';
 import { parseRecurrence, taskActions, type Recurrence } from '@personal-os/shared';
 import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
-import { RRule, type Options } from 'rrule';
+import { createRequire } from 'node:module';
+import type * as RRuleModule from 'rrule';
+import type { Options } from 'rrule';
 import type { UserScope } from '../lib/user-scope';
 import { implement } from './registry';
 import { applyChange, nextPosition } from './tasks';
+
+// rrule is a CommonJS package: Node cannot import its named exports from an ES module, so load it
+// with require (the types still come from the package)
+const { RRule } = createRequire(import.meta.url)('rrule') as typeof RRuleModule;
 
 /** India is UTC+05:30 all year (no daylight saving), so a fixed offset is exact. */
 const IST_MS = (5 * 60 + 30) * 60 * 1000;

@@ -71,3 +71,4 @@ Every time something cost a retry or a fix, we record it here so it never happen
 | 2026-10-13 | testing-patterns | A test that races a short fake delay is flaky on a busy machine | guarded | apps/desktop/src/modules/tasks/quick-add/bar/quick-add-bar-fixes.test.tsx |
 | 2026-10-13 | testing-patterns | A test that fakes the clock must sign its login token after setting the time | documented | testing-patterns pitfalls |
 | 2026-10-13 | testing-patterns | failNext hit the first request of the page, not the one under test | guarded | apps/desktop/src/test/fake-api.ts |
+| 2026-10-13 | testing-patterns | Vitest passed but the real server crashed on a CommonJS named import (rrule) | guarded | apps/server/src/startup-imports.test.ts |

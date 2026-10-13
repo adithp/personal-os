@@ -91,3 +91,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: failNext applied to the next request of any path
 - Fix: fake.failNext takes a path prefix as its 4th argument (true = any path)
 - Prevention: guarded, apps/desktop/src/test/fake-api.ts
+
+### 2026-10-13: Vitest passed but the real server crashed on a CommonJS import
+- Symptom: pnpm dev:server stopped with "The requested module 'rrule' does not provide an export named 'RRule'" while all tests were green
+- Cause: Vitest converts module formats; real Node cannot import the named exports of a CommonJS package from an ES module
+- Fix: load rrule with createRequire in recurrence.ts
+- Prevention: guarded, apps/server/src/startup-imports.test.ts imports every action and route in real Node with tsx; also start the server once before reporting a feature done
