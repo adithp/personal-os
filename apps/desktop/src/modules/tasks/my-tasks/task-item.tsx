@@ -33,6 +33,10 @@ export interface TaskItemDrag {
 
 export interface TaskItemProps {
   task: Task;
+  /** Quick actions shown on the right of a row on hover or focus (the Inbox). Rows only. */
+  actions?: ReactNode;
+  /** Rows only: leave out the trash button (the Inbox keeps Delete in its More menu). */
+  hideDelete?: boolean;
   drag?: TaskItemDrag;
   /** Unique on the page (a task can be in two tag groups). */
   itemKey: string;
@@ -140,7 +144,7 @@ export function TaskCard(props: TaskItemProps) {
 
 /** A compact row for List view. */
 export function TaskRow(props: TaskItemProps) {
-  const { task, context, drag } = props;
+  const { task, context, drag, actions, hideDelete } = props;
   const { selected, attrs } = itemProps(props);
   const done = task.status === 'done';
   return (
@@ -189,18 +193,21 @@ export function TaskRow(props: TaskItemProps) {
         <TagChips tags={task.tags} max={1} />
         <PriorityFlag priority={task.priority} />
         <DueLabel task={task} now={context.now} />
-        <button
-          type="button"
-          aria-label={`Delete: ${task.title}`}
-          tabIndex={-1}
-          onClick={(event) => {
-            event.stopPropagation();
-            context.onDelete(task);
-          }}
-          className="rounded-[6px] p-1 text-fg-muted opacity-0 focus-ring transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-danger focus-visible:opacity-100"
-        >
-          <IconTrash size={16} stroke={1.5} aria-hidden />
-        </button>
+        {actions}
+        {hideDelete ? null : (
+          <button
+            type="button"
+            aria-label={`Delete: ${task.title}`}
+            tabIndex={-1}
+            onClick={(event) => {
+              event.stopPropagation();
+              context.onDelete(task);
+            }}
+            className="rounded-[6px] p-1 text-fg-muted opacity-0 focus-ring transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-danger focus-visible:opacity-100"
+          >
+            <IconTrash size={16} stroke={1.5} aria-hidden />
+          </button>
+        )}
       </span>
     </li>
   );

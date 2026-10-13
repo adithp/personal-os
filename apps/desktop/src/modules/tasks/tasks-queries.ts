@@ -294,6 +294,27 @@ export function useTaskActions() {
     onSettled: () => refresh(),
   });
 
+  /** Replace a task's tags (the Inbox gives a task its first tag). Offers Undo: the task leaves the list at once. */
+  const setTags = useMutation({
+    mutationFn: ({ id, tagIds }: { id: string; tagIds: string[] }) =>
+      api.request<TaskWriteResult>('PATCH', `/tasks/${id}`, { body: { tagIds } }),
+    onMutate: async ({ id, tagIds }) => {
+      await client.cancelQueries({ queryKey: TASKS_KEY });
+      const now = new Date().toISOString();
+      const known = client.getQueryData<Tag[]>(TAGS_KEY) ?? [];
+      return {
+        snapshot: patchEverywhere(client, id, (task) => applyPatch(task, { tagIds }, now, known)),
+      };
+    },
+    onSuccess: ({ undo }) => {
+      offerUndo('Tag added.', undo);
+    },
+    onError: (error, _input, context) => {
+      fail(error, context?.snapshot);
+    },
+    onSettled: () => refresh(),
+  });
+
   /** Make `blockerId` block the task (the detail panel's "Blocked by" row). */
   const addBlocker = useMutation({
     mutationFn: ({ id, blockerId }: { id: string; blockerId: string }) =>
@@ -342,5 +363,16 @@ export function useTaskActions() {
     },
   });
 
-  return { create, update, complete, move, addBlocker, removeBlocker, remove, archive, unarchive };
+  return {
+    create,
+    update,
+    complete,
+    move,
+    setTags,
+    addBlocker,
+    removeBlocker,
+    remove,
+    archive,
+    unarchive,
+  };
 }

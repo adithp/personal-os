@@ -19,6 +19,8 @@ export interface QuickAddBarProps {
   autoFocus?: boolean;
   /** Lets the page focus the box (the N shortcut). */
   inputRef?: Ref<HTMLInputElement>;
+  /** Called after a task was created, with what was sent (the Inbox says where a dated or tagged task went). */
+  onAdded?: (input: CreateTaskInput) => void;
 }
 
 /**
@@ -26,7 +28,7 @@ export interface QuickAddBarProps {
  * understood as chips under the bar. Enter creates the task with only the understood fields, clears
  * the box, and keeps focus. If the server refuses, the hook shows its message and the text comes back.
  */
-export function QuickAddBar({ autoFocus = false, inputRef }: QuickAddBarProps) {
+export function QuickAddBar({ autoFocus = false, inputRef, onAdded }: QuickAddBarProps) {
   const { create } = useTaskActions();
   const now = useNow();
   const [title, setTitle] = useState('');
@@ -98,6 +100,9 @@ export function QuickAddBar({ autoFocus = false, inputRef }: QuickAddBarProps) {
     setIgnored(new Set());
     box.current?.focus();
     create.mutate(input, {
+      onSuccess: () => {
+        onAdded?.(input);
+      },
       onError: () => {
         // Give the text back only if the user has not typed something new meanwhile
         if (latestTitle.current !== '') return;
