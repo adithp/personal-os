@@ -1,10 +1,11 @@
 import { TAG_NAME_MAX, tagName, type Tag } from '@personal-os/shared';
-import { Button, IconButton, Input, cx } from '@personal-os/ui';
+import { Button, Input, cx } from '@personal-os/ui';
 import { IconPencil, IconTrash } from '@tabler/icons-react';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { ApiError } from '../../../api/api-client';
 import { useTagActions } from '../tags-queries';
 import { ColorPopover } from './color-popover';
+import { GHOST_BUTTON } from './ghost-button';
 import { deleteQuestion, mergeQuestion, usageLabel } from './tag-wording';
 
 type Mode =
@@ -20,10 +21,12 @@ export interface TagRowProps {
   /** The one row whose buttons are reached with Tab. */
   active: boolean;
   onActivate: () => void;
+  /** Called just before a delete or merge removes this row, so the dialog can pick the next focus. */
+  onGone: () => void;
 }
 
 /** One tag: color dot, name, usage, and the rename, merge and delete flows. */
-export function TagRow({ tag, all, active, onActivate }: TagRowProps) {
+export function TagRow({ tag, all, active, onActivate, onGone }: TagRowProps) {
   const { update, remove, merge } = useTagActions();
   const [mode, setMode] = useState<Mode>({ kind: 'idle' });
   const [draft, setDraft] = useState(tag.name);
@@ -53,8 +56,12 @@ export function TagRow({ tag, all, active, onActivate }: TagRowProps) {
   };
 
   const startDelete = () => {
-    if (taskCount === 0 && favoriteCount === 0) remove.mutate(tag.id);
-    else setMode({ kind: 'delete' });
+    if (taskCount === 0 && favoriteCount === 0) {
+      onGone();
+      remove.mutate(tag.id);
+    } else {
+      setMode({ kind: 'delete' });
+    }
   };
 
   const saveRename = async () => {
@@ -162,7 +169,7 @@ export function TagRow({ tag, all, active, onActivate }: TagRowProps) {
           const button = event.currentTarget;
           setPicking((value) => (value ? null : button));
         }}
-        className="mt-[10px] flex size-4 shrink-0 items-center justify-center rounded-full focus-ring"
+        className="mt-1.5 flex size-6 shrink-0 items-center justify-center rounded-full focus-ring"
       >
         <span aria-hidden className="size-3 rounded-full" style={{ backgroundColor: tag.color }} />
       </button>
@@ -217,12 +224,19 @@ export function TagRow({ tag, all, active, onActivate }: TagRowProps) {
           ) : null}
         </div>
       ) : mode.kind === 'merge' ? (
-        question(mergeQuestion(mode.target.name, tag.name, taskCount), 'Merge', false, () => {
-          merge.mutate({ sourceId: tag.id, targetId: mode.target.id });
-          setMode({ kind: 'idle' });
-        })
+        question(
+          mergeQuestion(mode.target.name, tag.name, taskCount, favoriteCount),
+          'Merge',
+          false,
+          () => {
+            onGone();
+            merge.mutate({ sourceId: tag.id, targetId: mode.target.id });
+            setMode({ kind: 'idle' });
+          },
+        )
       ) : mode.kind === 'delete' ? (
         question(deleteQuestion(tag.name, taskCount, favoriteCount), 'Delete tag', true, () => {
+          onGone();
           remove.mutate(tag.id);
           setMode({ kind: 'idle' });
         })
@@ -232,20 +246,25 @@ export function TagRow({ tag, all, active, onActivate }: TagRowProps) {
           <span className="shrink-0 py-[7px] text-small text-fg-muted">
             {usageLabel(taskCount)}
           </span>
-          <span className="flex shrink-0 items-center gap-1 py-[3px] opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
-            <IconButton
+          <span className="flex shrink-0 items-center gap-1 py-1.5 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
+            <button
+              type="button"
               aria-label={`Rename ${tag.name}`}
               tabIndex={tabIndex}
-              icon={<IconPencil size={14} aria-hidden />}
               onClick={startRename}
-            />
-            <IconButton
+              className={GHOST_BUTTON}
+            >
+              <IconPencil size={14} aria-hidden />
+            </button>
+            <button
+              type="button"
               aria-label={`Delete ${tag.name}`}
               tabIndex={tabIndex}
-              className="size-[30px]"
-              icon={<IconTrash size={14} aria-hidden />}
               onClick={startDelete}
-            />
+              className={GHOST_BUTTON}
+            >
+              <IconTrash size={14} aria-hidden />
+            </button>
           </span>
         </>
       )}

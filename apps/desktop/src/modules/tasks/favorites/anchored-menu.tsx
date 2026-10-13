@@ -2,6 +2,7 @@ import { cx } from '@personal-os/ui';
 import { IconCheck } from '@tabler/icons-react';
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { gridTarget, isGridKey } from '../manage-tags/swatches';
 
 const ITEMS = '[role="menuitemradio"],[role="menuitem"]';
 const WIDTH = 224;
@@ -53,6 +54,8 @@ export function AnchoredMenu({
     const onPointer = (event: MouseEvent) => {
       if (!(event.target instanceof Node)) return;
       if (panel.current?.contains(event.target) || anchor.contains(event.target)) return;
+      // A row's "more" button toggles the menu itself in its click
+      if (event.target instanceof Element && event.target.closest('[data-menu-trigger]')) return;
       onClose(false);
     };
     document.addEventListener('mousedown', onPointer);
@@ -74,6 +77,26 @@ export function AnchoredMenu({
     if (items.length === 0 || !(event.target instanceof HTMLElement)) return;
     const typing = event.target.tagName === 'INPUT';
     const index = items.indexOf(event.target);
+
+    // Inside a grid (color and icon pickers) the arrows move by one and by a row
+    const grid = event.target.closest<HTMLElement>('[data-grid]');
+    if (grid && isGridKey(event.key)) {
+      const cells = items.filter((item) => grid.contains(item));
+      const columns = Number(grid.dataset.grid);
+      const at = cells.indexOf(event.target);
+      const inside = gridTarget(event.key, at, columns, cells.length);
+      event.preventDefault();
+      if (inside !== null) {
+        cells[inside]?.focus();
+      } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        // Past the first or last row: on to the item after or before the grid
+        const down = event.key === 'ArrowDown';
+        const edgeCell = down ? cells.at(-1) : cells[0];
+        const edge = edgeCell ? items.indexOf(edgeCell) : 0;
+        items[(edge + (down ? 1 : -1) + items.length) % items.length]?.focus();
+      }
+      return;
+    }
     let next: number | null = null;
     if (event.key === 'ArrowDown') next = typing ? 0 : (index + 1) % items.length;
     else if (event.key === 'ArrowUp' && !typing) next = (index - 1 + items.length) % items.length;
@@ -135,7 +158,7 @@ export function MenuItem({
         if (!disabled) onSelect();
       }}
       className={cx(
-        'flex h-7 shrink-0 items-center gap-2 rounded-[8px] px-2 text-left text-body text-fg focus-ring hover:bg-input focus-visible:bg-input',
+        'flex h-7 shrink-0 items-center gap-2 rounded-chip px-2 text-left text-body text-fg focus-ring hover:bg-input focus-visible:bg-input',
         disabled && 'cursor-default text-fg-muted opacity-60 hover:bg-transparent',
         className,
       )}

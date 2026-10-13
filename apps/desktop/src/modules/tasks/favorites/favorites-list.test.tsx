@@ -78,7 +78,7 @@ describe('the Favorites list in the side panel', () => {
     expect(await within(panel()).findByRole('list', { name: 'Favorites' })).toBeInTheDocument();
   });
 
-  it('says it could not load and loads again on Retry', async () => {
+  it('says it could not load, with the server message, and loads again on Try again', async () => {
     const fake = createFakeApi([], [], three());
     let failed = false;
     const api: ApiClient = {
@@ -91,10 +91,10 @@ describe('the Favorites list in the side panel', () => {
       },
     };
     await renderApp('/tasks/my-tasks', signedInAuth().auth, api);
-    expect(await screen.findByText('Could not load favorites')).toBeInTheDocument();
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('Server error')).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
     expect(await within(panel()).findByRole('link', { name: 'Alpha' })).toBeInTheDocument();
-    expect(screen.queryByText('Could not load favorites')).not.toBeInTheDocument();
+    expect(screen.queryByText('Server error')).not.toBeInTheDocument();
   });
 
   it('shows only squares with tooltips when the panel is collapsed, and keeps the + button', async () => {
@@ -114,14 +114,14 @@ describe('opening a favorite', () => {
     const { router, user } = await open(three(), { path: '/tasks' });
     await user.click(link('Gamma'));
     expect(router.state.location.pathname).toBe('/tasks/my-tasks');
-    expect(router.state.location.search).toEqual({ due: 'week' });
+    expect(router.state.location.search).toEqual({ due: 'week', group: 'due', sort: 'manual' });
   });
 
   it('opens with Enter on the focused row', async () => {
     const { router, user } = await open();
     link('Beta').focus();
     await user.keyboard('{Enter}');
-    expect(router.state.location.search).toEqual({ priority: [2] });
+    expect(router.state.location.search).toEqual({ priority: [2], group: 'due', sort: 'manual' });
   });
 
   it('marks the row whose view is the page view as current', async () => {
@@ -327,10 +327,12 @@ describe('the row menu', () => {
     await user.click(more('Alpha'));
     await user.click(within(menu('Alpha')).getByRole('menuitem', { name: 'Color and icon' }));
     const popover = screen.getByRole('menu', { name: 'Alpha color and icon' });
-    expect(within(popover).getAllByRole('menuitemradio', { name: /^Color / })).toHaveLength(10);
+    expect(
+      within(within(popover).getByRole('group', { name: 'Color' })).getAllByRole('menuitemradio'),
+    ).toHaveLength(10);
     expect(within(popover).getAllByRole('menuitemradio', { name: /^Icon / })).toHaveLength(12);
     expect(within(popover).getByRole('menuitemradio', { name: 'Icon hash' })).toBeChecked();
-    await user.click(within(popover).getByRole('menuitemradio', { name: 'Color 4' }));
+    await user.click(within(popover).getByRole('menuitemradio', { name: 'Mint' }));
     await user.click(within(popover).getByRole('menuitemradio', { name: 'Icon star' }));
     const bodies = calls(fake, 'PATCH', /^\/task-favorites\//).map((call) => call.body);
     expect(bodies).toEqual([{ color: TAG_PALETTE[3] }, { icon: 'star' }]);
@@ -455,8 +457,142 @@ describe('the keyboard', () => {
     const { router, user } = await open();
     link('Alpha').focus();
     await user.keyboard('{Enter}');
-    expect(router.state.location.search).toEqual({ priority: [1] });
+    expect(router.state.location.search).toEqual({ priority: [1], group: 'due', sort: 'manual' });
     expect(document.querySelector('[data-favorite-id]')).not.toHaveAttribute('aria-pressed');
+  });
+});
+
+describe('review fixes', () => {
+  const plus = () => within(panel()).getByRole('button', { name: 'Add favorite' });
+  const more = (name: string) => screen.getByRole('button', { name: `More options for ${name}` });
+  const rowMenu = (name: string) => screen.getByRole('menu', { name: `${name} options` });
+  const addMenu = () => screen.getByRole('menu', { name: 'Add favorite' });
+
+  it('says to open My tasks on other pages', async () => {
+    const { user } = await open([], { path: '/tasks' });
+    await user.click(plus());
+    expect(screen.getByText('Open My tasks to save a view')).toBeInTheDocument();
+    expect(screen.queryByText('Set a filter on My tasks first')).not.toBeInTheDocument();
+  });
+
+  it('goes from the tag search to the first tag with ArrowDown', async () => {
+    const tags = Array.from({ length: 9 }, (_, i) => makeTag({ name: `label${String(i)}` }));
+    const { user } = await open([], { tags });
+    await user.click(plus());
+    await user.click(within(addMenu()).getByRole('textbox', { name: 'Find a tag' }));
+    await user.keyboard('{ArrowDown}');
+    expect(within(addMenu()).getByRole('menuitem', { name: 'label0' })).toHaveFocus();
+  });
+
+  it('leaves out a tag color that is not in the palette and keeps one that is', async () => {
+    const odd = makeTag({ name: 'odd', color: '#123456' });
+    const upper = makeTag({ name: 'upper', color: TAG_PALETTE[2].toUpperCase() });
+    const { fake, user } = await open([], { tags: [odd, upper] });
+    await user.click(plus());
+    await user.click(within(addMenu()).getByRole('menuitem', { name: 'odd' }));
+    await waitFor(() => {
+      expect(calls(fake, 'POST', '/task-favorites')).toHaveLength(1);
+    });
+    expect(calls(fake, 'POST', '/task-favorites')[0]?.body).toEqual({
+      name: 'odd',
+      icon: 'hash',
+      view: { tagIds: [odd.id] },
+    });
+    await user.keyboard('{Escape}');
+    await user.click(plus());
+    await user.click(within(addMenu()).getByRole('menuitem', { name: 'upper' }));
+    await waitFor(() => {
+      expect(calls(fake, 'POST', '/task-favorites')).toHaveLength(2);
+    });
+    expect(calls(fake, 'POST', '/task-favorites')[1]?.body).toMatchObject({
+      color: TAG_PALETTE[2],
+    });
+  });
+
+  it('closes the row menu when its more button is clicked again', async () => {
+    const { user } = await open();
+    await user.click(more('Alpha'));
+    expect(rowMenu('Alpha')).toBeInTheDocument();
+    await user.click(more('Alpha'));
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('says where a favorite moved and keeps the focus on its row', async () => {
+    const { user } = await open();
+    await user.click(more('Beta'));
+    await user.click(within(rowMenu('Beta')).getByRole('menuitem', { name: 'Move up' }));
+    expect(
+      (await within(panel()).findByText('Moved up.')).closest('[role="status"]'),
+    ).not.toBeNull();
+    await waitFor(() => {
+      expect(link('Beta')).toHaveFocus();
+    });
+  });
+
+  it('gives a long favorite name a title with the full name', async () => {
+    const name = 'A very long favorite name that will be cut short';
+    await open([makeFavorite({ name, view: { priority: [1] } })]);
+    expect(within(panel()).getByText(name)).toHaveAttribute('title', name);
+  });
+
+  it('moves in the color and icon grids with the arrows, Home and End', async () => {
+    const { user } = await open();
+    await user.click(more('Alpha'));
+    await user.click(within(rowMenu('Alpha')).getByRole('menuitem', { name: 'Color and icon' }));
+    const popover = screen.getByRole('menu', { name: 'Alpha color and icon' });
+    const colors = within(within(popover).getByRole('group', { name: 'Color' })).getAllByRole(
+      'menuitemradio',
+    );
+    colors[0]?.focus();
+    await user.keyboard('{ArrowRight}');
+    expect(colors[1]).toHaveFocus();
+    await user.keyboard('{ArrowDown}');
+    expect(colors[6]).toHaveFocus();
+    await user.keyboard('{ArrowLeft}{ArrowUp}');
+    expect(colors[0]).toHaveFocus();
+    await user.keyboard('{End}');
+    expect(colors[9]).toHaveFocus();
+    await user.keyboard('{Home}');
+    expect(colors[0]).toHaveFocus();
+    // Down from the last row of colors goes on to the icons
+    colors[7]?.focus();
+    await user.keyboard('{ArrowDown}');
+    expect(within(popover).getAllByRole('menuitemradio', { name: /^Icon / })[0]).toHaveFocus();
+  });
+
+  it('names the color swatches', async () => {
+    const { user } = await open();
+    await user.click(more('Alpha'));
+    await user.click(within(rowMenu('Alpha')).getByRole('menuitem', { name: 'Color and icon' }));
+    const group = screen.getByRole('group', { name: 'Color' });
+    expect(
+      within(group)
+        .getAllByRole('menuitemradio')
+        .map((swatch) => swatch.getAttribute('aria-label')),
+    ).toEqual([
+      'Yellow',
+      'Sky',
+      'Pink',
+      'Mint',
+      'Lavender',
+      'Orange',
+      'Lime',
+      'Peach',
+      'Periwinkle',
+      'Grey-blue',
+    ]);
+  });
+
+  it('refreshes the tags after a favorite changes, because tags count their favorites', async () => {
+    const { fake, user } = await open(three(), { tags: [makeTag({ name: 'home' })] });
+    const before = calls(fake, 'GET', '/tags').length;
+    await user.click(more('Beta'));
+    await user.click(
+      within(rowMenu('Beta')).getByRole('menuitem', { name: 'Remove from favorites' }),
+    );
+    await waitFor(() => {
+      expect(calls(fake, 'GET', '/tags').length).toBeGreaterThan(before);
+    });
   });
 });
 

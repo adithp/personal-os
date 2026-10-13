@@ -116,7 +116,11 @@ function FavoriteRowView(props: FavoriteRowProps & { drag?: RowDrag }) {
       )}
     >
       <FavoriteSquare color={favorite.color} icon={favorite.icon} />
-      {collapsed ? null : <span className="truncate">{favorite.name}</span>}
+      {collapsed ? null : (
+        <span className="truncate" title={favorite.name}>
+          {favorite.name}
+        </span>
+      )}
     </a>
   );
 
@@ -148,6 +152,7 @@ function FavoriteRowView(props: FavoriteRowProps & { drag?: RowDrag }) {
         <button
           type="button"
           tabIndex={-1}
+          data-menu-trigger
           aria-haspopup="menu"
           aria-label={`More options for ${favorite.name}`}
           onClick={(event) => {

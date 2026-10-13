@@ -2,6 +2,9 @@ import { TAG_PALETTE, TEXT_ON_TILE } from '@personal-os/shared';
 import { IconCheck } from '@tabler/icons-react';
 import { useEffect, useRef, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
+import { colorName, gridTarget, isGridKey } from './swatches';
+
+const COLUMNS = 5;
 
 export interface ColorPopoverProps {
   /** The dot button the popover hangs under. */
@@ -21,24 +24,33 @@ export function ColorPopover({ anchor, name, current, onPick, onClose }: ColorPo
   const box = useRef<HTMLDivElement>(null);
   const rect = anchor.getBoundingClientRect();
 
+  // The latest onClose, so a re-render does not restart the effects below
+  const closeRef = useRef(onClose);
   useEffect(() => {
-    const swatches = box.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]');
+    closeRef.current = onClose;
+  });
+
+  // Focus goes to the checked swatch once, when the popover opens
+  useEffect(() => {
     const checked = box.current?.querySelector<HTMLElement>('[aria-checked="true"]');
-    (checked ?? swatches?.[0])?.focus();
+    (checked ?? box.current?.querySelector<HTMLElement>('[role="menuitemradio"]'))?.focus();
+  }, []);
+
+  useEffect(() => {
     const onPointer = (event: MouseEvent) => {
       if (
         event.target instanceof Node &&
         !box.current?.contains(event.target) &&
         !anchor.contains(event.target)
       ) {
-        onClose();
+        closeRef.current();
       }
     };
     document.addEventListener('mousedown', onPointer);
     return () => {
       document.removeEventListener('mousedown', onPointer);
     };
-  }, [anchor, onClose]);
+  }, [anchor]);
 
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
@@ -52,21 +64,14 @@ export function ColorPopover({ anchor, name, current, onPick, onClose }: ColorPo
       onClose();
       return;
     }
+    if (!isGridKey(event.key)) return;
     const swatches = [
       ...(box.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? []),
     ];
     const index = swatches.indexOf(document.activeElement as HTMLElement);
-    const step: Record<string, number> = {
-      ArrowRight: 1,
-      ArrowDown: 5,
-      ArrowLeft: -1,
-      ArrowUp: -5,
-    };
-    const by = step[event.key];
-    if (by === undefined) return;
     event.preventDefault();
-    const next = index + by;
-    if (next >= 0 && next < swatches.length) swatches[next]?.focus();
+    const next = gridTarget(event.key, index, COLUMNS, swatches.length);
+    if (next !== null) swatches[next]?.focus();
   };
 
   return createPortal(
@@ -78,7 +83,7 @@ export function ColorPopover({ anchor, name, current, onPick, onClose }: ColorPo
       style={{ top: rect.bottom + 4, left: rect.left }}
       className="fixed z-50 grid grid-cols-5 gap-1 rounded-card glass-strong p-1.5"
     >
-      {TAG_PALETTE.map((color, index) => {
+      {TAG_PALETTE.map((color) => {
         const on = color.toLowerCase() === current.toLowerCase();
         return (
           <button
@@ -86,12 +91,12 @@ export function ColorPopover({ anchor, name, current, onPick, onClose }: ColorPo
             type="button"
             role="menuitemradio"
             aria-checked={on}
-            aria-label={`Color ${String(index + 1)}`}
+            aria-label={colorName(color)}
             tabIndex={-1}
             onClick={() => {
               onPick(color);
             }}
-            className="flex size-7 items-center justify-center rounded-[8px] focus-ring hover:bg-input focus-visible:bg-input"
+            className="flex size-7 items-center justify-center rounded-chip focus-ring hover:bg-input focus-visible:bg-input"
           >
             <span
               className="flex size-6 items-center justify-center rounded-full"

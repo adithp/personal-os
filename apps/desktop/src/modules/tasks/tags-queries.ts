@@ -1,10 +1,10 @@
 import type { CreateTagInput, Tag, UndoDescriptor, UpdateTagInput } from '@personal-os/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { create as createStore } from 'zustand';
 import { ApiError } from '../../api/api-client';
 import { useApi } from '../../api/api-context';
 import { useToasts } from '../../store/toast-store';
-import { FAVORITES_KEY } from './favorites/favorites-queries';
-import { TAGS_KEY, TASKS_KEY } from './tasks-queries';
+import { FAVORITES_KEY, TAGS_KEY, TASKS_KEY } from './query-keys';
 
 export { TAGS_KEY };
 
@@ -12,6 +12,26 @@ interface TagWriteResult {
   item: Tag;
   undo: UndoDescriptor | null;
 }
+
+/**
+ * The last delete or merge, for the line in the Manage tags dialog: the toast is outside the
+ * dialog's focus trap, so a keyboard user needs an Undo inside it. The dialog clears it.
+ */
+interface TagNotice {
+  id: number;
+  message: string;
+  undo: () => void;
+}
+export const useTagNotice = createStore<{
+  notice: TagNotice | null;
+  set: (notice: TagNotice | null) => void;
+}>()((set) => ({
+  notice: null,
+  set: (notice) => {
+    set({ notice });
+  },
+}));
+let noticeId = 1;
 
 /** All of the user's tags. */
 export function useTags() {
@@ -40,14 +60,11 @@ export function useTagActions() {
 
   const offerUndo = (message: string, undo: UndoDescriptor | null) => {
     if (!undo) return;
-    useToasts.getState().show(message, {
-      action: {
-        label: 'Undo',
-        onClick: () => {
-          void api.request('POST', '/undo', { body: undo }).then(refresh).catch(fail);
-        },
-      },
-    });
+    const run = () => {
+      void api.request('POST', '/undo', { body: undo }).then(refresh).catch(fail);
+    };
+    useToasts.getState().show(message, { action: { label: 'Undo', onClick: run } });
+    useTagNotice.getState().set({ id: noticeId++, message, undo: run });
   };
   const fail = (error: unknown) => {
     useToasts
@@ -67,6 +84,9 @@ export function useTagActions() {
   const update = useMutation({
     mutationFn: ({ id, ...patch }: UpdateTagInput) =>
       api.request<TagWriteResult>('PATCH', `/tags/${id}`, { body: patch }),
+    onMutate: () => {
+      useTagNotice.getState().set(null);
+    },
     onSuccess: () => refresh(),
     onError: fail,
   });

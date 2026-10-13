@@ -27,6 +27,25 @@ const section = () => screen.findByRole('region', { name: 'Favorites' });
 const tile = async (name: string) =>
   within(await section()).findByRole('link', { name: new RegExp(`^${name}`) });
 
+describe('Favorites on Overview errors', () => {
+  it('shows the server message with Try again when the task counts cannot load', async () => {
+    const fake = createFakeApi(
+      [makeTask({ priority: 1 })],
+      [],
+      [makeFavorite({ name: 'Urgent', view: { priority: [1] } })],
+    );
+    fake.failNext(500, 'server_error', 'Tasks are down', true);
+    const { user } = await openMyTasks(fake, '/tasks');
+    const region = await section();
+    expect(await within(region).findByText('Tasks are down')).toBeInTheDocument();
+    await user.click(within(region).getByRole('button', { name: 'Try again' }));
+    await waitFor(() => {
+      expect(within(region).queryByText('Tasks are down')).not.toBeInTheDocument();
+    });
+    expect(await tile('Urgent')).toHaveTextContent('1open');
+  });
+});
+
 describe('Favorites on Overview', () => {
   it('is hidden when there are no favorites', async () => {
     await openOverview([]);
@@ -107,12 +126,12 @@ describe('Favorites on Overview', () => {
     ]);
     await user.click(await tile('Urgent'));
     expect(router.state.location.pathname).toBe('/tasks/my-tasks');
-    expect(router.state.location.search).toEqual({ priority: [1] });
+    expect(router.state.location.search).toEqual({ priority: [1], group: 'due', sort: 'manual' });
 
     await router.navigate({ to: '/tasks' });
     (await tile('Soon')).focus();
     await user.keyboard('{Enter}');
-    expect(router.state.location.search).toEqual({ due: 'week', sort: 'title' });
+    expect(router.state.location.search).toEqual({ due: 'week', sort: 'title', group: 'due' });
   });
 
   it.each(['dark', 'light'] as const)(

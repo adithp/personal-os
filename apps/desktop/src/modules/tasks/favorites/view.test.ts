@@ -30,6 +30,18 @@ describe('favorite view and URL search', () => {
     expect(currentFavoriteView(search, 'due', 'tag')).toEqual(view);
   });
 
+  it('opens a view without sort or group with the My tasks defaults', () => {
+    expect(favoriteViewToSearch({ priority: [1] })).toEqual({
+      priority: [1],
+      group: 'due',
+      sort: 'manual',
+    });
+    // ...and that is still the same view as far as the active row and Save this view go
+    expect(currentFavoriteView(favoriteViewToSearch({ priority: [1] }), 'manual', 'due')).toEqual({
+      priority: [1],
+    });
+  });
+
   it('leaves defaults out, and is null when nothing differs from them', () => {
     expect(currentFavoriteView({}, 'manual', 'due')).toBeNull();
     expect(currentFavoriteView({ due: 'any' }, 'manual', 'due')).toBeNull();

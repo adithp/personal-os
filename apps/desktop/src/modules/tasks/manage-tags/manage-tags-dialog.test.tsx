@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { AppProviders } from '../../../api/providers';
 import { ManageTagsDialog } from './manage-tags-dialog';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useToasts } from '../../../store/toast-store';
 import { createFakeApi, makeTag, makeTask, type FakeApi } from '../../../test/fake-api';
 import { openMyTasks, resetEverything, restoreEverything, findToast } from '../my-tasks/test-utils';
@@ -17,7 +17,7 @@ const ref = (tag: { id: string; name: string; color: string }) => ({
   color: tag.color,
 });
 
-const dialog = () => screen.getByRole('dialog', { name: 'Manage tags' });
+const dialog = () => screen.getByRole('dialog', { name: 'Tags' });
 const rowOf = (name: string) => {
   const row = document.querySelector<HTMLElement>(
     `[data-tag-row="${screen.getByRole('button', { name: `Delete ${name}` }).closest('li')?.dataset.tagRow ?? ''}"]`,
@@ -43,7 +43,7 @@ function renderDialogAlone(fake: FakeApi) {
       <ManageTagsDialog />
     </AppProviders>,
   );
-  return { user: userEvent.setup() };
+  return { user: userEvent.setup(), queryClient };
 }
 
 async function openDialog(fake: FakeApi) {
@@ -105,12 +105,12 @@ describe('Manage tags dialog', () => {
     expect(await screen.findByRole('list', { name: 'Tags' })).toBeInTheDocument();
   });
 
-  it('shows a message with Retry when the tags cannot load', async () => {
+  it('shows the server message with Try again when the tags cannot load', async () => {
     const { fake } = setup();
     fake.failNext(500, 'server_error', 'Boom');
     const { user } = renderDialogAlone(fake);
-    expect(await screen.findByText('Could not load tags. Try again')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('Boom')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('list', { name: 'Tags' })).toBeInTheDocument();
   });
 
@@ -120,8 +120,8 @@ describe('Manage tags dialog', () => {
     await user.click(await screen.findByRole('button', { name: 'Color of home' }));
     const menu = screen.getByRole('menu', { name: 'Color of home' });
     expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(10);
-    expect(within(menu).getByRole('menuitemradio', { name: 'Color 2' })).toBeChecked();
-    await user.click(within(menu).getByRole('menuitemradio', { name: 'Color 5' }));
+    expect(within(menu).getByRole('menuitemradio', { name: 'Sky' })).toBeChecked();
+    await user.click(within(menu).getByRole('menuitemradio', { name: 'Lavender' }));
     await waitFor(() => {
       expect(fake.tags().find((tag) => tag.id === home.id)?.color).toBe(TAG_PALETTE[4]);
     });
@@ -171,7 +171,7 @@ describe('Manage tags dialog', () => {
     await user.clear(box);
     await user.type(box, 'HOME{Enter}');
     expect(
-      screen.getByText("'home' already exists. Merge 'house' into it? 1 task will get 'home'."),
+      screen.getByText("'home' already exists. Merge 'house' into it? 1 task will move to 'home'."),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -253,9 +253,9 @@ describe('Manage tags dialog', () => {
     const { fake } = setup();
     const { user } = await openMyTasks(fake);
     await user.click(screen.getByRole('button', { name: 'Filter' }));
-    await user.click(await screen.findByRole('menuitemcheckbox', { name: 'Manage tags…' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Manage tags…' }));
     expect(screen.queryByRole('menu', { name: 'Filter' })).not.toBeInTheDocument();
-    expect(await screen.findByRole('dialog', { name: 'Manage tags' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'Tags' })).toBeInTheDocument();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Filter' })).toHaveFocus();
@@ -312,6 +312,118 @@ describe('Manage tags dialog', () => {
     expect(screen.getByRole('button', { name: 'Done' })).toHaveFocus();
     await user.tab();
     expect(within(dialog()).getByRole('button', { name: 'Close' })).toHaveFocus();
+  });
+
+  it('has a 24 px color dot and quiet icon buttons without a glass chip', async () => {
+    const { fake } = setup();
+    await openDialog(fake);
+    const dot = await screen.findByRole('button', { name: 'Color of home' });
+    expect(dot).toHaveClass('size-6');
+    for (const button of [
+      screen.getByRole('button', { name: 'Rename home' }),
+      screen.getByRole('button', { name: 'Delete home' }),
+      within(dialog()).getByRole('button', { name: 'Close' }),
+    ]) {
+      expect(button).toHaveClass('size-6');
+      expect(button).not.toHaveClass('glass');
+    }
+  });
+
+  it('offers Undo inside the dialog after a delete, and moves the focus to the next row', async () => {
+    const { fake } = setup();
+    const { user } = await openDialog(fake);
+    await user.click(await screen.findByRole('button', { name: 'Delete spare' }));
+    await within(dialog()).findByText('Tag deleted.');
+    // spare was the last row: the focus goes to the one before it
+    await waitFor(() => {
+      expect(rowOf('house')).toHaveFocus();
+    });
+    await user.click(within(dialog()).getByRole('button', { name: 'Undo' }));
+    await waitFor(() => {
+      expect(fake.tags().map((tag) => tag.name)).toContain('spare');
+    });
+    expect(within(dialog()).queryByText('Tag deleted.')).not.toBeInTheDocument();
+  });
+
+  it('moves the focus to the next row after a confirmed delete', async () => {
+    const { fake } = setup();
+    const { user } = await openDialog(fake);
+    await user.click(await screen.findByRole('button', { name: 'Delete home' }));
+    await user.click(screen.getByRole('button', { name: 'Delete tag' }));
+    await waitFor(() => {
+      expect(rowOf('house')).toHaveFocus();
+    });
+    expect(await within(dialog()).findByText('Tag deleted.')).toBeInTheDocument();
+  });
+
+  it('shows the merge line with Undo too', async () => {
+    const { fake } = setup();
+    const { user } = await openDialog(fake);
+    await user.click(await screen.findByRole('button', { name: 'Rename house' }));
+    const box = screen.getByRole('textbox', { name: 'Rename house' });
+    await user.clear(box);
+    await user.type(box, 'home{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Merge' }));
+    expect(await within(dialog()).findByText('Tags merged.')).toBeInTheDocument();
+    expect(within(dialog()).getByRole('button', { name: 'Undo' })).toBeInTheDocument();
+  });
+
+  it('removes the Undo line after 8 seconds', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { fake } = setup();
+    const { user } = await openDialog(fake);
+    await user.click(await screen.findByRole('button', { name: 'Delete spare' }));
+    await within(dialog()).findByText('Tag deleted.');
+    act(() => {
+      vi.advanceTimersByTime(8100);
+    });
+    expect(within(dialog()).queryByText('Tag deleted.')).not.toBeInTheDocument();
+  });
+
+  it('names the swatches and moves between them with the arrows, Home and End', async () => {
+    const { fake } = setup();
+    const { user } = await openDialog(fake);
+    await user.click(await screen.findByRole('button', { name: 'Color of home' }));
+    const menu = screen.getByRole('menu', { name: 'Color of home' });
+    const swatches = within(menu).getAllByRole('menuitemradio');
+    expect(swatches.map((swatch) => swatch.getAttribute('aria-label'))).toEqual([
+      'Yellow',
+      'Sky',
+      'Pink',
+      'Mint',
+      'Lavender',
+      'Orange',
+      'Lime',
+      'Peach',
+      'Periwinkle',
+      'Grey-blue',
+    ]);
+    expect(swatches[1]).toHaveFocus();
+    await user.keyboard('{ArrowRight}');
+    expect(swatches[2]).toHaveFocus();
+    await user.keyboard('{ArrowDown}');
+    expect(swatches[7]).toHaveFocus();
+    await user.keyboard('{ArrowUp}{ArrowLeft}');
+    expect(swatches[1]).toHaveFocus();
+    await user.keyboard('{End}');
+    expect(swatches[9]).toHaveFocus();
+    await user.keyboard('{Home}');
+    expect(swatches[0]).toHaveFocus();
+  });
+
+  it('does not take the focus back to the checked swatch when the tags refresh', async () => {
+    const { fake } = setup();
+    const { user, queryClient } = renderDialogAlone(fake);
+    await user.click(await screen.findByRole('button', { name: 'Color of home' }));
+    const swatches = within(screen.getByRole('menu', { name: 'Color of home' })).getAllByRole(
+      'menuitemradio',
+    );
+    await user.keyboard('{ArrowRight}');
+    expect(swatches[2]).toHaveFocus();
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: ['tags'] });
+    });
+    expect(swatches[2]).toHaveFocus();
   });
 
   it('opens from the tag chip menu of a task', async () => {

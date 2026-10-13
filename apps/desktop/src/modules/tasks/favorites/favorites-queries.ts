@@ -11,10 +11,9 @@ import { ApiError } from '../../../api/api-client';
 import { useApi } from '../../../api/api-context';
 import { useToasts } from '../../../store/toast-store';
 import { positionBetween } from '../drag/position';
-import { TAGS_KEY } from '../tags-queries';
+import { FAVORITES_KEY, TAGS_KEY } from '../query-keys';
 
-/** Every cached favorites query starts with this key. */
-export const FAVORITES_KEY = ['task-favorites'] as const;
+export { FAVORITES_KEY };
 
 /** The user's favorites, in their order. */
 export function useFavorites() {
@@ -37,12 +36,17 @@ export function useFavoriteActions() {
   const api = useApi();
   const client = useQueryClient();
   const toast = useToasts.getState;
-  const refresh = () => client.invalidateQueries({ queryKey: FAVORITES_KEY });
+  // Tags show how many favorites use them (favoriteCount), so they refresh too
+  const refresh = () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: FAVORITES_KEY }),
+      client.invalidateQueries({ queryKey: TAGS_KEY }),
+    ]);
 
   const runUndo = async (descriptor: UndoDescriptor) => {
     try {
       await api.request('POST', '/undo', { body: descriptor });
-      await Promise.all([refresh(), client.invalidateQueries({ queryKey: TAGS_KEY })]);
+      await refresh();
     } catch (error) {
       toast().show(messageOf(error), { tone: 'error' });
     }
