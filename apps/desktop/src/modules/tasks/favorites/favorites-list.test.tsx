@@ -391,7 +391,7 @@ describe('the row menu', () => {
     await user.click(more('Alpha'));
     await user.click(within(menu('Alpha')).getByRole('menuitem', { name: 'Rename' }));
     await user.type(screen.getByRole('textbox', { name: 'Rename Alpha' }), 'X');
-    fake.failNext(500, 'boom', 'Server error');
+    fake.failNext(500, 'boom', 'Server error', true);
     await user.keyboard('{Enter}');
     expect(await findToast('Server error')).toBeInTheDocument();
     await waitFor(() => {

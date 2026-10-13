@@ -61,3 +61,15 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: An array of registry.run(...) promises that reject was awaited one by one, so the later ones rejected unhandled
 - Fix: Use an array of functions and call them one after the other
 - Prevention: documented, testing-patterns pitfalls
+
+### 2026-10-13: A query added on mount broke the failNext error tests
+- Symptom: Three page tests that expect an error screen stopped failing
+- Cause: failNext hits the next request of any path and the new favorites list loads first
+- Fix: fake.failNext skips /task-favorites requests unless anyPath is true
+- Prevention: guarded, apps/desktop/src/test/fake-api.ts
+
+### 2026-10-13: Dialog and page tests find several elements of the same role
+- Symptom: getByRole(listitem/status/button Close) found more than one
+- Cause: The whole page is rendered behind the dialog
+- Fix: Scope queries with within(dialog), read toasts from useToasts.getState(), render the dialog alone for loading and error states
+- Prevention: documented, testing-patterns pitfalls

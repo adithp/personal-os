@@ -43,3 +43,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: glass and glass-strong already set the whole-pixel border; a hand-written half-pixel border overrides it
 - Fix: Remove the extra border classes (also removed from the My tasks menus)
 - Prevention: documented, ui-design-system pitfalls
+
+### 2026-10-13: useSortable values read in render trip react-hooks/refs
+- Symptom: Lint error "Cannot access refs during render" on setNodeRef, style, dragging
+- Cause: The React Compiler lint treats values from a useSortable-style hook as refs
+- Fix: Wrap useSortable in a hook that returns an explicit interface and pass it as an optional prop (drag?: ...) to the view component
+- Prevention: documented, ui-design-system pitfalls

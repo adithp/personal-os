@@ -62,3 +62,6 @@ Every time something cost a retry or a fix, we record it here so it never happen
 | 2026-10-12 | time-and-money | chrono marks a lone month name as day 1 with a certain day | guarded | apps/desktop/src/modules/tasks/quick-add/parse.test.ts |
 | 2026-10-12 | data-hooks | Never call another setState inside a state updater function | guarded | apps/desktop/src/modules/tasks/quick-add/bar/quick-add-bar-fixes.test.tsx |
 | 2026-10-12 | dev-environment | eslint --fix can turn x as T into x! and break two other lint rules | documented | dev-environment pitfalls |
+| 2026-10-13 | testing-patterns | A query added on mount broke the failNext error tests | guarded | apps/desktop/src/test/fake-api.ts |
+| 2026-10-13 | testing-patterns | Dialog and page tests find several elements of the same role | documented | testing-patterns pitfalls |
+| 2026-10-13 | ui-design-system | useSortable values read in render trip react-hooks/refs | documented | ui-design-system pitfalls |

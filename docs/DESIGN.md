@@ -158,6 +158,11 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 - Round checkbox 18 px with a 1.5 px border, module yellow with a check when done.
 - Task card: glass, radius 16, padding 12, in a grid of columns at least 180 px wide, lifts 2 px on hover (not with reduced motion), lavender ring when selected, 60% opacity when done. Priority flag colors: Urgent danger red, High Calendar orange, Medium Tasks yellow, Low none. Tag chips: radius 8, height 20, dark text on the tag color. Blocked badge: input-colored chip with a lock icon. Overdue due text uses the danger color.
 
+### Favorites and Manage tags (Tasks)
+- Side panel Favorites: a muted 11 px header with a + icon button, then 32 px rows like the nav rows: a 16 px square (radius 5) in the favorite's palette color with a 12 px dark Tabler glyph, the name (one line), a "more" button on hover or focus; the active view gets the active row look. The collapsed panel shows only the squares with tooltips. Menus are portal-rendered, fixed-position glass-strong menus (224 px wide).
+- Overview favorite tiles: compact pastel tiles in the favorite's color with the name, the open count and one muted line ("2 overdue" or "Nothing overdue"); the whole tile is one link.
+- Manage tags dialog: glass-strong, 440 px wide, radius 16, dimmed page, focus trap, Esc closes; rows of 36 px with a 12 px color dot, the name, a muted usage count, and rename and delete icons on hover; rename, merge and delete questions are inline in the row (the answer that is not destructive has focus first).
+
 ### Board and drag and drop (Tasks)
 - Board: three glass columns (To do, In progress, Done), each with its name and count; the cards are the normal task cards. An empty column says "Nothing here". While dragging, a quiet accent line shows where the card will land and the other cards do not shift.
 - Drag handle: a small grip at the top right of a card (left of a row), invisible until the card is hovered or focused; the cursor is a grab hand.

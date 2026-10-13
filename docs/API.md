@@ -17,7 +17,8 @@ CORS: the allowed origins come from CORS_ORIGINS (comma-separated); the default 
 | 401 | unauthorized | Missing, malformed, expired, or wrongly signed token (with a www-authenticate header) |
 | 404 | not_found | Unknown route, or a task or tag that does not exist (also another user's: never a 403) |
 | 404 | unknown_action | POST /undo with an action name that does not exist |
-| 409 | conflict | A tag rename onto an existing name |
+| 409 | conflict | A tag rename onto an existing name, or restoring a tag whose name exists again |
+| 409 | favorites_limit | More than 12 favorites |
 | 409 | confirmation_required | An external or destructive action without confirmation (the app's buttons confirm, so it never hits this) |
 | 409 | blocked | Completing a blocked task (complete, update to done, move into Done); the message lists the blockers |
 | 409 | circular_dependency | Adding a blocker that would make tasks wait for each other |
@@ -49,7 +50,7 @@ Responses:
 | GET | /tags | List tags: `{ items: [...] }`, each with `taskCount` and `favoriteCount` (live tasks of any status that have it, and favorites that use it) |
 | POST | /tags | Create a tag: 201 when created; 200 with the existing tag when the name exists (ignoring case). `undo` is null |
 | PATCH | /tags/:id | Rename or recolor a tag |
-| DELETE | /tags/:id | Delete a tag: removed from every task (the tasks stay) and from favorites; returns the tag and an undo (Feature 5: answers 501 until built) |
+| DELETE | /tags/:id | Delete a tag: removed from every task (the tasks stay) and from favorites; returns the tag and an undo |
 | POST | /tags/:id/merge | Body `{ targetId }`: move this tag's tasks and favorites to the target tag and delete this one; returns the target tag and an undo |
 | GET | /task-favorites | The favorites in their order: `{ items: [...] }` (Feature 5) |
 | POST | /task-favorites | Save a view: body `name`, `view`, optional `color`, `icon`. 201; the same view again returns the existing favorite with a null undo; 409 `favorites_limit` at 12; 400 for an unknown tag id |

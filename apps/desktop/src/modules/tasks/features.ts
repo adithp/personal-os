@@ -12,5 +12,5 @@ export const TASK_FEATURES = {
   /** Goals page (Feature 8). */
   goals: false,
   /** Favorites: the side panel list and the Overview section (Feature 5). */
-  favorites: false,
+  favorites: true,
 } as const;
