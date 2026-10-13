@@ -4,7 +4,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSettings } from '../../../store/settings-store';
 import { createFakeApi, makeReport } from '../../../test/fake-api';
-import { openMyTasks, resetEverything, restoreEverything } from '../my-tasks/test-utils';
+import { NOW, openMyTasks, resetEverything, restoreEverything } from '../my-tasks/test-utils';
 
 vi.mock('@tauri-apps/api/window', async (importOriginal) => ({
   ...(await importOriginal<typeof TauriWindow>()),
@@ -103,15 +103,14 @@ describe('Reporting stat cards', () => {
 
     const overdue = tile('Overdue now');
     expect(within(overdue).getByText('2')).toBeInTheDocument();
-    expect(within(overdue).getByText('right now')).toBeInTheDocument();
+    expect(within(overdue).getByText('Not done and past due')).toBeInTheDocument();
 
     const added = tile('Added');
     expect(within(added).getByText('4')).toBeInTheDocument();
     expect(within(added).getByText('Last week by Tue: 6')).toBeInTheDocument();
-    expect(added).toHaveAttribute(
-      'title',
-      expect.stringContaining('next copy of a repeating task'),
-    );
+    expect(
+      within(added).getByText('Includes the automatic next copy of a repeating task.'),
+    ).toBeVisible();
   });
 
   it('rounds the on-time rate half up', async () => {
@@ -134,11 +133,31 @@ describe('Reporting stat cards', () => {
 });
 
 describe('Reporting charts', () => {
-  it('describes the chart in a hidden sentence', async () => {
+  it('names the chart with a one-sentence summary', async () => {
     await openReporting();
     expect(
-      await screen.findByText('Done per day this week: 8 tasks, most on Tuesday (5).'),
+      await screen.findByRole('group', {
+        name: 'Done per day this week: 8 tasks, most on Tuesday (5).',
+      }),
     ).toBeInTheDocument();
+  });
+
+  it('marks the table button as pressed, points it at the content, and keeps the table reachable', async () => {
+    const { user } = await openReporting();
+    await screen.findByText('Mon 6 – Sun 12 Oct');
+    const perDay = card('Done per day');
+    const button = within(perDay).getByRole('button', { name: 'Show table' });
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+    const controlled = button.getAttribute('aria-controls');
+    expect(controlled).toBeTruthy();
+    await user.click(button);
+    const pressed = within(perDay).getByRole('button', { name: 'Show chart' });
+    expect(pressed).toHaveAttribute('aria-pressed', 'true');
+    expect(pressed.getAttribute('aria-controls')).toBe(controlled);
+    const scroller = within(perDay).getByRole('region', { name: 'Done per day table' });
+    expect(scroller).toHaveAttribute('tabindex', '0');
+    scroller.focus();
+    expect(scroller).toHaveFocus();
   });
 
   it('swaps Done per day for a table and back', async () => {
@@ -201,6 +220,7 @@ describe('Reporting states', () => {
     expect(await screen.findByRole('heading', { name: 'Reporting' })).toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'Done' })).not.toBeInTheDocument();
     expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(screen.getByText('Loading report…')).toHaveAttribute('role', 'status');
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
     expect(
       await screen.findByRole('group', { name: 'Done' }, { timeout: 5000 }),
@@ -235,7 +255,7 @@ describe('Reporting states', () => {
   });
 
   it('shows one card when nothing was ever finished, and its button opens My tasks', async () => {
-    const { user, router } = await openReporting(null);
+    const { user, router } = await openReporting(makeReport('week', { hasEverDone: false }));
     expect(
       await screen.findByRole('heading', { name: 'No finished tasks yet' }),
     ).toBeInTheDocument();
@@ -248,6 +268,18 @@ describe('Reporting states', () => {
     await waitFor(() => {
       expect(router.history.location.pathname).toBe('/tasks/my-tasks');
     });
+  });
+
+  it('shows the tiles and the empty period, not the card, when tasks were done before', async () => {
+    await openReporting(
+      makeReport('week', { overdueNow: 3, totals: { ...makeReport().totals, added: 2 } }),
+    );
+    expect(await screen.findByText('Nothing done this week yet')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'No finished tasks yet' }),
+    ).not.toBeInTheDocument();
+    expect(within(tile('Overdue now')).getByText('3')).toBeInTheDocument();
+    expect(within(tile('Added')).getByText('2')).toBeInTheDocument();
   });
 
   it('shows zeros and quiet lines when the period is empty but the last one was not', async () => {
@@ -283,6 +315,23 @@ describe('Reporting states', () => {
     await user.click(within(alert).getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('group', { name: 'Done' })).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('keeps the picture, undimmed, and offers Try again when a background refresh fails', async () => {
+    const { fake, user } = await openReporting();
+    await screen.findByText('Mon 6 – Sun 12 Oct');
+    // the report is stale after a minute; coming back to the window refetches it
+    vi.setSystemTime(new Date(Date.parse(NOW) + 5 * 60_000));
+    fake.failNext(500, 'internal', 'Boom', '/tasks/report');
+    document.dispatchEvent(new Event('visibilitychange', { bubbles: true }));
+    const line = await screen.findByText('Could not refresh.');
+    expect(screen.getByRole('group', { name: 'Done' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(document.querySelector('.opacity-50')).toBeNull();
+    await user.click(within(line).getByRole('button', { name: 'Try again' }));
+    await waitFor(() => {
+      expect(screen.queryByText('Could not refresh.')).not.toBeInTheDocument();
+    });
   });
 
   it('shows the server message when the database is behind', async () => {

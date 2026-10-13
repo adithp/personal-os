@@ -14,7 +14,7 @@ import {
   IconPlus,
   IconTag,
 } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { istDayStartPlus, startOfIstDay, toIstDate } from '../dates';
 import { MenuSeparator } from '../my-tasks/menu';
 import { checkPickedDate } from './pick-date';
@@ -105,7 +105,9 @@ function DateMenu({
           </p>
         ) : null}
       </div>
-      <QuickItem onSelect={submit}>Set date</QuickItem>
+      <QuickItem tabStop onSelect={submit}>
+        Set date
+      </QuickItem>
     </>
   );
 }
@@ -216,6 +218,60 @@ function TagMenu({
   );
 }
 
+function MoreMenu({
+  task,
+  handlers,
+  close,
+}: {
+  task: Task;
+  handlers: QuickActionHandlers;
+  close: () => void;
+}) {
+  const headingId = useId();
+  return (
+    <>
+      <div role="group" aria-labelledby={headingId} className="flex flex-col gap-1">
+        <p id={headingId} className="px-2 pt-1 text-small font-medium text-fg-muted">
+          Priority
+        </p>
+        {PRIORITIES.map((priority) => (
+          <QuickItem
+            key={priority}
+            role="menuitemradio"
+            checked={task.priority === priority}
+            onSelect={() => {
+              if (task.priority !== priority) handlers.onPriority(task, priority);
+              close();
+            }}
+          >
+            <span className="flex size-3.5 shrink-0 items-center justify-center">
+              {task.priority === priority ? <IconCheck size={14} aria-hidden /> : null}
+            </span>
+            {TASK_PRIORITY_LABELS[priority]}
+          </QuickItem>
+        ))}
+      </div>
+      <MenuSeparator />
+      <QuickItem
+        onSelect={() => {
+          handlers.onArchive(task);
+          close();
+        }}
+      >
+        Archive
+      </QuickItem>
+      <QuickItem
+        onSelect={() => {
+          handlers.onDelete(task);
+          close();
+        }}
+      >
+        Delete
+      </QuickItem>
+    </>
+  );
+}
+
 export interface QuickActionsProps {
   task: Task;
   handlers: QuickActionHandlers;
@@ -283,46 +339,7 @@ export function QuickActions({ task, handlers, selected, tabbable }: QuickAction
         tabIndex={tabIndex}
         icon={<IconDots size={16} stroke={1.5} aria-hidden />}
       >
-        {(close) => (
-          <>
-            <p aria-hidden className="px-2 pt-1 text-small font-medium text-fg-muted">
-              Priority
-            </p>
-            {PRIORITIES.map((priority) => (
-              <QuickItem
-                key={priority}
-                role="menuitemradio"
-                checked={task.priority === priority}
-                onSelect={() => {
-                  if (task.priority !== priority) handlers.onPriority(task, priority);
-                  close();
-                }}
-              >
-                <span className="flex size-3.5 shrink-0 items-center justify-center">
-                  {task.priority === priority ? <IconCheck size={14} aria-hidden /> : null}
-                </span>
-                {TASK_PRIORITY_LABELS[priority]}
-              </QuickItem>
-            ))}
-            <MenuSeparator />
-            <QuickItem
-              onSelect={() => {
-                handlers.onArchive(task);
-                close();
-              }}
-            >
-              Archive
-            </QuickItem>
-            <QuickItem
-              onSelect={() => {
-                handlers.onDelete(task);
-                close();
-              }}
-            >
-              Delete
-            </QuickItem>
-          </>
-        )}
+        {(close) => <MoreMenu task={task} handlers={handlers} close={close} />}
       </QuickMenu>
     </span>
   );

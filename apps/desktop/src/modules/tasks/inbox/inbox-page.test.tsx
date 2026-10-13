@@ -102,6 +102,11 @@ describe('the Inbox list', () => {
     expect(screen.getByRole('button', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
   });
 
+  it('announces the count in a polite status line', async () => {
+    await openInbox();
+    expect(await screen.findByText('3 to sort')).toHaveAttribute('role', 'status');
+  });
+
   it('says "1 to sort" for one task', async () => {
     await openInbox(createFakeApi([makeTask({ title: 'Only' })]));
     expect(await screen.findByText('1 to sort')).toBeInTheDocument();
@@ -291,6 +296,50 @@ describe('the quick actions', () => {
     expect(await findToast('Tag added.')).toBeInTheDocument();
   });
 
+  it('keeps the new tag when giving it to the task fails', async () => {
+    const fake = three();
+    const { user } = await openInbox(fake);
+    await screen.findByText('One');
+    await user.click(rowButton('One', 'Tag…'));
+    await user.keyboard('Garden');
+    fake.failNext(500, 'internal', 'Could not tag that task', `/tasks/${idOf(fake, 'One')}`);
+    await user.keyboard('{Enter}');
+    expect(await findToast('Could not tag that task')).toBeInTheDocument();
+    expect(fake.tags().some((tag) => tag.name === 'Garden')).toBe(true);
+    expect(titles()).toEqual(['One', 'Two', 'Three']);
+  });
+
+  it('a failed tag create changes nothing and keeps the picker open', async () => {
+    const fake = three();
+    const { user } = await openInbox(fake);
+    await screen.findByText('One');
+    await user.click(rowButton('One', 'Tag…'));
+    await user.keyboard('Garden');
+    fake.failNext(500, 'internal', 'Could not make the tag', '/tags');
+    await user.keyboard('{Enter}');
+    expect(await findToast('Could not make the tag')).toBeInTheDocument();
+    expect(callsTo(fake, 'PATCH', `/tasks/${idOf(fake, 'One')}`)).toHaveLength(0);
+    expect(screen.getByRole('menu', { name: 'Tags' })).toBeInTheDocument();
+    expect(titles()).toEqual(['One', 'Two', 'Three']);
+  });
+
+  it('does not pull focus back to the list when focus left the row while the tag was made', async () => {
+    const fake = three();
+    const { user } = await openInbox(fake);
+    await screen.findByText('One');
+    await user.click(rowButton('One', 'Tag…'));
+    await user.keyboard('Garden');
+    fake.slow(200);
+    await user.keyboard('{Enter}');
+    act(() => {
+      (document.activeElement as HTMLElement | null)?.blur();
+    });
+    await waitFor(() => {
+      expect(titles()).toEqual(['Two', 'Three']);
+    });
+    expect(itemOf('Two')).not.toHaveFocus();
+  });
+
   it('refuses a tag name the server would refuse, and keeps the picker open', async () => {
     const fake = three();
     const { user } = await openInbox(fake);
@@ -322,6 +371,55 @@ describe('the quick actions', () => {
     });
     expect(titles()).toEqual(['One', 'Two', 'Three']);
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('groups the priorities under the visible Priority heading', async () => {
+    const { user } = await openInbox();
+    await screen.findByText('One');
+    await user.click(rowButton('One', 'More'));
+    const group = screen.getByRole('group', { name: 'Priority' });
+    expect(within(group).getAllByRole('menuitemradio')).toHaveLength(4);
+  });
+
+  it('reaches Set date with Tab from the date box without closing the menu', async () => {
+    const fake = three();
+    const { user } = await openInbox(fake);
+    await screen.findByText('One');
+    await user.click(rowButton('One', 'Date…'));
+    const box = screen.getByLabelText('Pick a date');
+    await user.click(box);
+    fireEvent.change(box, { target: { value: '2025-10-20' } });
+    await user.tab();
+    const set = screen.getByRole('menuitem', { name: 'Set date' });
+    expect(set).toHaveFocus();
+    expect(screen.getByRole('menu', { name: 'Date' })).toBeInTheDocument();
+    await user.keyboard('{Enter}');
+    await waitFor(() => {
+      expect(callsTo(fake, 'POST', `/tasks/${idOf(fake, 'One')}/move`)).toHaveLength(1);
+    });
+  });
+
+  it('opens a menu upward when the bottom of the area would cut it off', async () => {
+    const { user } = await openInbox();
+    await screen.findByText('One');
+    const rect = (top: number, bottom: number) =>
+      ({ top, bottom, height: bottom - top, left: 0, right: 0, width: 0, x: 0, y: top }) as DOMRect;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      return this.getAttribute('role') === 'menu' ? rect(700, 900) : rect(600, 630);
+    });
+    await user.click(rowButton('One', 'More'));
+    const menu = screen.getByRole('menu', { name: 'More actions' });
+    expect(menu.style.bottom).toBe('100%');
+    expect(menu.style.top).toBe('auto');
+  });
+
+  it('keeps a menu below its button when there is room', async () => {
+    const { user } = await openInbox();
+    await screen.findByText('One');
+    await user.click(rowButton('One', 'More'));
+    expect(screen.getByRole('menu', { name: 'More actions' }).style.bottom).toBe('');
   });
 
   it('More archives and deletes, each with an Undo toast', async () => {
@@ -603,6 +701,40 @@ describe('the shortcuts help', () => {
     expect(within(dialog).getByText('Open details')).toBeInTheDocument();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('the help dialogs keep Tab inside', () => {
+  it('Inbox help wraps Tab and returns focus to the ? button on close', async () => {
+    const { user } = await openInbox();
+    await screen.findByText('One');
+    const opener = screen.getByRole('button', { name: 'Keyboard shortcuts' });
+    await user.click(opener);
+    const dialog = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
+    await user.tab();
+    const close = within(dialog).getByRole('button', { name: 'Close' });
+    expect(close).toHaveFocus();
+    await user.tab();
+    expect(close).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(close).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(opener).toHaveFocus();
+  });
+
+  it('My tasks help wraps Tab too', async () => {
+    const { user } = await openMyTasks(three(), '/tasks/my-tasks');
+    await screen.findByText('One');
+    act(() => {
+      itemOf('One').focus();
+    });
+    await user.keyboard('?');
+    const dialog = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
+    await user.tab();
+    const close = within(dialog).getByRole('button', { name: 'Close' });
+    expect(close).toHaveFocus();
+    await user.tab();
+    expect(close).toHaveFocus();
   });
 });
 

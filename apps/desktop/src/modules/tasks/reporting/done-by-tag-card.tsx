@@ -69,7 +69,9 @@ export function DoneByTagCard({ report }: { report: TaskReport }) {
                   }
                   style={row.color === null ? undefined : { backgroundColor: row.color }}
                 />
-                <span className="truncate">{row.name}</span>
+                <span className="truncate" title={row.name}>
+                  {row.name}
+                </span>
               </span>
               <span aria-hidden className="h-3">
                 <span

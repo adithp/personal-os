@@ -1,16 +1,9 @@
 import type { ReportDay, TaskReport } from '@personal-os/shared';
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, LabelList, Tooltip, XAxis, YAxis } from 'recharts';
 import type { TooltipContentProps } from 'recharts';
 import { ReportCard, ReportTable } from './report-card';
-import {
-  axisLabel,
-  dayLabel,
-  daySummary,
-  dayTooltip,
-  isFutureDay,
-  periodWord,
-} from './report-format';
+import { axisLabel, dayLabel, daySummary, dayTooltip, periodWord } from './report-format';
 
 const CHART_HEIGHT = 200;
 
@@ -19,7 +12,10 @@ function DayTooltip({ active, payload }: TooltipContentProps) {
   if (!active || !day) return null;
   const { title, detail } = dayTooltip(day);
   return (
-    <div className="rounded-chip glass-strong px-2 py-1.5 text-small whitespace-nowrap">
+    <div
+      data-liquid-skip
+      className="rounded-chip glass-strong px-2 py-1.5 text-small whitespace-nowrap"
+    >
       <p className="font-semibold text-fg">{title}</p>
       <p className="text-fg-secondary">{detail}</p>
     </div>
@@ -35,7 +31,6 @@ interface TickProps {
 /** Done per day: columns in Tasks yellow, one per India calendar day of the period. */
 export function DonePerDayCard({ report }: { report: TaskReport }) {
   const [table, setTable] = useState(false);
-  const summaryId = useId();
   const { period, today, days } = report;
   const week = period === 'week';
   const empty = report.totals.done === 0;
@@ -43,7 +38,6 @@ export function DonePerDayCard({ report }: { report: TaskReport }) {
   const data = days.map((day) => ({
     ...day,
     label: axisLabel(day.date, period),
-    future: isFutureDay(day.date, today),
   }));
 
   const tick = ({ x = 0, y = 0, payload }: TickProps) => {
@@ -57,14 +51,7 @@ export function DonePerDayCard({ report }: { report: TaskReport }) {
         textAnchor="middle"
         fontSize={11}
         fontWeight={isToday ? 500 : 400}
-        fill={
-          item?.future
-            ? 'var(--text-muted)'
-            : isToday
-              ? 'var(--text-primary)'
-              : 'var(--text-secondary)'
-        }
-        opacity={item?.future ? 0.7 : 1}
+        fill={isToday ? 'var(--text-primary)' : 'var(--text-secondary)'}
       >
         {item?.label}
       </text>
@@ -81,9 +68,6 @@ export function DonePerDayCard({ report }: { report: TaskReport }) {
       }}
       className="col-span-2"
     >
-      <p id={summaryId} className="sr-only">
-        {daySummary(report)}
-      </p>
       {table ? (
         <ReportTable
           label="Done per day"
@@ -91,7 +75,7 @@ export function DonePerDayCard({ report }: { report: TaskReport }) {
           rows={days.map((day) => [dayLabel(day.date), day.done, day.onTime, day.late])}
         />
       ) : (
-        <div className="relative min-h-0 flex-1" aria-describedby={summaryId}>
+        <div role="group" aria-label={daySummary(report)} className="relative min-h-0 flex-1">
           <BarChart
             responsive
             width="100%"
@@ -117,7 +101,7 @@ export function DonePerDayCard({ report }: { report: TaskReport }) {
               tickCount={4}
               tickLine={false}
               axisLine={false}
-              tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+              tick={{ fill: 'var(--text-secondary)', fontSize: 11 }}
             />
             {empty ? null : (
               <Tooltip

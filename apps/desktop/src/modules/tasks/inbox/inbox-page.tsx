@@ -83,8 +83,9 @@ export function InboxPage() {
       setTags.mutate({ id: task.id, tagIds: [tagId] });
     },
     onNewTag: async (task, name) => {
-      keepPlace(task);
       const { item } = await tagActions.create.mutateAsync({ name });
+      // Only now: a failed create must not arm the focus restore. The new tag stays when this step fails.
+      keepPlace(task);
       setTags.mutate({ id: task.id, tagIds: [item.id] });
     },
     onPriority: (task, priority) => {
@@ -144,16 +145,15 @@ export function InboxPage() {
         <header className="flex items-end justify-between gap-3">
           <div>
             <h1 className="text-page font-semibold text-fg">Inbox</h1>
-            <p className="text-small text-fg-muted">
+            {/* Both lines keep their height, so the quick add bar and the list do not jump */}
+            <p role="status" className="min-h-[15px] text-small text-fg-muted">
               {inbox.isPending || inbox.isError || !hasTasks
                 ? ' '
                 : `${String(inbox.count)} to sort`}
             </p>
-            {ready && hasTasks ? (
-              <p className="pt-1 text-small text-fg-muted">
-                Give each task a date or a tag to file it.
-              </p>
-            ) : null}
+            <p className="min-h-[19px] pt-1 text-small text-fg-muted">
+              {ready && hasTasks ? 'Give each task a date or a tag to file it.' : ' '}
+            </p>
           </div>
           <button
             type="button"
@@ -161,7 +161,7 @@ export function InboxPage() {
             onClick={() => {
               setHelpOpen(true);
             }}
-            className="h-[30px] rounded-control px-2 text-body text-fg-muted focus-ring hover:bg-input hover:text-fg"
+            className="h-[30px] min-h-6 min-w-6 rounded-control px-2 text-body text-fg-muted focus-ring hover:bg-input hover:text-fg"
           >
             ?
           </button>
