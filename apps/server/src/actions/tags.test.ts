@@ -1,4 +1,4 @@
-import { entities, tags } from '@personal-os/db';
+import { entities, taskFavorites, tags } from '@personal-os/db';
 import { createTestDb, createTestUser, type TestDb } from '@personal-os/db/testing';
 import { TAG_PALETTE } from '@personal-os/shared';
 import { sql } from 'drizzle-orm';
@@ -121,6 +121,67 @@ describe('tags.list', () => {
     await t.db.execute(sql`update tags set deleted_at = now() where id = ${gone.id}`);
     expect((await listTags(alice())).map((tag) => tag.name)).toEqual(['b', 'a']);
     expect((await listTags(bob())).map((tag) => tag.name)).toEqual(['bobs']);
+  });
+});
+
+describe('tags.list counts', () => {
+  const task = async (ctx: ActionContext, title: string, tagIds: string[], parent?: string) =>
+    (await registry.run(ctx, 'tasks.create', { title, tagIds, parentTaskId: parent })).data as {
+      id: string;
+    };
+  const counts = async (ctx: ActionContext) =>
+    (await registry.run(ctx, 'tags.list', {})).data as (TagItem & {
+      taskCount: number;
+      favoriteCount: number;
+    })[];
+
+  it('counts live tasks of any status, archived and subtasks too, not deleted ones', async () => {
+    const work = (await createTag(alice(), { name: 'work' })).data as TagItem;
+    const empty = (await createTag(alice(), { name: 'empty' })).data as TagItem;
+    const open = await task(alice(), 'open', [work.id]);
+    const done = await task(alice(), 'done', [work.id]);
+    const archived = await task(alice(), 'archived', [work.id]);
+    const trashed = await task(alice(), 'trashed', [work.id]);
+    await task(alice(), 'sub', [work.id], open.id);
+    await registry.run(alice(), 'tasks.complete', { id: done.id });
+    await registry.run(alice(), 'tasks.archive', { id: archived.id });
+    await registry.run(alice(), 'tasks.delete', { id: trashed.id });
+    expect(await counts(alice())).toMatchObject([
+      { id: work.id, taskCount: 4, favoriteCount: 0 },
+      { id: empty.id, taskCount: 0, favoriteCount: 0 },
+    ]);
+  });
+
+  it('counts live favorites that use the tag, and never another user’s tasks or favorites', async () => {
+    const work = (await createTag(alice(), { name: 'work' })).data as TagItem;
+    const other = (await createTag(alice(), { name: 'other' })).data as TagItem;
+    const row = { color: '#F7D96B', icon: 'hash' };
+    await alice().scope.insert(taskFavorites, [
+      { ...row, name: 'a', view: { tagIds: [work.id, other.id] } },
+      { ...row, name: 'b', view: { tagIds: [work.id] } },
+    ]);
+    const [gone] = await alice().scope.insert(taskFavorites, {
+      ...row,
+      name: 'gone',
+      view: { tagIds: [work.id] },
+    });
+    await t.db.execute(sql`update task_favorites set deleted_at = now() where id = ${gone?.id}`);
+    await bob().scope.insert(taskFavorites, { ...row, name: 'c', view: { tagIds: [work.id] } });
+    await task(bob(), 'theirs', []);
+    expect(await counts(alice())).toMatchObject([
+      { id: work.id, taskCount: 0, favoriteCount: 2 },
+      { id: other.id, favoriteCount: 1 },
+    ]);
+  });
+
+  it('is not added to the results of create and update', async () => {
+    const created = (await createTag(alice(), { name: 'x' })).data;
+    expect(created).not.toHaveProperty('taskCount');
+    const updated = await registry.run(alice(), 'tags.update', {
+      id: (created as TagItem).id,
+      name: 'y',
+    });
+    expect(updated.data).not.toHaveProperty('favoriteCount');
   });
 });
 
