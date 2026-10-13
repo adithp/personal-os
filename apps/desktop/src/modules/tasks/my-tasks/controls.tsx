@@ -11,6 +11,7 @@ import {
   type SortKey,
   type TaskFilters,
 } from '../filters';
+import { useManageTags } from '../manage-tags/manage-tags-store';
 import { Menu, MenuGroup, MenuItem } from './menu';
 
 const SORT_LABELS: Record<SortKey, string> = {
@@ -73,6 +74,7 @@ export interface FilterMenuProps {
 /** Filter: status, priority, tag, due range, and archived. Stays open while you pick. */
 export function FilterMenu({ filters, tags, onChange }: FilterMenuProps) {
   const count = activeFilterCount(filters);
+  const openManageTags = useManageTags((state) => state.openManageTags);
   return (
     <Menu label="Filter" detail={count > 0 ? String(count) : undefined}>
       <MenuGroup label="Status">
@@ -120,6 +122,9 @@ export function FilterMenu({ filters, tags, onChange }: FilterMenuProps) {
             </MenuItem>
           ))
         )}
+        <MenuItem kind="checkbox" checked={false} closeOnSelect onSelect={openManageTags}>
+          Manage tags…
+        </MenuItem>
       </MenuGroup>
       <MenuGroup label="Due">
         {DUE_OPTIONS.map((option) => (
