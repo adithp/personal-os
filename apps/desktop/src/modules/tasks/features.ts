@@ -6,7 +6,7 @@ export const TASK_FEATURES = {
   /** Board view in My tasks (Feature 2). */
   board: true,
   /** Inbox page (Feature 6). */
-  inbox: false,
+  inbox: true,
   /** Reporting page (Feature 7). */
   reporting: false,
   /** Goals page (Feature 8). */

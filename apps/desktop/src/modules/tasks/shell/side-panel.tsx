@@ -14,8 +14,7 @@ import { Link } from '@tanstack/react-router';
 import type { ReactElement } from 'react';
 import { FavoritesList } from '../favorites/favorites-list';
 import { TASK_FEATURES } from '../features';
-import { inboxTasks } from '../sections';
-import { useOpenTasks } from '../tasks-queries';
+import { useInbox } from '../inbox/use-inbox';
 import { useTasksUi } from '../tasks-ui-store';
 
 type Route = '/tasks' | '/tasks/my-tasks' | '/tasks/inbox' | '/tasks/reporting' | '/tasks/goals';
@@ -55,18 +54,20 @@ const ITEMS: readonly Item[] = [
 const rowClass =
   'flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-body focus-ring transition-colors duration-150 ease-out';
 
-function InboxCount() {
-  const tasks = useOpenTasks();
-  if (!tasks.data) return null;
-  const count = inboxTasks(tasks.data).length;
-  return (
-    <span className="ml-auto text-small text-fg-muted" aria-label={`${String(count)} in inbox`}>
-      {count}
-    </span>
-  );
-}
+/** "Inbox, 3 tasks to sort": the count is spoken as part of the link's name. */
+const inboxName = (count: number) =>
+  `Inbox, ${String(count)} ${count === 1 ? 'task' : 'tasks'} to sort`;
 
-function PanelItem({ item, collapsed }: { item: Item; collapsed: boolean }) {
+/** `sortCount` is the Inbox count (0 when none, loading, or failed: then nothing shows). */
+function PanelItem({
+  item,
+  collapsed,
+  sortCount,
+}: {
+  item: Item;
+  collapsed: boolean;
+  sortCount: number;
+}) {
   const Glyph = item.icon;
   const icon = <Glyph size={18} stroke={1.5} aria-hidden className="shrink-0" />;
   const wrap = (node: ReactElement<{ 'aria-describedby'?: string }>, tip: string) =>
@@ -95,21 +96,27 @@ function PanelItem({ item, collapsed }: { item: Item; collapsed: boolean }) {
     );
   }
 
+  const counted = item.count === true && sortCount > 0;
+  const name = counted ? inboxName(sortCount) : collapsed ? item.label : undefined;
   return (
     <li>
       {wrap(
         <Link
           to={item.to}
           activeOptions={{ exact: item.exact === true }}
-          aria-label={collapsed ? item.label : undefined}
+          aria-label={name}
           className={cx(rowClass, 'text-fg-secondary hover:bg-tint hover:text-fg')}
           activeProps={{ className: 'bg-tint !text-fg font-medium' }}
         >
           {icon}
           {collapsed ? null : <span>{item.label}</span>}
-          {item.count && !collapsed ? <InboxCount /> : null}
+          {counted && !collapsed ? (
+            <span aria-hidden className="ml-auto text-small text-fg-muted">
+              {sortCount > 99 ? '99+' : sortCount}
+            </span>
+          ) : null}
         </Link>,
-        item.label,
+        counted ? `${item.label} (${String(sortCount)})` : item.label,
       )}
     </li>
   );
@@ -120,6 +127,8 @@ export function SidePanel() {
   const collapsed = useTasksUi((state) => state.sidePanelCollapsed);
   const toggle = useTasksUi((state) => state.toggleSidePanel);
   const label = collapsed ? 'Expand side panel' : 'Collapse side panel';
+  const inbox = useInbox();
+  const sortCount = inbox.isPending || inbox.isError ? 0 : inbox.count;
   const Toggle = collapsed ? IconLayoutSidebarLeftExpand : IconLayoutSidebarLeftCollapse;
 
   return (
@@ -147,7 +156,7 @@ export function SidePanel() {
       <nav aria-label="Tasks">
         <ul className="flex flex-col gap-0.5">
           {ITEMS.map((item) => (
-            <PanelItem key={item.label} item={item} collapsed={collapsed} />
+            <PanelItem key={item.label} item={item} collapsed={collapsed} sortCount={sortCount} />
           ))}
         </ul>
       </nav>
