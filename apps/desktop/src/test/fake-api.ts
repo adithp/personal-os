@@ -100,6 +100,7 @@ export function makeReport(
     byTag: [],
     otherTagsDone: 0,
     noTagDone: 0,
+    hasEverDone: true,
     ...overrides,
   };
 }

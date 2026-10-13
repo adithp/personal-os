@@ -51,6 +51,8 @@ export const taskReportSchema = z.object({
   otherTagsDone: count,
   /** Done tasks without a tag. */
   noTagDone: count,
+  /** True when the user has at least one completed task ever (the page shows "No finished tasks yet" only when false). */
+  hasEverDone: z.boolean(),
 });
 export type TaskReport = z.infer<typeof taskReportSchema>;
 

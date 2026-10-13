@@ -1,6 +1,13 @@
-import { entityTags, tags, tasks, type TaskRow } from '@personal-os/db';
+import {
+  entityTags,
+  tags,
+  tasks,
+  type EntityTagRow,
+  type TagRow,
+  type TaskRow,
+} from '@personal-os/db';
 import { taskReportActions, type ReportDay, type TaskReport } from '@personal-os/shared';
-import { and, gte, inArray, isNotNull, isNull, lt, or } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNotNull, isNull, lt, or } from 'drizzle-orm';
 import type { UserScope } from '../lib/user-scope';
 import { implement } from './registry';
 
@@ -66,6 +73,17 @@ interface Counts {
   noDueDate: number;
 }
 
+/** Rows read for "overdue now" at most; above this the number is a floor. */
+const MAX_OVERDUE_ROWS = 20_000;
+const BATCH = 1000;
+
+function chunk<T>(items: readonly T[], size: number): T[][] {
+  const parts: T[][] = [];
+  for (let index = 0; index < items.length; index += size)
+    parts.push(items.slice(index, index + size));
+  return parts;
+}
+
 const emptyCounts = (): Counts => ({ done: 0, onTime: 0, late: 0, noDueDate: 0 });
 
 function countDone(counts: Counts, row: TaskRow, completedDay: number): void {
@@ -87,24 +105,28 @@ async function buildReport(scope: UserScope, period: 'week' | 'month'): Promise<
     where: and(
       scope.isLive(tasks),
       isNull(tasks.parentTaskId),
-      or(
-        gte(tasks.completedAt, since),
-        gte(tasks.createdAt, since),
-        and(
-          inArray(tasks.status, ['todo', 'doing']),
-          isNull(tasks.archivedAt),
-          isNotNull(tasks.dueAt),
-          lt(tasks.dueAt, todayStart),
-        ),
-      ),
+      or(gte(tasks.completedAt, since), gte(tasks.createdAt, since)),
     ),
+  });
+  // Overdue now is a snapshot with no lower bound: read it apart and cap it, so a very old backlog
+  // cannot make every report call load everything (scope.select cannot count or pick columns)
+  const overdue = await scope.select(tasks, {
+    where: and(
+      scope.isLive(tasks),
+      isNull(tasks.parentTaskId),
+      inArray(tasks.status, ['todo', 'doing']),
+      isNull(tasks.archivedAt),
+      isNotNull(tasks.dueAt),
+      lt(tasks.dueAt, todayStart),
+    ),
+    limit: MAX_OVERDUE_ROWS,
   });
 
   const days = new Map<number, Counts>();
   for (let day = current.start; day <= current.end; day += 1) days.set(day, emptyCounts());
   const totals = { ...emptyCounts(), added: 0 };
   const before = { ...emptyCounts(), added: 0 };
-  let overdueNow = 0;
+  const overdueNow = overdue.length;
   const doneIds: string[] = [];
 
   for (const row of rows) {
@@ -122,29 +144,38 @@ async function buildReport(scope: UserScope, period: 'week' | 'month'): Promise<
     const createdDay = dayOf(row.createdAt);
     if (inRange(createdDay, current)) totals.added += 1;
     else if (inRange(createdDay, previous)) before.added += 1;
+  }
 
-    if (
-      (row.status === 'todo' || row.status === 'doing') &&
-      !row.archivedAt &&
-      row.dueAt &&
-      dayOf(row.dueAt) < today
-    ) {
-      overdueNow += 1;
-    }
+  // Has any task ever been completed? (the page shows "No finished tasks yet" only when not)
+  let hasEverDone = totals.done > 0 || before.done > 0;
+  if (!hasEverDone) {
+    const [any] = await scope.select(tasks, {
+      where: and(scope.isLive(tasks), eq(tasks.status, 'done'), isNotNull(tasks.completedAt)),
+      limit: 1,
+    });
+    hasEverDone = any !== undefined;
   }
 
   // Done tasks of this period and their live tags
   const tagsOfTask = new Map<string, string[]>();
   const tagById = new Map<string, { name: string; color: string }>();
   if (doneIds.length > 0) {
-    const links = await scope.select(entityTags, { where: inArray(entityTags.entityId, doneIds) });
+    // In batches: one statement can hold at most 65,535 values
+    const links: EntityTagRow[] = [];
+    for (const batch of chunk(doneIds, BATCH)) {
+      links.push(
+        ...(await scope.select(entityTags, { where: inArray(entityTags.entityId, batch) })),
+      );
+    }
     if (links.length > 0) {
-      const tagRows = await scope.select(tags, {
-        where: and(
-          scope.isLive(tags),
-          inArray(tags.id, [...new Set(links.map((link) => link.tagId))]),
-        ),
-      });
+      const tagRows: TagRow[] = [];
+      for (const batch of chunk([...new Set(links.map((link) => link.tagId))], BATCH)) {
+        tagRows.push(
+          ...(await scope.select(tags, {
+            where: and(scope.isLive(tags), inArray(tags.id, batch)),
+          })),
+        );
+      }
       for (const tag of tagRows) tagById.set(tag.id, { name: tag.name, color: tag.color });
       for (const link of links) {
         if (!tagById.has(link.tagId)) continue;
@@ -192,6 +223,7 @@ async function buildReport(scope: UserScope, period: 'week' | 'month'): Promise<
     })),
     otherTagsDone,
     noTagDone: totals.done - tagsOfTask.size,
+    hasEverDone,
   };
 }
 

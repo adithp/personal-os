@@ -451,3 +451,27 @@ describe('tasks.report rules', () => {
     expect(theirs.byTag.map((row) => row.name)).toEqual(['bobs']);
   });
 });
+
+describe('tasks.report hasEverDone and many tasks', () => {
+  it('is false with no finished task, true when one was finished long ago', async () => {
+    await seed();
+    expect((await report('week')).hasEverDone).toBe(false);
+    await done('2026-03-01T06:00:00.000Z');
+    const result = await report('week');
+    expect(result.hasEverDone).toBe(true);
+    expect(result.totals.done).toBe(0);
+  });
+
+  it('ignores deleted finished tasks and other users', async () => {
+    await done('2026-03-01T06:00:00.000Z', { deletedAt: '2026-03-02T06:00:00.000Z' });
+    await done('2026-03-01T06:00:00.000Z', { userId: BOB });
+    expect((await report('week')).hasEverDone).toBe(false);
+  });
+
+  it('counts the overdue tasks of a long backlog', async () => {
+    for (let index = 0; index < 30; index += 1) {
+      await seed({ dueAt: '2025-01-01T06:00:00.000Z' });
+    }
+    expect((await report('week')).overdueNow).toBe(30);
+  });
+});
