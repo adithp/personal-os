@@ -31,9 +31,9 @@ export const mergeTagInput = z
 export const unmergeTagInput = z.object({
   sourceId: id,
   targetId: id,
-  /** The tasks that got the target tag only because of the merge (they had the source tag). */
+  /** The tasks that had the source tag (those that also had the target keep the target tag). */
   taskIds: z.array(id).max(MAX_UNDO_TASK_IDS),
-  /** The tasks that had both tags before the merge (they keep the target tag). */
+  /** The favorites the merge changed or removed, with their views before. */
   favorites: z.array(touchedFavoriteSchema).max(12),
 });
 
