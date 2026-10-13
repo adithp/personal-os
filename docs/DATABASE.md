@@ -54,7 +54,7 @@ Each module table uses the same id as its entity row.
 
 ### Tags
 - tags: id, user_id, name (unique per user ignoring case among live tags), color (a palette hex), deleted_at. A plain table: a tag has no row in entities. The knowledge graph (Step 7) builds tag nodes from the tags table.
-- entity_tags: entity_id, tag_id (a task can only get tags of the same user, enforced by composite foreign keys; each pair once). entity_tags rows are hard-deleted (no deleted_at); soft-deleting a tag does not remove its rows, and task reads ignore tags that are soft-deleted
+- entity_tags: entity_id, tag_id (a task can only get tags of the same user, enforced by composite foreign keys; each pair once). entity_tags rows are hard-deleted (no deleted_at); soft-deleting a tag does not remove its rows, and task reads ignore tags that are soft-deleted. tags.delete and tags.merge do remove the task links of the tag (hard delete, only rows of tasks) in the same step, and the undo re-creates them from the task ids it carries; they also edit the view of favorites: a deleted tag id is removed from the view (a favorite left with an empty view is soft-deleted) and a merge replaces the id with the target id
 
 ### Task favorites
 - task_favorites: id, user_id, name (1 to 40), color (a palette color), icon (one of 12 icon names), view (jsonb: the saved My tasks view: status, priority, tagIds, due, archived, group, sort; at least one key; checked by the shared favoriteViewSchema), position (a number between neighbours, like tasks.position), created_at, updated_at, deleted_at. A plain table (not an entity); RLS own rows; at most 12 live favorites per user (checked by the server); updated_at trigger (migration 0007). Migrations 0006 and 0007.

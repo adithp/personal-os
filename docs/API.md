@@ -15,7 +15,7 @@ CORS: the allowed origins come from CORS_ORIGINS (comma-separated); the default 
 | 400 | bad_request | Malformed JSON, payload too large, other framework 4xx |
 | 400 | cannot_undo | POST /undo with an action that is not a write or destructive action |
 | 401 | unauthorized | Missing, malformed, expired, or wrongly signed token (with a www-authenticate header) |
-| 404 | not_found | Unknown route, or a task or tag that does not exist (also another user's: never a 403) |
+| 404 | not_found | Unknown route, or a task, tag, or favorite that does not exist (also another user's: never a 403) |
 | 404 | unknown_action | POST /undo with an action name that does not exist |
 | 409 | conflict | A tag rename onto an existing name, or restoring a tag whose name exists again |
 | 409 | favorites_limit | More than 12 favorites |
@@ -28,7 +28,7 @@ CORS: the allowed origins come from CORS_ORIGINS (comma-separated); the default 
 ## Standard resource routes
 Each resource has: GET list (filters, sort, page), GET by id, POST create, PATCH update, DELETE (soft delete).
 Every write route calls the matching action in the action registry.
-Built so far: /tasks (all five, plus complete, archive, unarchive, move, and blockers add and remove) and /tags (list, create, update only: no get by id and no delete yet). The other resources arrive with their module step.
+Built so far: /tasks (all five, plus complete, archive, unarchive, move, and blockers add and remove) /tags (list, create, update, delete, merge; no get by id) and /task-favorites (list, create, update, move, delete). Restoring a favorite or a tag, and unmerging, have no routes of their own: they run through POST /undo. The other resources arrive with their module step.
 
 Resources: /tasks, /habits, /habit-logs, /notes, /note-folders, /note-templates, /tags, /projects, /milestones, /clients, /time-entries, /wallets, /categories, /transactions, /budgets, /savings-goals, /subscriptions, /people, /dashboards, /ai/skills
 

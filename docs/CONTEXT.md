@@ -59,14 +59,14 @@ Full product details: `docs/PRD.md`. Build order: `docs/ROADMAP.md`. Decisions w
 ## 4. Tasks module redesign (Step 2) – decisions
 
 - **Inner side panel** when Tasks opens: Overview, My tasks, Inbox (count), Reporting, Goals, Portfolios ("Soon", Step 5), Favorites (colored squares, + button). Features not built yet show disabled with "Soon".
-- **Overview opens first** (dock click and Ctrl 2). It has a greeting, a "Tasks due soon" card (5 compact rows: overdue first, then today and upcoming) and glossy Favorite tiles (hidden until feature 5).
+- **Overview opens first** (dock click and Ctrl 2). It has a greeting, a "Tasks due soon" card (5 compact rows: overdue first, then today and upcoming) and glossy Favorite tiles (at most 6; the section is hidden until the first favorite exists).
 - **My tasks:** views Cards (default) | List | Board, saved per device. Sections: Overdue, Today, Upcoming, No date, Completed (collapsed, last 7 days, "Show more").
   - **Cards:** checkbox, title (2 lines), tag chip (+N), Blocked badge, subtask progress bar "2/3", due date (red when overdue), repeat icon, priority flag. Hover lifts the card and shows a drag handle.
   - **Detail panel** on the right.
 - **Dates:** overdue is date-based in India time (a 9 AM task stays in Today at 3 PM, with a red time). `due_all_day` column: all-day tasks show the date only.
 - **Drag and drop:** reorder in manual sort only; drop on Today = today; Upcoming = date picker; Overdue = no drops; Completed = complete (with the blocked check); dragging a completed card out reopens it; Board columns change status.
 - **Filter:** status, priority, tag, due range, archived. **Sort:** manual (default), due, priority, created, title. **Group:** due (default), none, tag, priority.
-- **Tags:** plain table with entity_tags; colors auto-cycle through the palette; Manage tags dialog in feature 5.
+- **Tags:** plain table with entity_tags; colors auto-cycle through the palette; Manage tags dialog (built, feature 5).
 - **Subtasks:** one level deep; completing them all doesn't complete the parent.
 - **Dependencies:** a blocked task cannot be completed; cycles are rejected.
 - **Recurring:** the next copy is created on completion, at the first RRULE occurrence after both the old due date and now.
