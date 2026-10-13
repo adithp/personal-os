@@ -55,11 +55,12 @@ describe('when the server refuses', () => {
   it('keeps the new text when the user already typed while the request was running', async () => {
     const fake = createFakeApi();
     const { user } = await openMyTasks(fake);
-    fake.slow(100);
+    // The server answers after 1.5 s, so the typing is done before the failure on a busy machine too
+    fake.slow(1500);
     fake.failNext(400, 'validation_error', 'Title is too long');
     await user.type(addBox(), 'Pay rent{Enter}');
     await user.type(addBox(), 'Walk dog');
-    expect(await screen.findByText('Title is too long')).toBeInTheDocument();
+    expect(await screen.findByText('Title is too long', {}, { timeout: 5000 })).toBeInTheDocument();
     expect(addBox()).toHaveValue('Walk dog');
   });
 });

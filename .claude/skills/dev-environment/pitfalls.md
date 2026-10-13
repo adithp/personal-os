@@ -103,3 +103,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: The non-nullable-type-assertion-style autofix
 - Fix: Use a typed helper that throws, and check the diff after --fix
 - Prevention: documented, dev-environment pitfalls
+
+### 2026-10-13: A Python edit script in text mode turned LF into CRLF
+- Symptom: Prettier --check failed on a file after a scripted edit
+- Cause: open(..., "w") translates newlines on Windows
+- Fix: Open with newline="" (all our scripts do) or run prettier --write
+- Prevention: guarded, prettier --check

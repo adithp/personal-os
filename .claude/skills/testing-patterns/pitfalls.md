@@ -73,3 +73,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: The whole page is rendered behind the dialog
 - Fix: Scope queries with within(dialog), read toasts from useToasts.getState(), render the dialog alone for loading and error states
 - Prevention: documented, testing-patterns pitfalls
+
+### 2026-10-13: A test that races a short fake delay is flaky on a busy machine
+- Symptom: quick-add-bar-fixes failed in full runs and passed alone
+- Cause: fake.slow(100) was shorter than the typing under load
+- Fix: Use a long delay (1.5 s) and a long findBy timeout so the order of events is fixed
+- Prevention: guarded, quick-add-bar-fixes.test.tsx

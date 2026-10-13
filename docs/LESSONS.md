@@ -65,3 +65,7 @@ Every time something cost a retry or a fix, we record it here so it never happen
 | 2026-10-13 | testing-patterns | A query added on mount broke the failNext error tests | guarded | apps/desktop/src/test/fake-api.ts |
 | 2026-10-13 | testing-patterns | Dialog and page tests find several elements of the same role | documented | testing-patterns pitfalls |
 | 2026-10-13 | ui-design-system | useSortable values read in render trip react-hooks/refs | documented | ui-design-system pitfalls |
+| 2026-10-13 | new-action | An undo must relink what still exists and re-check the same limits as the forward action | guarded | apps/server/src/actions/tag-management.test.ts |
+| 2026-10-13 | new-action | Read-then-write limits (12 favorites, same view) need a lock | documented | docs/features/tasks-redesign.md |
+| 2026-10-13 | dev-environment | A Python edit script in text mode turned LF into CRLF | guarded | prettier --check in pnpm lint |
+| 2026-10-13 | testing-patterns | A test that races a short fake delay is flaky on a busy machine | guarded | apps/desktop/src/modules/tasks/quick-add/bar/quick-add-bar-fixes.test.tsx |
