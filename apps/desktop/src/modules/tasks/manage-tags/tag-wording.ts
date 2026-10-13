@@ -16,10 +16,19 @@ export function deleteQuestion(name: string, taskCount: number, favoriteCount: n
 }
 
 /** The merge question shown when a rename hits another tag's name. */
-export function mergeQuestion(existingName: string, oldName: string, taskCount: number): string {
+export function mergeQuestion(
+  existingName: string,
+  oldName: string,
+  taskCount: number,
+  favoriteCount = 0,
+): string {
+  const moving = [
+    taskCount > 0 ? plural(taskCount, 'task') : null,
+    favoriteCount > 0 ? plural(favoriteCount, 'favorite') : null,
+  ].filter((part) => part !== null);
   const effect =
-    taskCount === 0
+    moving.length === 0
       ? 'No tasks use it.'
-      : `${plural(taskCount, 'task')} will get '${existingName}'.`;
+      : `${moving.join(' and ')} will move to '${existingName}'.`;
   return `'${existingName}' already exists. Merge '${oldName}' into it? ${effect}`;
 }

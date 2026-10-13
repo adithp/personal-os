@@ -21,8 +21,9 @@ export function favoriteViewToSearch(view: FavoriteView): TaskSearch {
   if (view.tagIds?.length) search.tag = view.tagIds;
   if (view.due && view.due !== 'any') search.due = view.due;
   if (view.archived) search.archived = true;
-  if (view.group) search.group = view.group;
-  if (view.sort) search.sort = view.sort;
+  // A favorite without sort or group opens with the My tasks defaults, not the last ones used
+  search.group = view.group ?? DEFAULT_GROUP;
+  search.sort = view.sort ?? DEFAULT_SORT;
   return search;
 }
 

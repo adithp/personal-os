@@ -1,11 +1,15 @@
-import { Button, IconButton, Input } from '@personal-os/ui';
+import { Button, Input } from '@personal-os/ui';
 import { IconX } from '@tabler/icons-react';
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { useTags } from '../tags-queries';
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { ApiError } from '../../../api/api-client';
+import { useTagNotice, useTags } from '../tags-queries';
+import { GHOST_BUTTON } from './ghost-button';
 import { useManageTags } from './manage-tags-store';
 import { TagRow } from './tag-row';
 
 const SEARCH_FROM = 8;
+/** How long the Undo line under the list stays. */
+const NOTICE_MS = 8000;
 const FOCUSABLE =
   'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]), [tabindex="0"]';
 
@@ -17,10 +21,16 @@ export function ManageTagsDialog() {
 
 function TagsDialog() {
   const close = useManageTags((state) => state.closeManageTags);
-  const { data, isPending, isError, refetch } = useTags();
+  const { data, error, isPending, isError, refetch } = useTags();
+  const notice = useTagNotice((state) => state.notice);
+  const titleId = useId();
   const [query, setQuery] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
   const box = useRef<HTMLDivElement>(null);
+  const search = useRef<HTMLInputElement>(null);
+  const done = useRef<HTMLButtonElement>(null);
+  /** A row that a delete or merge is about to remove, and the row that takes the focus. */
+  const gone = useRef<{ id: string; focusId: string | null } | null>(null);
 
   // Focus moves in on open and back to whatever opened the dialog on close
   useEffect(() => {
@@ -36,6 +46,41 @@ function TagsDialog() {
     ? tags.filter((tag) => tag.name.toLowerCase().includes(query.trim().toLowerCase()))
     : tags;
   const activeRow = shown.find((tag) => tag.id === activeId) ?? shown[0];
+
+  // The Undo line belongs to this dialog: no stale one on open, none left behind on close
+  useEffect(() => {
+    useTagNotice.getState().set(null);
+    return () => {
+      useTagNotice.getState().set(null);
+    };
+  }, []);
+
+  // ...and goes away after a few seconds
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => {
+      useTagNotice.getState().set(null);
+    }, NOTICE_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [notice]);
+
+  const expectGone = (id: string) => {
+    const index = shown.findIndex((tag) => tag.id === id);
+    gone.current = { id, focusId: shown[index + 1]?.id ?? shown[index - 1]?.id ?? null };
+  };
+
+  // After a delete or merge the focus goes to the next row, else the previous, else search or Done
+  useEffect(() => {
+    const pending = gone.current;
+    if (!pending || shown.some((tag) => tag.id === pending.id)) return;
+    gone.current = null;
+    const next = pending.focusId
+      ? box.current?.querySelector<HTMLElement>(`[data-tag-row="${pending.focusId}"]`)
+      : null;
+    (next ?? search.current ?? done.current)?.focus();
+  });
 
   // A deleted or merged row takes the focus with it: bring it back into the dialog
   useEffect(() => {
@@ -87,20 +132,24 @@ function TagsDialog() {
         ref={box}
         role="dialog"
         aria-modal="true"
-        aria-label="Manage tags"
+        aria-labelledby={titleId}
         tabIndex={-1}
         onKeyDown={onKeyDown}
         className="flex w-[440px] max-w-[90vw] flex-col gap-3 rounded-card glass-strong p-4 outline-none"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-section font-semibold text-fg">
-            Tags {data ? <span className="font-normal text-fg-muted">{data.length}</span> : null}
+            <span id={titleId}>Tags</span>{' '}
+            {data ? <span className="font-normal text-fg-muted">{data.length}</span> : null}
           </h2>
-          <IconButton aria-label="Close" icon={<IconX size={16} aria-hidden />} onClick={close} />
+          <button type="button" aria-label="Close" onClick={close} className={GHOST_BUTTON}>
+            <IconX size={16} aria-hidden />
+          </button>
         </div>
 
         {data && data.length > SEARCH_FROM ? (
           <Input
+            ref={search}
             aria-label="Find a tag"
             placeholder="Find a tag"
             value={query}
@@ -123,14 +172,16 @@ function TagsDialog() {
           </div>
         ) : isError ? (
           <div role="alert" className="flex items-center justify-between gap-3">
-            <p className="text-body text-fg-secondary">Could not load tags. Try again</p>
+            <p className="text-body text-fg-secondary">
+              {error instanceof ApiError ? error.message : 'Could not load tags.'}
+            </p>
             <Button
               variant="secondary"
               onClick={() => {
                 void refetch();
               }}
             >
-              Retry
+              Try again
             </Button>
           </div>
         ) : shown.length === 0 ? (
@@ -148,16 +199,40 @@ function TagsDialog() {
                 onActivate={() => {
                   setActiveId(tag.id);
                 }}
+                onGone={() => {
+                  expectGone(tag.id);
+                }}
               />
             ))}
           </ul>
         )}
 
+        <div role="status" className="empty:hidden">
+          {notice ? (
+            <div className="flex items-center justify-between gap-3 text-small text-fg-secondary">
+              <span>{notice.message}</span>
+              <Button
+                variant="secondary"
+                className="h-7 px-3"
+                onClick={() => {
+                  notice.undo();
+                  useTagNotice.getState().set(null);
+                  done.current?.focus();
+                }}
+              >
+                Undo
+              </Button>
+            </div>
+          ) : null}
+        </div>
+
         <div className="flex items-center justify-between gap-3">
           <p className="text-small text-fg-muted">
             Deleting a tag removes it from its tasks. The tasks stay.
           </p>
-          <Button onClick={close}>Done</Button>
+          <Button ref={done} onClick={close}>
+            Done
+          </Button>
         </div>
       </div>
     </div>

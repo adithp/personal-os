@@ -147,6 +147,30 @@ export function MenuGroup({ label, children }: { label: string; children: ReactN
   );
 }
 
+/** A line between groups of a menu. */
+export function MenuSeparator() {
+  return <div role="separator" className="my-0.5 h-px bg-glass-border" />;
+}
+
+/** A plain action (not a choice): no check space, closes the menu, then runs. */
+export function MenuAction({ onSelect, children }: { onSelect: () => void; children: ReactNode }) {
+  const { close } = useContext(MenuContext);
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      tabIndex={-1}
+      onClick={() => {
+        close();
+        onSelect();
+      }}
+      className="flex h-7 items-center rounded-chip px-2 text-left text-body text-fg focus-ring hover:bg-input focus-visible:bg-input"
+    >
+      {children}
+    </button>
+  );
+}
+
 export interface MenuItemProps {
   /** One choice out of several (radio) or an on/off choice (checkbox). */
   kind: 'radio' | 'checkbox';

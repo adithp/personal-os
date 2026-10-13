@@ -11,6 +11,7 @@ import { IconCheck, IconPlus } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../../api/api-client';
 import { useManageTags } from '../manage-tags/manage-tags-store';
+import { colorName } from '../manage-tags/swatches';
 import { TagChip } from '../shared/tag-chip';
 import { useTagActions, useTags } from '../tags-queries';
 import { Popover, PopoverItem } from './popover';
@@ -37,12 +38,12 @@ function ChipMenu({ tag, onRemove }: { tag: TagRef; onRemove: () => void }) {
             Color
           </p>
           <div role="group" aria-label="Color" className="grid grid-cols-5 gap-1 p-1">
-            {TAG_PALETTE.map((color, index) => (
+            {TAG_PALETTE.map((color) => (
               <PopoverItem
                 key={color}
                 role="menuitemradio"
                 checked={color.toLowerCase() === tag.color.toLowerCase()}
-                aria-label={`Color ${String(index + 1)}`}
+                aria-label={colorName(color)}
                 className="size-7 justify-center px-0"
                 onSelect={() => {
                   if (color.toLowerCase() !== tag.color.toLowerCase()) {

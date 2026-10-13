@@ -11,6 +11,7 @@ import { cx, Tooltip } from '@personal-os/ui';
 import { IconPlus, IconRefresh } from '@tabler/icons-react';
 import { useMatch } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
+import { ApiError } from '../../../api/api-client';
 import { taskAnnouncements, useTaskSensors } from '../drag/dnd';
 import { useTasksUi } from '../tasks-ui-store';
 import { FavoriteRow } from './favorite-row';
@@ -49,6 +50,8 @@ export function FavoritesList({ collapsed = false }: { collapsed?: boolean }) {
   const myTasks = useMatch({ from: '/_app/tasks/my-tasks', shouldThrow: false });
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  /** A short status for screen readers after a move ("Moved up."). */
+  const [status, setStatus] = useState('');
   const addButton = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLUListElement>(null);
   /** Who gets the focus after the next render: a favorite id, or "add" for the + button. */
@@ -107,7 +110,10 @@ export function FavoritesList({ collapsed = false }: { collapsed?: boolean }) {
 
   const moveBy = (favorite: Favorite, direction: -1 | 1) => {
     const target = moveTarget(ids, favorite.id, ids.indexOf(favorite.id) + direction);
-    if (target) move.mutate({ id: favorite.id, ...target });
+    if (!target) return;
+    move.mutate({ id: favorite.id, ...target });
+    setStatus(direction === -1 ? 'Moved up.' : 'Moved down.');
+    pendingFocus.current = favorite.id;
   };
 
   const onDragEnd = ({ active, over }: DragEndEvent) => {
@@ -117,6 +123,8 @@ export function FavoritesList({ collapsed = false }: { collapsed?: boolean }) {
     if (target) move.mutate({ id: String(active.id), ...target });
   };
 
+  const loadError =
+    favorites.error instanceof ApiError ? favorites.error.message : 'Could not load favorites';
   const nameOf = (id: string) => items.find((favorite) => favorite.id === id)?.name ?? 'a favorite';
   const menuFavorite =
     menu && menu.kind !== 'add' ? items.find((favorite) => favorite.id === menu.id) : undefined;
@@ -154,10 +162,10 @@ export function FavoritesList({ collapsed = false }: { collapsed?: boolean }) {
       {favorites.isError ? (
         collapsed ? (
           <div className="flex justify-center">
-            <Tooltip label="Could not load favorites. Retry">
+            <Tooltip label={`${loadError}. Try again`}>
               <button
                 type="button"
-                aria-label="Could not load favorites. Retry"
+                aria-label={`${loadError}. Try again`}
                 onClick={() => {
                   void favorites.refetch();
                 }}
@@ -172,7 +180,7 @@ export function FavoritesList({ collapsed = false }: { collapsed?: boolean }) {
             role="alert"
             className="flex items-center justify-between gap-2 pr-1 pl-2.5 text-small text-fg-muted"
           >
-            <span>Could not load favorites</span>
+            <span>{loadError}</span>
             <button
               type="button"
               onClick={() => {
@@ -180,7 +188,7 @@ export function FavoritesList({ collapsed = false }: { collapsed?: boolean }) {
               }}
               className="rounded-chip px-1.5 py-0.5 text-fg-secondary focus-ring hover:bg-tint hover:text-fg"
             >
-              Retry
+              Try again
             </button>
           </div>
         )
@@ -211,7 +219,12 @@ export function FavoritesList({ collapsed = false }: { collapsed?: boolean }) {
                   active={currentView !== null && sameFavoriteView(favorite.view, currentView)}
                   renaming={renamingId === favorite.id}
                   onMenu={(row, anchor) => {
-                    setMenu({ kind: 'row', id: row.id, anchor });
+                    // The row's "more" button closes its own open menu
+                    setMenu((open) =>
+                      open && open.kind !== 'add' && open.id === row.id
+                        ? null
+                        : { kind: 'row', id: row.id, anchor },
+                    );
                   }}
                   onRename={(row) => {
                     setRenamingId(row.id);
@@ -225,10 +238,15 @@ export function FavoritesList({ collapsed = false }: { collapsed?: boolean }) {
         </DndContext>
       ) : null}
 
+      <p role="status" className="sr-only">
+        {status}
+      </p>
+
       {menu?.kind === 'add' ? (
         <AddMenu
           anchor={menu.anchor}
           view={currentView}
+          onMyTasks={Boolean(myTasks)}
           full={full}
           onCreate={createFavorite}
           onClose={closeMenu}

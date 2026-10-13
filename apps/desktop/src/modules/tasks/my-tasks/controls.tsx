@@ -12,7 +12,7 @@ import {
   type TaskFilters,
 } from '../filters';
 import { useManageTags } from '../manage-tags/manage-tags-store';
-import { Menu, MenuGroup, MenuItem } from './menu';
+import { Menu, MenuAction, MenuGroup, MenuItem, MenuSeparator } from './menu';
 
 const SORT_LABELS: Record<SortKey, string> = {
   manual: 'Manual',
@@ -122,9 +122,8 @@ export function FilterMenu({ filters, tags, onChange }: FilterMenuProps) {
             </MenuItem>
           ))
         )}
-        <MenuItem kind="checkbox" checked={false} closeOnSelect onSelect={openManageTags}>
-          Manage tags…
-        </MenuItem>
+        <MenuSeparator />
+        <MenuAction onSelect={openManageTags}>Manage tags…</MenuAction>
       </MenuGroup>
       <MenuGroup label="Due">
         {DUE_OPTIONS.map((option) => (
