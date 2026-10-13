@@ -39,7 +39,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await t.db.execute(
-    sql`truncate table entity_tags, tags, links, tasks, entities, auth.users cascade`,
+    sql`truncate table entity_tags, tags, links, tasks, entities, task_favorites, auth.users cascade`,
   );
   await createTestUser(t.db, USER_ID);
   await createTestUser(t.db, OTHER_USER_ID);
@@ -51,7 +51,7 @@ afterEach(async () => {
 });
 
 const call = (
-  method: 'GET' | 'POST' | 'PATCH',
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   url: string,
   headers: Record<string, string> = alice,
   payload?: unknown,
@@ -74,6 +74,8 @@ describe('login is required on every tag route', () => {
     ['GET', '/tags'],
     ['POST', '/tags'],
     ['PATCH', `/tags/${MISSING}`],
+    ['DELETE', `/tags/${MISSING}`],
+    ['POST', `/tags/${MISSING}/merge`],
   ])('%s %s answers 401 with no token', async (method, url) => {
     const response = await call(method as 'GET', url, {}, method === 'GET' ? undefined : {});
     expect(response.statusCode).toBe(401);
@@ -147,5 +149,103 @@ describe('PATCH /tags/:id', () => {
     expect((await call('PATCH', `/tags/${MISSING}`, alice, { name: 'x' })).statusCode).toBe(404);
     expect((await call('PATCH', `/tags/${two.id}`, alice, {})).statusCode).toBe(400);
     expect((await call('PATCH', '/tags/nope', alice, { name: 'x' })).statusCode).toBe(400);
+  });
+});
+
+interface Listed extends TagItem {
+  taskCount: number;
+  favoriteCount: number;
+}
+const list = async (headers = alice) =>
+  (await call('GET', '/tags', headers)).json<{ items: Listed[] }>().items;
+const newTag = async (name: string, headers = alice) =>
+  (await call('POST', '/tags', headers, { name })).json<Written>().item;
+const newTask = async (title: string, tagIds: string[], headers = alice) =>
+  (await call('POST', '/tasks', headers, { title, tagIds })).json<{ item: { id: string } }>().item;
+
+describe('GET /tags counts', () => {
+  it('returns taskCount and favoriteCount for every tag', async () => {
+    const tag = await newTag('work');
+    await newTask('a', [tag.id]);
+    await newTask('b', [tag.id]);
+    expect(await list()).toMatchObject([{ id: tag.id, taskCount: 2, favoriteCount: 0 }]);
+  });
+});
+
+describe('DELETE /tags/:id', () => {
+  it('deletes the tag, answers the tag with an undo, and the undo works', async () => {
+    const tag = await newTag('work');
+    const task = await newTask('a', [tag.id]);
+    const response = await call('DELETE', `/tags/${tag.id}`);
+    expect(response.statusCode).toBe(200);
+    const body = response.json<Written>();
+    expect(body.item).toMatchObject({ id: tag.id, name: 'work' });
+    expect(body.undo?.action).toBe('tags.restore');
+    expect(await list()).toHaveLength(0);
+
+    const undone = await call('POST', '/undo', alice, body.undo);
+    expect(undone.statusCode).toBe(200);
+    expect(await list()).toMatchObject([{ id: tag.id, taskCount: 1 }]);
+    const tasks = (await call('GET', '/tasks')).json<{
+      items: { id: string; tags: unknown[] }[];
+    }>();
+    expect(tasks.items.find((item) => item.id === task.id)?.tags).toHaveLength(1);
+  });
+
+  it('answers 409 when the undo finds the name taken again', async () => {
+    const tag = await newTag('Home');
+    const body = (await call('DELETE', `/tags/${tag.id}`)).json<Written>();
+    await newTag('home');
+    const undone = await call('POST', '/undo', alice, body.undo);
+    expect(undone.statusCode).toBe(409);
+    expect(undone.json()).toMatchObject({
+      error: { code: 'conflict', message: "A tag named 'Home' exists again. Rename it first." },
+    });
+  });
+
+  it('answers 404 for another user’s or a missing tag, and 400 for a bad id', async () => {
+    const bobs = await newTag('bobs', bob);
+    expect((await call('DELETE', `/tags/${bobs.id}`)).statusCode).toBe(404);
+    expect((await call('DELETE', `/tags/${MISSING}`)).statusCode).toBe(404);
+    expect((await call('DELETE', '/tags/nope')).statusCode).toBe(400);
+    expect(await list(bob)).toHaveLength(1);
+  });
+});
+
+describe('POST /tags/:id/merge', () => {
+  it('merges into the target, answers the target with an undo, and the undo works', async () => {
+    const source = await newTag('house');
+    const target = await newTag('home');
+    await newTask('a', [source.id]);
+    await newTask('b', [source.id, target.id]);
+    const response = await call('POST', `/tags/${source.id}/merge`, alice, {
+      targetId: target.id,
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json<Written>();
+    expect(body.item).toMatchObject({ id: target.id, name: 'home' });
+    expect(body.undo?.action).toBe('tags.unmerge');
+    expect(await list()).toMatchObject([{ id: target.id, taskCount: 2 }]);
+
+    const undone = await call('POST', '/undo', alice, body.undo);
+    expect(undone.statusCode).toBe(200);
+    expect(await list()).toHaveLength(2);
+  });
+
+  it('answers 404 for another user’s tag, 400 for bad input', async () => {
+    const mine = await newTag('mine');
+    const bobs = await newTag('bobs', bob);
+    const into = (target: string, source = mine.id) =>
+      call('POST', `/tags/${source}/merge`, alice, { targetId: target });
+    expect((await into(bobs.id)).statusCode).toBe(404);
+    expect((await into(mine.id, bobs.id)).statusCode).toBe(404);
+    expect((await into(MISSING)).statusCode).toBe(404);
+    expect((await into(mine.id)).statusCode).toBe(400);
+    expect((await into('nope')).statusCode).toBe(400);
+    expect((await call('POST', `/tags/${mine.id}/merge`, alice, {})).statusCode).toBe(400);
+    expect((await call('POST', '/tags/nope/merge', alice, { targetId: mine.id })).statusCode).toBe(
+      400,
+    );
+    expect(await list(bob)).toHaveLength(1);
   });
 });

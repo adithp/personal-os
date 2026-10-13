@@ -1,6 +1,6 @@
-import { tags, type TagRow } from '@personal-os/db';
+import { entityTags, taskFavorites, tags, tasks, type TagRow } from '@personal-os/db';
 import { nextTagColor, tagActions, type Tag } from '@personal-os/shared';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { HttpError } from '../lib/http-error';
 import type { UserScope } from '../lib/user-scope';
 import { implement } from './registry';
@@ -61,10 +61,38 @@ export async function findOrCreateTag(
   return { tag: created, created: true };
 }
 
+/**
+ * The user's live tags with taskCount (live tasks and subtasks of any status, archived too) and
+ * favoriteCount (live favorites whose view uses the tag). Three queries, however many tags.
+ */
+async function listWithCounts(scope: UserScope): Promise<Tag[]> {
+  const rows = await liveTags(scope);
+  if (rows.length === 0) return [];
+  const ids = rows.map((row) => row.id);
+  const links = await scope.select(entityTags, {
+    where: and(
+      inArray(entityTags.tagId, ids),
+      sql`${entityTags.entityId} in (select ${tasks.id} from ${tasks} where ${tasks.userId} = ${scope.userId} and ${tasks.deletedAt} is null)`,
+    ),
+  });
+  const favorites = await scope.select(taskFavorites, { where: scope.isLive(taskFavorites) });
+  const taskCounts = new Map<string, number>();
+  for (const link of links) taskCounts.set(link.tagId, (taskCounts.get(link.tagId) ?? 0) + 1);
+  const favoriteCounts = new Map<string, number>();
+  for (const favorite of favorites) {
+    for (const tagId of new Set(favorite.view.tagIds ?? [])) {
+      favoriteCounts.set(tagId, (favoriteCounts.get(tagId) ?? 0) + 1);
+    }
+  }
+  return rows.map((row) => ({
+    ...toTag(row),
+    taskCount: taskCounts.get(row.id) ?? 0,
+    favoriteCount: favoriteCounts.get(row.id) ?? 0,
+  }));
+}
+
 export const tagImplementations = [
-  implement(tagActions.list, async ({ scope }) => ({
-    data: (await liveTags(scope)).map(toTag),
-  })),
+  implement(tagActions.list, async ({ scope }) => ({ data: await listWithCounts(scope) })),
 
   implement(tagActions.create, async ({ scope }, input) => {
     const attempt = () => scope.transaction((tx) => findOrCreateTag(tx, input.name, input.color));
