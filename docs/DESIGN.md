@@ -165,7 +165,7 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 
 ### Charts (Tasks Reporting)
 - Glass cards with a 13 px title, a muted 11 px subtitle and a "Show table" text button; stat cards have a 30 px number and one 11 px muted line.
-- One hue per chart (the module color `var(--module-tasks)`), columns at most 24 px wide with 4 px rounded tops, a hairline baseline and at most 3 faint gridlines in `var(--glass-border)`, whole-number Y ticks, axis text 11 px muted, no legend. Tooltips are glass-strong, radius 8, 11 px, and never hold information that is not also in the table view.
+- One hue per chart (the module color `var(--module-tasks)`), columns at most 24 px wide with 4 px rounded tops, a hairline baseline and about 3 to 4 faint gridlines in `var(--glass-border)`, whole-number Y ticks, axis text 11 px muted, no legend. Tooltips are glass-strong, radius 8, 11 px, and never hold information that is not also in the table view.
 - Text never uses the series color. In light mode the yellow bars are faint, so values are always readable without color (labels, tooltip, tiles, table).
 
 ### Board and drag and drop (Tasks)
