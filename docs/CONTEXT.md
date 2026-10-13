@@ -85,13 +85,14 @@ Full product details: `docs/PRD.md`. Build order: `docs/ROADMAP.md`. Decisions w
 - **Step 1:** done (shell, dock, login, settings, dashboard, palette, server, database, infra).
 - **Skills, agents, lessons and docs-sync job:** done (commit f7a746d).
 - **Step 2, Tasks feature 1:** built, tested and approved by me. ROADMAP.md is ticked.
-- **Decisions 52 to 59:** up to 5 agents at once; Recharts instead of ECharts; keep dnd-kit, rrule and chrono-node; the drag and drop rules; the dependency and recurring rules; the quick add rules.
+- **Decisions 52 to 61:** up to 5 agents at once; Recharts instead of ECharts; keep dnd-kit, rrule and chrono-node; the drag and drop rules; the dependency and recurring rules; the quick add rules.
 - **Design-consistency job** (design audit, design:check, shared-components rule, design-reviewer checklist): still unsent: I send it when I want it.
 - **Tasks feature 2 (Board and drag and drop):** built, tested and approved by me (ROADMAP ticked). The dashboard Today's tasks tile is real. Next in order: feature 3 (dependencies and recurring), then 4 to 8, one prompt each; the design-consistency job comes before feature 3.
 - **Tasks feature 3 (dependencies and recurring):** built, tested and approved by me (ROADMAP ticked). Then feature 4 (quick add).
 - **Tasks feature 4 (quick add):** built and merged; reviews and the feature report in progress, waiting for my check and "next". Then 5 to 8, one at a time.
 - **Autonomous loop (decision 58):** I am away; features 5 (favorites and manage tags), 6 (inbox) and 7 (reporting) are built one after the other without waiting for "next", each after a research memo (docs/design/research/). Features 4 to 7 wait for my check; nothing is ticked in ROADMAP.md until I say "next". Reports are in docs/reports/.
 - **Tasks feature 5 (favorites and manage tags):** built and merged on step-2-tasks-notes; needs migrations 0006 and 0007 applied (`pnpm db:migrate`, I run it); reviews and the report in progress. Memos for features 6 (inbox) and 7 (reporting) are written in docs/design/research/.
+- **Tasks features 6 (inbox) and 7 (reporting):** built and merged on step-2-tasks-notes after research memos; reviews and reports in progress (reports go in docs/reports/). Feature 8 (goals) is the last Soon item and is not started.
 - **Discuss skill and this CONTEXT.md:** done.
 - **Pending later:** Notes features, realtime, redeploying AWS, Step 3 (AI + OmniRoute + Tailscale), Step 4 (Google), and the rest of the roadmap.
 

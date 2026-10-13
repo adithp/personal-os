@@ -8,7 +8,7 @@ export const TASK_FEATURES = {
   /** Inbox page (Feature 6). */
   inbox: true,
   /** Reporting page (Feature 7). */
-  reporting: false,
+  reporting: true,
   /** Goals page (Feature 8). */
   goals: false,
   /** Favorites: the side panel list and the Overview section (Feature 5). */

@@ -135,7 +135,8 @@ export function createFakeApi(
   const removedTags = new Map<string, Tag>();
   const calls: Call[] = [];
   let failure: ApiError | null = null;
-  let failureAnyPath = false;
+  /** true: any request; a string: only paths that start with it; false: any except favorites. */
+  let failureTarget: boolean | string = false;
   /** What GET /tasks/report answers; tests set it with setReport. */
   let reportOverride: TaskReport | null = null;
   let delayMs = 0;
@@ -562,7 +563,11 @@ export function createFakeApi(
       calls.push({ method, path, body: options.body, query: options.query });
       if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
       // The favorites list loads in the background of every Tasks page: it does not take the failure
-      if (failure && (failureAnyPath || !path.startsWith('/task-favorites'))) {
+      const aimed =
+        typeof failureTarget === 'string'
+          ? path.startsWith(failureTarget)
+          : failureTarget || !path.startsWith('/task-favorites');
+      if (failure && aimed) {
         const error = failure;
         failure = null;
         throw error;
@@ -588,9 +593,9 @@ export function createFakeApi(
       reportOverride = report;
     },
     /** The next call fails with this error (only once). Favorites requests are skipped unless anyPath. */
-    failNext: (status: number, code: string, message: string, anyPath = false) => {
+    failNext: (status: number, code: string, message: string, target: boolean | string = false) => {
       failure = new ApiError(status, code, message);
-      failureAnyPath = anyPath;
+      failureTarget = target;
     },
     /** Every call waits this long first (to look at the screen before the server answers). */
     slow: (ms: number) => {

@@ -69,3 +69,5 @@ Every time something cost a retry or a fix, we record it here so it never happen
 | 2026-10-13 | new-action | Read-then-write limits (12 favorites, same view) need a lock | documented | docs/features/tasks-redesign.md |
 | 2026-10-13 | dev-environment | A Python edit script in text mode turned LF into CRLF | guarded | prettier --check in pnpm lint |
 | 2026-10-13 | testing-patterns | A test that races a short fake delay is flaky on a busy machine | guarded | apps/desktop/src/modules/tasks/quick-add/bar/quick-add-bar-fixes.test.tsx |
+| 2026-10-13 | testing-patterns | A test that fakes the clock must sign its login token after setting the time | documented | testing-patterns pitfalls |
+| 2026-10-13 | testing-patterns | failNext hit the first request of the page, not the one under test | guarded | apps/desktop/src/test/fake-api.ts |

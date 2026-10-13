@@ -46,7 +46,7 @@ describe('the Tasks side panel', () => {
       'Overview',
       'My tasks',
       'Inbox',
-      'Reporting' + 'Soon',
+      'Reporting',
       'Goals' + 'Soon',
       'Portfolios' + 'Soon',
     ]);
@@ -54,13 +54,17 @@ describe('the Tasks side panel', () => {
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
   });
 
-  it('links Overview, My tasks and Inbox, and leaves the unbuilt items as disabled text, not links', async () => {
+  it('links the built items, and leaves the unbuilt ones as disabled text, not links', async () => {
     await openTasks();
     const nav = within(panel());
     expect(nav.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '/tasks');
     expect(nav.getByRole('link', { name: 'My tasks' })).toHaveAttribute('href', '/tasks/my-tasks');
     expect(nav.getByRole('link', { name: 'Inbox' })).toHaveAttribute('href', '/tasks/inbox');
-    for (const name of ['Reporting', 'Goals', 'Portfolios']) {
+    expect(nav.getByRole('link', { name: 'Reporting' })).toHaveAttribute(
+      'href',
+      '/tasks/reporting',
+    );
+    for (const name of ['Goals', 'Portfolios']) {
       expect(nav.queryByRole('link', { name: new RegExp(name) })).not.toBeInTheDocument();
       const item = nav.getByText(name).closest('[aria-disabled]');
       expect(item).toHaveAttribute('aria-disabled', 'true');

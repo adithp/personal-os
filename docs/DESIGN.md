@@ -163,6 +163,11 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 - Overview favorite tiles: compact pastel tiles in the favorite's color with the name, the open count and one muted line ("2 overdue" or "Nothing overdue"); the whole tile is one link.
 - Manage tags dialog: glass-strong, 440 px wide, radius 16, dimmed page, focus trap, Esc closes; rows of 36 px with a 12 px color dot, the name, a muted usage count, and rename and delete icons on hover; rename, merge and delete questions are inline in the row (the answer that is not destructive has focus first). Icon buttons in rows are quiet ghost buttons (plain icon, hover tint, no glass chip) with a 24 px hit area; color and icon pickers have named swatches and move with the arrow keys, Home and End; after a delete or merge the dialog footer shows a status line with an Undo button inside the focus trap.
 
+### Charts (Tasks Reporting)
+- Glass cards with a 13 px title, a muted 11 px subtitle and a "Show table" text button; stat cards have a 30 px number and one 11 px muted line.
+- One hue per chart (the module color `var(--module-tasks)`), columns at most 24 px wide with 4 px rounded tops, a hairline baseline and at most 3 faint gridlines in `var(--glass-border)`, whole-number Y ticks, axis text 11 px muted, no legend. Tooltips are glass-strong, radius 8, 11 px, and never hold information that is not also in the table view.
+- Text never uses the series color. In light mode the yellow bars are faint, so values are always readable without color (labels, tooltip, tiles, table).
+
 ### Board and drag and drop (Tasks)
 - Board: three glass columns (To do, In progress, Done), each with its name and count; the cards are the normal task cards. An empty column says "Nothing here". While dragging, a quiet accent line shows where the card will land and the other cards do not shift.
 - Drag handle: a small grip at the top right of a card (left of a row), invisible until the card is hovered or focused; the cursor is a grab hand.
@@ -218,6 +223,7 @@ Fit and scrolling:
 - Ctrl K: global search and command palette.
 - Ctrl 1 to Ctrl 9: Dashboard, Tasks, Habits, Notes, Graph, Calendar, Mail, Drive, Projects.
 - Ctrl 0: Money. Ctrl J: open AI assistant. Ctrl , : Settings.
+- Tasks page, plain keys: N, Space, Enter, Delete, Esc, arrows, ?. Inbox also: T date, L tag, 1 to 4 priority.
 
 ### Command palette
 - Opens with Ctrl K, or by clicking the dashboard search bar. Esc, or Ctrl K again, closes it. It is only available on signed-in screens.

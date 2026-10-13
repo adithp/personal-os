@@ -79,3 +79,15 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: fake.slow(100) was shorter than the typing under load
 - Fix: Use a long delay (1.5 s) and a long findBy timeout so the order of events is fixed
 - Prevention: guarded, quick-add-bar-fixes.test.tsx
+
+### 2026-10-13: A test that fakes the clock must sign its login token after setting the time
+- Symptom: A route test returned 401 instead of 200 after vi.setSystemTime
+- Cause: The shared token was signed with the real clock and looked expired at the fake time
+- Fix: Sign a new token after setting the system time
+- Prevention: documented, testing-patterns pitfalls
+
+### 2026-10-13: failNext hit the first request of the page, not the one under test
+- Symptom: Error-state tests stopped failing when the side panel started loading the Inbox count on mount
+- Cause: failNext applied to the next request of any path
+- Fix: fake.failNext takes a path prefix as its 4th argument (true = any path)
+- Prevention: guarded, apps/desktop/src/test/fake-api.ts

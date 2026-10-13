@@ -276,7 +276,7 @@ describe('Reporting states', () => {
   it('shows the error card and loads again with Try again', async () => {
     const fake = createFakeApi();
     fake.setReport(weekReport());
-    fake.failNext(500, 'internal', 'Boom');
+    fake.failNext(500, 'internal', 'Boom', '/tasks/report');
     const { user } = await openMyTasks(fake, '/tasks/reporting');
     const alert = await screen.findByRole('alert');
     expect(within(alert).getByText('Boom')).toBeInTheDocument();
@@ -287,7 +287,12 @@ describe('Reporting states', () => {
 
   it('shows the server message when the database is behind', async () => {
     const fake = createFakeApi();
-    fake.failNext(503, 'schema_behind', 'Database update needed: run pnpm db:migrate');
+    fake.failNext(
+      503,
+      'schema_behind',
+      'Database update needed: run pnpm db:migrate',
+      '/tasks/report',
+    );
     await openMyTasks(fake, '/tasks/reporting');
     const alert = await screen.findByRole('alert');
     expect(within(alert).getByText(/Database update needed/)).toBeInTheDocument();
