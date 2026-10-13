@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mockup: Tasks Inbox (Feature 6)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      /* Tokens copied from packages/ui/src/styles/tokens.css (demo only) */
+      :root,
+      [data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #15171c;
+        --glass: rgba(255, 255, 255, 0.07);
+        --glass-border: rgba(255, 255, 255, 0.12);
+        --glass-strong: rgba(40, 43, 50, 0.92);
+        --text-primary: #f2f2f2;
+        --text-secondary: rgba(255, 255, 255, 0.65);
+        --text-muted: rgba(255, 255, 255, 0.45);
+        --text-on-tile: #1c1c1c;
+        --danger: #f28b82;
+        --input-bg: rgba(255, 255, 255, 0.06);
+        --tint: rgba(21, 23, 28, 0.55);
+        --wallpaper-default:
+          radial-gradient(ellipse 80% 60% at 15% 0%, #3d3a70 0%, transparent 60%),
+          radial-gradient(ellipse 70% 50% at 90% 15%, #1f5466 0%, transparent 60%),
+          radial-gradient(ellipse 90% 60% at 50% 100%, #2a2440 0%, transparent 70%),
+          linear-gradient(180deg, #1c1f2b 0%, #15171c 100%);
+      }
+      [data-theme='light'] {
+        color-scheme: light;
+        --bg: #eef0f3;
+        --glass: rgba(255, 255, 255, 0.65);
+        --glass-border: rgba(0, 0, 0, 0.07);
+        --glass-strong: rgba(255, 255, 255, 0.85);
+        --text-primary: #1c1c1c;
+        --text-secondary: rgba(0, 0, 0, 0.6);
+        --text-muted: rgba(0, 0, 0, 0.4);
+        --danger: #c5221f;
+        --input-bg: rgba(0, 0, 0, 0.04);
+        --tint: rgba(238, 240, 243, 0.55);
+        --wallpaper-default:
+          radial-gradient(ellipse 80% 60% at 15% 0%, #d9defc 0%, transparent 60%),
+          radial-gradient(ellipse 70% 50% at 90% 15%, #fde0cc 0%, transparent 60%),
+          radial-gradient(ellipse 90% 60% at 50% 100%, #d4efe4 0%, transparent 70%),
+          linear-gradient(180deg, #f5f6f9 0%, #eef0f3 100%);
+      }
+      :root {
+        --module-tasks: #f7d96b;
+        --module-calendar: #f6a462;
+        --module-assistant: #c9b4f7;
+        --accent: var(--module-assistant);
+        --glass-blur: 24px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, 'Segoe UI', system-ui, sans-serif;
+        font-size: 13px;
+        color: var(--text-primary);
+        background: var(--wallpaper-default);
+        background-attachment: fixed;
+        min-height: 100vh;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+      }
+      .glass {
+        background: var(--glass);
+        border: 0.5px solid var(--glass-border);
+        backdrop-filter: blur(var(--glass-blur));
+        -webkit-backdrop-filter: blur(var(--glass-blur));
+      }
+      .strong {
+        background: var(--glass-strong);
+        border: 0.5px solid var(--glass-border);
+        backdrop-filter: blur(var(--glass-blur));
+      }
+      .muted {
+        color: var(--text-muted);
+      }
+      .small {
+        font-size: 11px;
+      }
+      svg {
+        width: 16px;
+        height: 16px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.5;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex-shrink: 0;
+      }
+
+      /* Mockup controls (not part of the design) */
+      .controls {
+        position: fixed;
+        top: 8px;
+        right: 12px;
+        display: flex;
+        gap: 6px;
+        z-index: 50;
+      }
+      .controls button {
+        height: 28px;
+        padding: 0 10px;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .controls button[aria-pressed='true'] {
+        background: var(--accent);
+        color: var(--text-on-tile);
+        border-color: transparent;
+      }
+
+      /* Window */
+      .window {
+        display: flex;
+        gap: 24px;
+        height: 100vh;
+        padding: 48px 24px 80px;
+      }
+      .panel {
+        width: 224px;
+        border-radius: 16px;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        flex-shrink: 0;
+      }
+      .panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-left: 10px;
+      }
+      .nav {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .nav a {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 32px;
+        padding: 0 10px;
+        border-radius: 8px;
+        color: var(--text-secondary);
+        text-decoration: none;
+      }
+      .nav a:hover {
+        background: var(--tint);
+        color: var(--text-primary);
+      }
+      .nav a.active {
+        background: var(--tint);
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      .nav .count {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--text-muted);
+        font-weight: 400;
+      }
+      .nav .soon {
+        opacity: 0.6;
+        cursor: default;
+      }
+      .nav .soon:hover {
+        background: none;
+        color: var(--text-secondary);
+      }
+
+      .main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        max-width: 760px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+      }
+      h1 {
+        font-size: 22px;
+        font-weight: 600;
+        margin: 0;
+      }
+      .icon-btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: 0;
+        color: var(--text-muted);
+        cursor: pointer;
+      }
+      .icon-btn:hover {
+        background: var(--input-bg);
+        color: var(--text-primary);
+      }
+
+      /* Quick add bar (DESIGN.md 6) */
+      .quick {
+        height: 40px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 6px 0 8px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      }
+      .quick .plus {
+        width: 24px;
+        height: 24px;
+        border-radius: 8px;
+        background: var(--input-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+      }
+      .quick input {
+        flex: 1;
+        background: none;
+        border: 0;
+        outline: 0;
+        color: var(--text-primary);
+        font: inherit;
+      }
+      .quick input::placeholder {
+        color: var(--text-muted);
+      }
+      .quick .send {
+        width: 28px;
+        height: 28px;
+        border-radius: 10px;
+        border: 0;
+        background: linear-gradient(180deg, #d8c9fa, var(--accent));
+        color: var(--text-on-tile);
+        opacity: 0.45;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .hint {
+        min-height: 16px;
+        padding: 0 4px;
+        margin-top: -8px;
+      }
+
+      /* List */
+      .list {
+        border-radius: 16px;
+        padding: 6px;
+        list-style: none;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .row {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 40px;
+        padding: 0 8px 0 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        outline: none;
+      }
+      .row:hover,
+      .row.is-hover {
+        background: var(--input-bg);
+      }
+      .row:focus-visible,
+      .row.is-focus {
+        box-shadow: 0 0 0 1.5px var(--accent);
+      }
+      .row.selected {
+        background: var(--input-bg);
+      }
+      .check {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1.5px solid var(--text-muted);
+        flex-shrink: 0;
+      }
+      .title {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .meta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--text-muted);
+      }
+      .flag-high {
+        color: var(--module-calendar);
+      }
+      .flag-high svg {
+        fill: currentColor;
+      }
+      .blocked {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 8px;
+        background: var(--input-bg);
+        border: 0.5px solid var(--glass-border);
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
+      .blocked svg {
+        width: 12px;
+        height: 12px;
+      }
+      /* Quick actions: hidden until the row is hovered or focused */
+      .actions {
+        display: flex;
+        gap: 2px;
+        opacity: 0;
+        transition: opacity 150ms ease-out;
+      }
+      .row:hover .actions,
+      .row:focus-within .actions,
+      .row.is-hover .actions,
+      .row.is-focus .actions,
+      .row.selected .actions {
+        opacity: 1;
+      }
+      .act {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        border: 0;
+        background: none;
+        color: var(--text-muted);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        position: relative;
+      }
+      .act:hover,
+      .act.open {
+        background: var(--input-bg);
+        color: var(--text-primary);
+      }
+      .act .tip {
+        display: none;
+        position: absolute;
+        bottom: 34px;
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        padding: 4px 8px;
+        border-radius: 8px;
+        font-size: 11px;
+        background: var(--glass-strong);
+        border: 0.5px solid var(--glass-border);
+        color: var(--text-primary);
+        z-index: 5;
+      }
+      .act:hover .tip {
+        display: block;
+      }
+      .kbd {
+        display: inline-flex;
+        align-items: center;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 8px;
+        background: var(--input-bg);
+        border: 0.5px solid var(--glass-border);
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      /* Date menu (DESIGN.md: menus and popovers) */
+      .menu {
+        position: absolute;
+        top: 38px;
+        right: 76px;
+        width: 240px;
+        border-radius: 16px;
+        padding: 6px;
+        z-index: 10;
+        cursor: default;
+      }
+      .menu .item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 28px;
+        padding: 0 8px;
+        border-radius: 8px;
+      }
+      .menu .item:hover,
+      .menu .item.active {
+        background: var(--input-bg);
+      }
+      .menu .item .when {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .menu .sep {
+        height: 0.5px;
+        background: var(--glass-border);
+        margin: 6px 4px;
+      }
+      .menu label {
+        display: block;
+        padding: 2px 8px 4px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .menu .date {
+        display: flex;
+        gap: 6px;
+        padding: 0 4px 2px;
+      }
+      .menu input[type='date'] {
+        flex: 1;
+        height: 30px;
+        border-radius: 10px;
+        border: 0.5px solid transparent;
+        background: var(--input-bg);
+        color: var(--text-primary);
+        padding: 0 8px;
+        font: inherit;
+      }
+      .btn {
+        height: 30px;
+        padding: 0 12px;
+        border-radius: 10px;
+        border: 0;
+        cursor: pointer;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: var(--text-on-tile);
+      }
+      .btn-secondary {
+        background: var(--glass);
+        border: 0.5px solid var(--glass-border);
+        color: var(--text-primary);
+        height: 34px;
+      }
+
+      /* Toast */
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 96px;
+        transform: translateX(-50%);
+        border-radius: 10px;
+        padding: 8px 8px 8px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .toast .undo {
+        background: none;
+        border: 0;
+        color: var(--accent);
+        font-weight: 500;
+        cursor: pointer;
+      }
+
+      /* Empty, loading, error */
+      .empty {
+        border-radius: 16px;
+        padding: 32px 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        text-align: center;
+      }
+      .empty .circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--input-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+      }
+      .empty h2 {
+        font-size: 16px;
+        font-weight: 500;
+        margin: 0;
+      }
+      .empty p {
+        margin: 0 0 8px;
+        color: var(--text-muted);
+        max-width: 320px;
+      }
+      .error {
+        border-radius: 16px;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      /* Dock stand-in */
+      .dock {
+        position: fixed;
+        left: 50%;
+        bottom: 10px;
+        transform: translateX(-50%);
+        height: 60px;
+        border-radius: 18px;
+        padding: 0 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .dock span {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: block;
+      }
+
+      .note {
+        margin-top: auto;
+        padding: 8px 4px 0;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Shared icons (Tabler outline style, redrawn) -->
+    <svg width="0" height="0" style="position: absolute">
+      <symbol id="i-inbox" viewBox="0 0 24 24">
+        <path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+        <path d="M4 13h3l3 3h4l3-3h3" />
+      </symbol>
+      <symbol id="i-dash" viewBox="0 0 24 24">
+        <path
+          d="M5 4h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1M5 16h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1M15 12h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1M15 4h4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1"
+        />
+      </symbol>
+      <symbol id="i-circle-check" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <path d="m9 12 2 2 4-4" />
+      </symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24">
+        <path
+          d="M3 13a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM15 9a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1zM9 5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1z"
+        />
+      </symbol>
+      <symbol id="i-target" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="1" />
+        <circle cx="12" cy="12" r="5" />
+        <circle cx="12" cy="12" r="9" />
+      </symbol>
+      <symbol id="i-brief" viewBox="0 0 24 24">
+        <path
+          d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M12 12v.01M3 13a20 20 0 0 0 18 0"
+        />
+      </symbol>
+      <symbol id="i-collapse" viewBox="0 0 24 24">
+        <path
+          d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM9 4v16M15 10l-2 2 2 2"
+        />
+      </symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+      <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 5v14M18 11l-6-6M6 11l6-6" /></symbol>
+      <symbol id="i-today" viewBox="0 0 24 24">
+        <path
+          d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM16 3v4M8 3v4M4 11h16M8 15h2v2H8z"
+        />
+      </symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24">
+        <path
+          d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM16 3v4M8 3v4M4 11h16"
+        />
+      </symbol>
+      <symbol id="i-tag" viewBox="0 0 24 24">
+        <circle cx="7.5" cy="7.5" r="1" />
+        <path
+          d="M3 6v5.17a2 2 0 0 0 .59 1.42l7.71 7.71a2.41 2.41 0 0 0 3.41 0l5.59-5.59a2.41 2.41 0 0 0 0-3.41l-7.71-7.71A2 2 0 0 0 11.17 3H6a3 3 0 0 0-3 3"
+        />
+      </symbol>
+      <symbol id="i-dots" viewBox="0 0 24 24">
+        <circle cx="5" cy="12" r="1" />
+        <circle cx="12" cy="12" r="1" />
+        <circle cx="19" cy="12" r="1" />
+      </symbol>
+      <symbol id="i-flag" viewBox="0 0 24 24">
+        <path d="M5 5a5 5 0 0 1 7 0 5 5 0 0 0 7 0v9a5 5 0 0 1-7 0 5 5 0 0 0-7 0zM5 21v-7" />
+      </symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24">
+        <path
+          d="M5 13a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2zM8 11V7a4 4 0 1 1 8 0v4"
+        />
+      </symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="4" />
+        <path
+          d="M3 12h1M12 3v1M20 12h1M12 20v1M5.6 5.6l.7.7M18.4 5.6l-.7.7M17.7 17.7l.7.7M6.3 17.7l-.7.7"
+        />
+      </symbol>
+      <symbol id="i-sunrise" viewBox="0 0 24 24">
+        <path
+          d="M3 17h1m16 0h1M5.6 10.6l.7.7m12.1-.7-.7.7M8 17a4 4 0 0 1 8 0M3 21h18M12 3v6l3-3M9 6l3 3"
+        />
+      </symbol>
+      <symbol id="i-week" viewBox="0 0 24 24">
+        <path
+          d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM16 3v4M8 3v4M4 11h16M11 15h1M12 15v3"
+        />
+      </symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></symbol>
+    </svg>
+
+    <div class="controls">
+      <button class="glass" id="theme">Light mode</button>
+      <button class="glass" data-state="items" aria-pressed="true">Items</button>
+      <button class="glass" data-state="empty" aria-pressed="false">Empty</button>
+      <button class="glass" data-state="loading" aria-pressed="false">Loading</button>
+      <button class="glass" data-state="error" aria-pressed="false">Error</button>
+    </div>
+
+    <div class="window">
+      <!-- Tasks side panel: the Inbox row is active and shows its count (hidden at 0) -->
+      <aside class="panel glass" aria-label="Tasks navigation">
+        <div class="panel-head">
+          <span class="small muted">Tasks</span>
+          <button class="icon-btn" aria-label="Collapse side panel">
+            <svg><use href="#i-collapse" /></svg>
+          </button>
+        </div>
+        <ul class="nav">
+          <li>
+            <a href="#"
+              ><svg><use href="#i-dash" /></svg>Overview</a
+            >
+          </li>
+          <li>
+            <a href="#"
+              ><svg><use href="#i-circle-check" /></svg>My tasks</a
+            >
+          </li>
+          <li>
+            <a href="#" class="active" aria-label="Inbox, 5 tasks to sort"
+              ><svg><use href="#i-inbox" /></svg>Inbox<span class="count" id="count">5</span></a
+            >
+          </li>
+          <li>
+            <a class="soon"
+              ><svg><use href="#i-chart" /></svg>Reporting<span class="count">Soon</span></a
+            >
+          </li>
+          <li>
+            <a class="soon"
+              ><svg><use href="#i-target" /></svg>Goals<span class="count">Soon</span></a
+            >
+          </li>
+          <li>
+            <a class="soon"
+              ><svg><use href="#i-brief" /></svg>Portfolios<span class="count">Soon</span></a
+            >
+          </li>
+        </ul>
+        <p class="small muted note">
+          Count: hidden at 0 and while loading; "99+" above 99; collapsed panel shows it only in the
+          tooltip "Inbox (5)".
+        </p>
+      </aside>
+
+      <main class="main">
+        <header>
+          <div>
+            <h1>Inbox</h1>
+            <p class="small muted" id="summary" style="margin: 2px 0 0">
+              5 to sort · Give each task a date or a tag to file it.
+            </p>
+          </div>
+          <button class="icon-btn" aria-label="Keyboard shortcuts">?</button>
+        </header>
+
+        <div class="quick glass">
+          <span class="plus"
+            ><svg><use href="#i-plus" /></svg
+          ></span>
+          <input placeholder="Add a task…" aria-label="Add a task" />
+          <button class="send" disabled aria-label="Add task">
+            <svg><use href="#i-arrow-up" /></svg>
+          </button>
+        </div>
+        <p class="hint small muted">
+          A task typed with a date or #tag goes to My tasks (toast "Added to My tasks.").
+        </p>
+
+        <!-- State: items -->
+        <section data-view="items">
+          <ul class="list glass" aria-label="Inbox tasks">
+            <li class="row" tabindex="-1">
+              <span class="check" aria-hidden="true"></span>
+              <span class="title">Call the bank about the card limit</span>
+              <span class="actions" aria-label="Quick actions">
+                <button class="act" aria-label="Today">
+                  <svg><use href="#i-today" /></svg><span class="tip">Today</span>
+                </button>
+                <button class="act" aria-label="Date">
+                  <svg><use href="#i-calendar" /></svg
+                  ><span class="tip">Date <span class="kbd">T</span></span>
+                </button>
+                <button class="act" aria-label="Tag">
+                  <svg><use href="#i-tag" /></svg
+                  ><span class="tip">Tag <span class="kbd">L</span></span>
+                </button>
+                <button class="act" aria-label="More">
+                  <svg><use href="#i-dots" /></svg><span class="tip">More</span>
+                </button>
+              </span>
+            </li>
+
+            <!-- Focused row (keyboard) with the Date menu open: T opens it -->
+            <li class="row is-focus" tabindex="0">
+              <span class="check" aria-hidden="true"></span>
+              <span class="title">Send the invoice to Meera for the logo work</span>
+              <span class="meta"
+                ><span class="flag-high" role="img" aria-label="High priority"
+                  ><svg><use href="#i-flag" /></svg></span
+              ></span>
+              <span class="actions">
+                <button class="act" aria-label="Today">
+                  <svg><use href="#i-today" /></svg>
+                </button>
+                <button class="act open" aria-label="Date" aria-expanded="true">
+                  <svg><use href="#i-calendar" /></svg>
+                </button>
+                <button class="act" aria-label="Tag">
+                  <svg><use href="#i-tag" /></svg>
+                </button>
+                <button class="act" aria-label="More">
+                  <svg><use href="#i-dots" /></svg>
+                </button>
+              </span>
+              <div class="menu strong" role="menu" aria-label="Set a date">
+                <div class="item active" role="menuitem">
+                  <svg><use href="#i-sun" /></svg>Today<span class="when">Tue, 13 Oct</span>
+                </div>
+                <div class="item" role="menuitem">
+                  <svg><use href="#i-sunrise" /></svg>Tomorrow<span class="when">Wed, 14 Oct</span>
+                </div>
+                <div class="item" role="menuitem">
+                  <svg><use href="#i-week" /></svg>Next week<span class="when">Mon, 19 Oct</span>
+                </div>
+                <div class="sep"></div>
+                <label for="pick">Pick a date</label>
+                <div class="date">
+                  <input id="pick" type="date" value="2026-10-14" /><button class="btn btn-primary">
+                    Set
+                  </button>
+                </div>
+              </div>
+            </li>
+
+            <!-- Hovered row: quick actions visible -->
+            <li class="row is-hover" tabindex="-1">
+              <span class="check" aria-hidden="true"></span>
+              <span class="title">Read chapter 4 of the networks book</span>
+              <span class="meta"
+                ><span class="small" aria-label="1 of 3 subtasks done">1/3</span></span
+              >
+              <span class="actions">
+                <button class="act" aria-label="Today">
+                  <svg><use href="#i-today" /></svg><span class="tip">Today</span>
+                </button>
+                <button class="act" aria-label="Date">
+                  <svg><use href="#i-calendar" /></svg>
+                </button>
+                <button class="act" aria-label="Tag">
+                  <svg><use href="#i-tag" /></svg>
+                </button>
+                <button class="act" aria-label="More">
+                  <svg><use href="#i-dots" /></svg>
+                </button>
+              </span>
+            </li>
+
+            <li class="row" tabindex="-1">
+              <span class="check" aria-hidden="true"></span>
+              <span class="title">Renew the domain before it lapses</span>
+              <span class="meta"
+                ><span class="blocked"
+                  ><svg><use href="#i-lock" /></svg>Blocked</span
+                ></span
+              >
+              <span class="actions">
+                <button class="act" aria-label="Today">
+                  <svg><use href="#i-today" /></svg>
+                </button>
+                <button class="act" aria-label="Date">
+                  <svg><use href="#i-calendar" /></svg>
+                </button>
+                <button class="act" aria-label="Tag">
+                  <svg><use href="#i-tag" /></svg>
+                </button>
+                <button class="act" aria-label="More">
+                  <svg><use href="#i-dots" /></svg>
+                </button>
+              </span>
+            </li>
+
+            <li class="row" tabindex="-1">
+              <span class="check" aria-hidden="true"></span>
+              <span class="title">Ideas for the portfolio site</span>
+              <span class="actions">
+                <button class="act" aria-label="Today">
+                  <svg><use href="#i-today" /></svg>
+                </button>
+                <button class="act" aria-label="Date">
+                  <svg><use href="#i-calendar" /></svg>
+                </button>
+                <button class="act" aria-label="Tag">
+                  <svg><use href="#i-tag" /></svg>
+                </button>
+                <button class="act" aria-label="More">
+                  <svg><use href="#i-dots" /></svg>
+                </button>
+              </span>
+            </li>
+          </ul>
+          <p class="small muted" style="padding: 8px 4px 0">
+            Keys: <span class="kbd">↑</span> <span class="kbd">↓</span> move ·
+            <span class="kbd">T</span> date · <span class="kbd">L</span> tag ·
+            <span class="kbd">1</span>–<span class="kbd">4</span> priority ·
+            <span class="kbd">Space</span> done · <span class="kbd">Enter</span> details ·
+            <span class="kbd">Del</span> delete. When a task leaves, focus moves to the next one.
+            (This line is a mockup note; the app shows keys in the "?" help.)
+          </p>
+        </section>
+
+        <!-- State: empty -->
+        <section data-view="empty" hidden>
+          <div class="empty glass">
+            <span class="circle"
+              ><svg><use href="#i-inbox" /></svg
+            ></span>
+            <h2>Your inbox is empty</h2>
+            <p>Every task has a date or a tag. New tasks without either show up here.</p>
+            <button class="btn btn-secondary">Open My tasks</button>
+          </div>
+        </section>
+
+        <!-- State: loading -->
+        <section data-view="loading" hidden>
+          <p role="status" class="muted" style="padding: 0 4px; margin: 0">Loading tasks…</p>
+        </section>
+
+        <!-- State: error -->
+        <section data-view="error" hidden>
+          <div class="error glass" role="alert">
+            <p style="margin: 0">Could not load your tasks.</p>
+            <button class="btn btn-secondary">Try again</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Undo toast after a date was set (tasks.move) -->
+    <div class="toast strong" id="toast">
+      <span>Task moved.</span>
+      <button class="undo">Undo</button>
+      <button class="icon-btn" aria-label="Dismiss" style="width: 24px; height: 24px">
+        <svg><use href="#i-x" /></svg>
+      </button>
+    </div>
+
+    <div class="dock strong" aria-hidden="true">
+      <span style="background: #e8e8e8"></span><span style="background: var(--module-tasks)"></span>
+      <span style="background: #c6e46e"></span><span style="background: #f0c9a0"></span>
+      <span style="background: #b8c4f7"></span
+      ><span style="background: var(--module-calendar)"></span>
+      <span style="background: #93d3f5"></span><span style="background: #c5ccd6"></span>
+      <span style="background: #f4a9c4"></span><span style="background: #9ee0c8"></span>
+      <span style="background: var(--module-assistant)"></span
+      ><span style="background: #a9a9a9"></span>
+    </div>
+
+    <script>
+      const root = document.documentElement;
+      const theme = document.getElementById('theme');
+      theme.addEventListener('click', () => {
+        const light = root.dataset.theme !== 'light';
+        root.dataset.theme = light ? 'light' : 'dark';
+        theme.textContent = light ? 'Dark mode' : 'Light mode';
+      });
+      const count = document.getElementById('count');
+      const summary = document.getElementById('summary');
+      const toast = document.getElementById('toast');
+      document.querySelectorAll('[data-state]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const state = button.dataset.state;
+          document
+            .querySelectorAll('[data-state]')
+            .forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+          document.querySelectorAll('[data-view]').forEach((v) => {
+            v.hidden = v.dataset.view !== state;
+          });
+          count.hidden = state !== 'items';
+          summary.textContent =
+            state === 'items' ? '5 to sort · Give each task a date or a tag to file it.' : ' ';
+          toast.hidden = state !== 'items';
+        });
+      });
+    </script>
+  </body>
+</html>

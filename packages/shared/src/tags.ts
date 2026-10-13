@@ -47,6 +47,9 @@ export const tagSchema = z.object({
   color: z.string(),
   createdAt: z.iso.datetime({ offset: true }),
   updatedAt: z.iso.datetime({ offset: true }),
+  /** Only tags.list fills these: live tasks with the tag (any status, archived too) and favorites that use it. */
+  taskCount: z.number().int().min(0).optional(),
+  favoriteCount: z.number().int().min(0).optional(),
 });
 export type Tag = z.infer<typeof tagSchema>;
 

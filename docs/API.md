@@ -46,9 +46,16 @@ Responses:
 | Method | Path | Purpose |
 |---|---|---|
 | GET | /health | Server health (full path /api/v1/health, no auth). Returns {"status":"ok","time":<UTC>} |
-| GET | /tags | List tags: `{ items: [...] }` |
+| GET | /tags | List tags: `{ items: [...] }`, each with `taskCount` and `favoriteCount` (live tasks of any status that have it, and favorites that use it) |
 | POST | /tags | Create a tag: 201 when created; 200 with the existing tag when the name exists (ignoring case). `undo` is null |
 | PATCH | /tags/:id | Rename or recolor a tag |
+| DELETE | /tags/:id | Delete a tag: removed from every task (the tasks stay) and from favorites; returns the tag and an undo (Feature 5: answers 501 until built) |
+| POST | /tags/:id/merge | Body `{ targetId }`: move this tag's tasks and favorites to the target tag and delete this one; returns the target tag and an undo |
+| GET | /task-favorites | The favorites in their order: `{ items: [...] }` (Feature 5) |
+| POST | /task-favorites | Save a view: body `name`, `view`, optional `color`, `icon`. 201; the same view again returns the existing favorite with a null undo; 409 `favorites_limit` at 12; 400 for an unknown tag id |
+| PATCH | /task-favorites/:id | Rename or change color or icon |
+| POST | /task-favorites/:id/move | Body `afterId` and/or `beforeId` |
+| DELETE | /task-favorites/:id | Remove (soft); the undo is favorites.restore |
 | POST | /tasks/:id/archive | Archive a task (returns the task and an undo) |
 | POST | /tasks/:id/unarchive | Bring an archived task back |
 | POST | /tasks/:id/complete | Mark a task done (returns the task and an undo) |

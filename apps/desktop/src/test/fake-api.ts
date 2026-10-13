@@ -1,5 +1,11 @@
-import type { Tag, Task, UndoDescriptor } from '@personal-os/shared';
-import { nextTagColor } from '@personal-os/shared';
+import type { Favorite, FavoriteView, Tag, Task, UndoDescriptor } from '@personal-os/shared';
+import {
+  MAX_FAVORITES,
+  nextTagColor,
+  removeTagFromView,
+  replaceTagInView,
+  sameFavoriteView,
+} from '@personal-os/shared';
 import { vi } from 'vitest';
 import { ApiError, type ApiClient, type RequestOptions } from '../api/api-client';
 import { positionBetween } from '../modules/tasks/drag/position';
@@ -62,16 +68,46 @@ const asArray = (value: unknown): string[] =>
  * real routes: soft delete, archive, subtasks (one level), tags, counts, filters, undo descriptors,
  * and completedAt. Tests read `calls` and `tasks`. (Dependencies and recurrence arrive in Feature 3.)
  */
-export function createFakeApi(initial: Task[] = [], initialTags: Tag[] = []) {
+export function makeFavorite(overrides: Partial<Favorite> = {}): Favorite {
+  counter += 1;
+  return {
+    id: idFor(counter + 5000),
+    name: `Favorite ${String(counter)}`,
+    color: '#F7D96B',
+    icon: 'hash',
+    view: { priority: [1] },
+    position: counter * 1024,
+    createdAt: '2025-10-01T00:00:00.000Z',
+    updatedAt: '2025-10-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+export function createFakeApi(
+  initial: Task[] = [],
+  initialTags: Tag[] = [],
+  initialFavorites: Favorite[] = [],
+) {
   const store = new Map<string, Task>(initial.map((task) => [task.id, task]));
   const tagStore = new Map<string, Tag>(initialTags.map((tag) => [tag.id, tag]));
   const deleted = new Set<string>();
+  const favoriteStore = new Map<string, Favorite>(
+    initialFavorites.map((favorite) => [favorite.id, favorite]),
+  );
+  const favoritesGone = new Set<string>();
+  /** Tags removed by delete or merge, kept for the undo. */
+  const removedTags = new Map<string, Tag>();
   const calls: Call[] = [];
   let failure: ApiError | null = null;
   let delayMs = 0;
 
   /** Blocked task id -> the ids of the tasks that block it. */
   const blockers = new Map<string, Set<string>>();
+
+  const liveFavorites = () =>
+    [...favoriteStore.values()]
+      .filter((fav) => !favoritesGone.has(fav.id))
+      .sort((a, b) => a.position - b.position);
 
   const liveTasks = () => [...store.values()].filter((task) => !deleted.has(task.id));
 
@@ -278,7 +314,119 @@ export function createFakeApi(initial: Task[] = [], initialTags: Tag[] = []) {
       }
     }
 
-    if (method === 'GET' && path === '/tags') return { items: [...tagStore.values()] };
+    if (method === 'GET' && path === '/tags') {
+      return {
+        items: [...tagStore.values()].map((tag) => ({
+          ...tag,
+          taskCount: liveTasks().filter((task) => task.tags.some((ref) => ref.id === tag.id))
+            .length,
+          favoriteCount: liveFavorites().filter((fav) => fav.view.tagIds?.includes(tag.id)).length,
+        })),
+      };
+    }
+
+    // ---- favorites ----
+    if (method === 'GET' && path === '/task-favorites') return { items: liveFavorites() };
+    if (method === 'POST' && path === '/task-favorites') {
+      const view = body.view as FavoriteView;
+      const same = liveFavorites().find((fav) => sameFavoriteView(fav.view, view));
+      if (same) return { item: same, undo: null };
+      if (liveFavorites().length >= MAX_FAVORITES) {
+        throw new ApiError(409, 'favorites_limit', 'You can have at most 12 favorites');
+      }
+      const last = liveFavorites().at(-1);
+      const favorite = makeFavorite({
+        name: String(body.name),
+        view,
+        color: typeof body.color === 'string' ? body.color : nextTagColor(favoriteStore.size),
+        icon: (typeof body.icon === 'string' ? body.icon : 'hash') as Favorite['icon'],
+        position: (last?.position ?? 0) + 1024,
+      });
+      favoriteStore.set(favorite.id, favorite);
+      return { item: favorite, undo: { action: 'favorites.delete', input: { id: favorite.id } } };
+    }
+    const favoriteRoute = /^\/task-favorites\/([^/]+)(?:\/(move))?$/.exec(path);
+    if (favoriteRoute) {
+      const id = favoriteRoute[1] ?? '';
+      const current = favoriteStore.get(id);
+      if (!current || favoritesGone.has(id))
+        throw new ApiError(404, 'not_found', 'Favorite not found');
+      if (method === 'PATCH') {
+        const next = { ...current, ...(body as Partial<Favorite>), id };
+        favoriteStore.set(id, next);
+        return {
+          item: next,
+          undo: {
+            action: 'favorites.update',
+            input: { id, name: current.name, color: current.color, icon: current.icon },
+          },
+        };
+      }
+      if (method === 'POST' && favoriteRoute[2] === 'move') {
+        const above =
+          typeof body.afterId === 'string' ? favoriteStore.get(body.afterId)?.position : undefined;
+        const below =
+          typeof body.beforeId === 'string'
+            ? favoriteStore.get(body.beforeId)?.position
+            : undefined;
+        const position = positionBetween(above, below);
+        favoriteStore.set(id, { ...current, position });
+        return { item: favoriteStore.get(id), undo: null };
+      }
+      if (method === 'DELETE') {
+        favoritesGone.add(id);
+        return { item: current, undo: { action: 'favorites.restore', input: { id } } };
+      }
+    }
+
+    // ---- deleting and merging tags ----
+    const tagMerge = /^\/tags\/([^/]+)\/merge$/.exec(path);
+    const tagDelete = /^\/tags\/([^/]+)$/.exec(path);
+    if ((method === 'DELETE' && tagDelete) || (method === 'POST' && tagMerge)) {
+      const id = (tagMerge ?? tagDelete)?.[1] ?? '';
+      const tag = tagStore.get(id);
+      if (!tag) throw new ApiError(404, 'not_found', 'Tag not found');
+      const target = tagMerge ? tagStore.get(String(body.targetId)) : undefined;
+      if (tagMerge && !target) throw new ApiError(404, 'not_found', 'Tag not found');
+      const taskIds = liveTasks()
+        .filter((task) => task.tags.some((ref) => ref.id === id))
+        .map((task) => task.id);
+      for (const taskId of taskIds) {
+        const task = find(taskId);
+        const kept = task.tags.filter((ref) => ref.id !== id);
+        const tags =
+          target && !kept.some((ref) => ref.id === target.id)
+            ? [...kept, { id: target.id, name: target.name, color: target.color }]
+            : kept;
+        store.set(taskId, { ...task, tags });
+      }
+      const touched: { id: string; view: FavoriteView; removed: boolean }[] = [];
+      for (const fav of liveFavorites()) {
+        if (!fav.view.tagIds?.includes(id)) continue;
+        const next = target
+          ? replaceTagInView(fav.view, id, target.id)
+          : removeTagFromView(fav.view, id);
+        if (next === null) {
+          favoritesGone.add(fav.id);
+          touched.push({ id: fav.id, view: fav.view, removed: true });
+        } else {
+          favoriteStore.set(fav.id, { ...fav, view: next });
+          touched.push({ id: fav.id, view: fav.view, removed: false });
+        }
+      }
+      tagStore.delete(id);
+      removedTags.set(id, tag);
+      const input = { id, taskIds, favorites: touched };
+      return target
+        ? {
+            item: target,
+            undo: {
+              action: 'tags.unmerge',
+              input: { sourceId: id, targetId: target.id, taskIds, favorites: touched },
+            },
+          }
+        : { item: tag, undo: { action: 'tags.restore', input } };
+    }
     if (method === 'POST' && path === '/tags') {
       const name = typeof body.name === 'string' ? body.name.trim() : '';
       if (name === '' || /[\s#]/.test(name)) {
@@ -319,6 +467,35 @@ export function createFakeApi(initial: Task[] = [], initialTags: Tag[] = []) {
     if (method === 'POST' && path === '/undo') {
       const { action, input } = body as { action: string; input: Record<string, unknown> };
       const id = String(input.id);
+      if (action === 'favorites.restore') {
+        favoritesGone.delete(id);
+        return { item: favoriteStore.get(id), undo: null };
+      }
+      if (action === 'favorites.delete') {
+        favoritesGone.add(id);
+        return { item: favoriteStore.get(id), undo: null };
+      }
+      if (action === 'favorites.update') return handle('PATCH', `/task-favorites/${id}`, input);
+      if (action === 'tags.restore' || action === 'tags.unmerge') {
+        const tagId = String(action === 'tags.restore' ? input.id : input.sourceId);
+        const tag = removedTags.get(tagId);
+        if (!tag) throw new ApiError(404, 'not_found', 'Tag not found');
+        tagStore.set(tagId, tag);
+        const ref = { id: tag.id, name: tag.name, color: tag.color };
+        for (const taskId of (input.taskIds as string[] | undefined) ?? []) {
+          const task = store.get(taskId);
+          if (task && !task.tags.some((entry) => entry.id === tagId)) {
+            store.set(taskId, { ...task, tags: [...task.tags, ref] });
+          }
+        }
+        for (const touched of (input.favorites as
+          { id: string; view: FavoriteView; removed: boolean }[] | undefined) ?? []) {
+          const fav = favoriteStore.get(touched.id);
+          if (fav) favoriteStore.set(fav.id, { ...fav, view: touched.view });
+          if (touched.removed) favoritesGone.delete(touched.id);
+        }
+        return { item: tag, undo: null };
+      }
       if (action === 'tasks.update') return patchTask(id, input);
       if (action === 'tasks.restore') {
         deleted.delete(id);

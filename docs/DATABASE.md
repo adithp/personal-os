@@ -56,6 +56,9 @@ Each module table uses the same id as its entity row.
 - tags: id, user_id, name (unique per user ignoring case among live tags), color (a palette hex), deleted_at. A plain table: a tag has no row in entities. The knowledge graph (Step 7) builds tag nodes from the tags table.
 - entity_tags: entity_id, tag_id (a task can only get tags of the same user, enforced by composite foreign keys; each pair once). entity_tags rows are hard-deleted (no deleted_at); soft-deleting a tag does not remove its rows, and task reads ignore tags that are soft-deleted
 
+### Task favorites
+- task_favorites: id, user_id, name (1 to 40), color (a palette color), icon (one of 12 icon names), view (jsonb: the saved My tasks view: status, priority, tagIds, due, archived, group, sort; at least one key; checked by the shared favoriteViewSchema), position (a number between neighbours, like tasks.position), created_at, updated_at, deleted_at. A plain table (not an entity); RLS own rows; at most 12 live favorites per user (checked by the server); updated_at trigger (migration 0007). Migrations 0006 and 0007.
+
 ### Calendar
 - calendars: id, google_calendar_id, name, color, visible
 - events: id, calendar_id, google_event_id, title, description, start_at, end_at, all_day, recurrence, location, reminder_minutes, etag

@@ -1,0 +1,1083 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-glass="simple">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mockup: Tasks Reporting (Feature 7)</title>
+    <!--
+  Mockup for docs/design/research/tasks-reporting.md. Demo values only.
+  Tokens copied from packages/ui/src/styles/tokens.css (DESIGN.md). Demo "today" is Fri 16 Oct 2026.
+-->
+    <style>
+      :root,
+      [data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #15171c;
+        --glass: rgba(255, 255, 255, 0.07);
+        --glass-border: rgba(255, 255, 255, 0.12);
+        --glass-strong: rgba(40, 43, 50, 0.92);
+        --text-primary: #f2f2f2;
+        --text-secondary: rgba(255, 255, 255, 0.65);
+        --text-muted: rgba(255, 255, 255, 0.45);
+        --text-on-tile: #1c1c1c;
+        --danger: #f28b82;
+        --input-bg: rgba(255, 255, 255, 0.06);
+        --wallpaper-default:
+          radial-gradient(ellipse 80% 60% at 15% 0%, #3d3a70 0%, transparent 60%),
+          radial-gradient(ellipse 70% 50% at 90% 15%, #1f5466 0%, transparent 60%),
+          radial-gradient(ellipse 90% 60% at 50% 100%, #2a2440 0%, transparent 70%),
+          linear-gradient(180deg, #1c1f2b 0%, #15171c 100%);
+      }
+      [data-theme='light'] {
+        color-scheme: light;
+        --bg: #eef0f3;
+        --glass: rgba(255, 255, 255, 0.65);
+        --glass-border: rgba(0, 0, 0, 0.07);
+        --glass-strong: rgba(255, 255, 255, 0.85);
+        --text-primary: #1c1c1c;
+        --text-secondary: rgba(0, 0, 0, 0.6);
+        --text-muted: rgba(0, 0, 0, 0.4);
+        --danger: #c5221f;
+        --input-bg: rgba(0, 0, 0, 0.04);
+        --wallpaper-default:
+          radial-gradient(ellipse 80% 60% at 15% 0%, #d9defc 0%, transparent 60%),
+          radial-gradient(ellipse 70% 50% at 90% 15%, #fde0cc 0%, transparent 60%),
+          radial-gradient(ellipse 90% 60% at 50% 100%, #d4efe4 0%, transparent 70%),
+          linear-gradient(180deg, #f5f6f9 0%, #eef0f3 100%);
+      }
+      :root {
+        --module-tasks: #f7d96b;
+        --module-habits: #c6e46e;
+        --module-graph: #b8c4f7;
+        --module-mail: #93d3f5;
+        --module-projects: #f4a9c4;
+        --module-money: #9ee0c8;
+        --module-assistant: #c9b4f7;
+        --accent: var(--module-assistant);
+        --glass-blur: 24px;
+        --duration-fast: 150ms;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, sans-serif;
+        font-size: 13px;
+        color: var(--text-primary);
+        background: var(--wallpaper-default);
+        background-attachment: fixed;
+        min-height: 100vh;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* Demo toolbar (not part of the design) */
+      .demo {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 8px 16px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .demo button {
+        background: var(--input-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 8px;
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+
+      .glass {
+        background: var(--glass);
+        border: 0.5px solid var(--glass-border);
+        border-radius: 16px;
+        backdrop-filter: blur(var(--glass-blur));
+        -webkit-backdrop-filter: blur(var(--glass-blur));
+      }
+
+      /* App frame: 1100 x 700 minimum window */
+      .window {
+        width: 1100px;
+        height: 700px;
+        margin: 0 auto 24px;
+        position: relative;
+        overflow: hidden;
+        border-radius: 8px;
+      }
+      .titlebar {
+        height: 40px;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .layout {
+        display: flex;
+        gap: 12px;
+        padding: 16px 16px 80px;
+        height: calc(700px - 40px);
+      }
+
+      .side {
+        width: 224px;
+        padding: 12px 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: none;
+      }
+      .side a {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 32px;
+        padding: 0 10px;
+        border-radius: 10px;
+        color: var(--text-secondary);
+        text-decoration: none;
+      }
+      .side a[aria-current='page'] {
+        background: var(--input-bg);
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      .side .soon {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        overflow-y: auto;
+        transition: opacity var(--duration-fast) ease-out;
+      }
+      main.refetching {
+        opacity: 0.5;
+      }
+
+      .head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+      }
+      h1 {
+        font-size: 22px;
+        font-weight: 600;
+        margin: 0;
+      }
+      .range {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 2px;
+      }
+
+      .segmented {
+        display: flex;
+        gap: 2px;
+        padding: 3px;
+        border-radius: 10px;
+      }
+      .segmented button {
+        height: 28px;
+        padding: 0 12px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--text-secondary);
+      }
+      .segmented button[aria-checked='true'] {
+        background: var(--accent);
+        color: var(--text-on-tile);
+        font-weight: 500;
+      }
+
+      .tiles {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+      }
+      .stat {
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-height: 108px;
+      }
+      .stat .label {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+      .stat .value {
+        font-size: 30px;
+        font-weight: 600;
+        line-height: 1.15;
+      }
+      .stat .value small {
+        font-size: 13px;
+        font-weight: 400;
+        color: var(--text-secondary);
+        margin-left: 4px;
+      }
+      .stat .sub {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: auto;
+      }
+      .stat .value.danger {
+        color: var(--danger);
+      }
+
+      .charts {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 12px;
+      }
+      .card {
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        min-height: 286px;
+        position: relative;
+      }
+      .card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+      }
+      .card-title {
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .card-sub {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 2px;
+      }
+      .link {
+        border: 0;
+        background: none;
+        font-size: 11px;
+        color: var(--text-secondary);
+        padding: 4px 6px;
+        border-radius: 8px;
+      }
+      .link:hover {
+        background: var(--input-bg);
+      }
+
+      .plot {
+        position: relative;
+        flex: 1;
+        min-height: 210px;
+      }
+      .plot svg {
+        display: block;
+        width: 100%;
+        height: 210px;
+        overflow: visible;
+      }
+      .plot svg:focus-visible {
+        outline: 2px solid var(--accent);
+        border-radius: 8px;
+      }
+      .bar {
+        fill: var(--module-tasks);
+      }
+      .grid {
+        stroke: var(--glass-border);
+        stroke-width: 1;
+        shape-rendering: crispEdges;
+      }
+      .tick {
+        fill: var(--text-muted);
+        font-size: 11px;
+      }
+      .tick.today {
+        fill: var(--text-primary);
+        font-weight: 500;
+      }
+      .val {
+        fill: var(--text-secondary);
+        font-size: 11px;
+      }
+      .band {
+        fill: transparent;
+      }
+      .band.active {
+        fill: var(--input-bg);
+      }
+      .empty-line {
+        fill: var(--text-muted);
+        font-size: 13px;
+      }
+
+      .tooltip {
+        position: absolute;
+        pointer-events: none;
+        padding: 6px 8px;
+        border-radius: 8px;
+        font-size: 11px;
+        background: var(--glass-strong);
+        border: 0.5px solid var(--glass-border);
+        white-space: nowrap;
+        transform: translate(-50%, calc(-100% - 8px));
+        display: none;
+        z-index: 2;
+      }
+      .tooltip strong {
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+      .tooltip .dim {
+        color: var(--text-secondary);
+      }
+
+      .tags {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding-top: 4px;
+      }
+      .tag-row {
+        display: grid;
+        grid-template-columns: 96px 1fr 24px;
+        align-items: center;
+        gap: 8px;
+        border-radius: 8px;
+        padding: 2px 0;
+      }
+      .tag-row:hover,
+      .tag-row:focus-visible {
+        background: var(--input-bg);
+      }
+      .tag-name {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex: none;
+      }
+      .dot.none {
+        background: transparent;
+        border: 1px solid var(--text-muted);
+      }
+      .tag-track {
+        height: 12px;
+      }
+      .tag-bar {
+        height: 12px;
+        border-radius: 0 4px 4px 0;
+        background: var(--module-tasks);
+        min-width: 0;
+      }
+      .tag-count {
+        font-size: 11px;
+        color: var(--text-secondary);
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 4px 6px;
+        border-bottom: 1px solid var(--glass-border);
+      }
+      th {
+        color: var(--text-muted);
+        font-weight: 500;
+      }
+      td.num,
+      th.num {
+        text-align: right;
+      }
+      .table-wrap {
+        max-height: 220px;
+        overflow-y: auto;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+
+      .never {
+        margin: auto;
+        max-width: 384px;
+        padding: 32px 24px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      .never .icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: var(--module-tasks);
+        color: var(--text-on-tile);
+        display: grid;
+        place-items: center;
+      }
+      .never p {
+        margin: 0;
+        color: var(--text-secondary);
+      }
+      .btn-secondary {
+        height: 34px;
+        padding: 0 14px;
+        border-radius: 10px;
+        background: var(--glass);
+        border: 0.5px solid var(--glass-border);
+        margin-top: 8px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="demo" aria-label="Mockup controls (not part of the design)">
+      Mockup controls:
+      <button type="button" id="toggle-theme">Switch dark / light</button>
+      <button type="button" id="toggle-empty">Show empty period</button>
+      <button type="button" id="toggle-never">Show "nothing ever done"</button>
+      <span>Demo today: Fri 16 Oct 2026 · values are made up</span>
+    </div>
+
+    <div class="window glass" style="border-radius: 8px">
+      <div class="titlebar">Personal OS</div>
+      <div class="layout">
+        <nav class="side glass" aria-label="Tasks">
+          <a href="#">Overview</a>
+          <a href="#">My tasks</a>
+          <a href="#">Inbox <span class="soon">4</span></a>
+          <a href="#" aria-current="page">Reporting</a>
+          <a href="#">Goals <span class="soon">Soon</span></a>
+          <a href="#">Portfolios <span class="soon">Soon</span></a>
+        </nav>
+
+        <main id="main">
+          <div class="head">
+            <div>
+              <h1>Reporting</h1>
+              <div class="range" id="range">Mon 12 – Sun 18 Oct</div>
+            </div>
+            <div class="segmented glass" role="radiogroup" aria-label="Period" id="period">
+              <button
+                type="button"
+                role="radio"
+                aria-checked="true"
+                data-period="week"
+                tabindex="0"
+              >
+                This week
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked="false"
+                data-period="month"
+                tabindex="-1"
+              >
+                This month
+              </button>
+            </div>
+          </div>
+
+          <section id="report" aria-label="Report">
+            <div class="tiles">
+              <div class="stat glass">
+                <div class="label">Done</div>
+                <div class="value" id="t-done">21</div>
+                <div class="sub" id="t-done-sub">Last week by Fri: 17</div>
+              </div>
+              <div class="stat glass">
+                <div class="label">On time</div>
+                <div class="value" id="t-rate">82%</div>
+                <div class="sub" id="t-rate-sub">14 of 17 with a due date · last week 71%</div>
+              </div>
+              <div class="stat glass">
+                <div class="label">Overdue now</div>
+                <div class="value danger" id="t-overdue">2</div>
+                <div class="sub">Open tasks due before today</div>
+              </div>
+              <div class="stat glass" title="Includes the next copy of repeating tasks">
+                <div class="label">Added</div>
+                <div class="value" id="t-added">18</div>
+                <div class="sub" id="t-added-sub">Last week by Fri: 22</div>
+              </div>
+            </div>
+
+            <div class="charts" style="margin-top: 12px">
+              <div class="card glass">
+                <div class="card-head">
+                  <div>
+                    <div class="card-title" id="c1-title">Done per day</div>
+                    <div class="card-sub" id="c1-sub">Monday to Sunday</div>
+                  </div>
+                  <button type="button" class="link" id="c1-toggle" aria-pressed="false">
+                    Show table
+                  </button>
+                </div>
+                <p class="sr-only" id="c1-summary"></p>
+                <div class="plot" id="c1-plot">
+                  <svg
+                    id="c1"
+                    role="application"
+                    tabindex="0"
+                    aria-labelledby="c1-title"
+                    aria-describedby="c1-summary"
+                  ></svg>
+                  <div class="tooltip" id="c1-tip" role="status"></div>
+                </div>
+                <div class="table-wrap" id="c1-table" hidden></div>
+              </div>
+
+              <div class="card glass">
+                <div class="card-head">
+                  <div>
+                    <div class="card-title">Done by tag</div>
+                    <div class="card-sub">A task counts once for each tag</div>
+                  </div>
+                  <button type="button" class="link" id="c2-toggle" aria-pressed="false">
+                    Show table
+                  </button>
+                </div>
+                <div class="tags" id="c2"></div>
+                <div class="table-wrap" id="c2-table" hidden></div>
+              </div>
+            </div>
+          </section>
+
+          <div class="never glass" id="never" hidden>
+            <div class="icon" aria-hidden="true">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M3.5 5.5l1.5 1.5l2.5 -2.5" />
+                <path d="M3.5 11.5l1.5 1.5l2.5 -2.5" />
+                <path d="M3.5 17.5l1.5 1.5l2.5 -2.5" />
+                <path d="M11 6l9 0" />
+                <path d="M11 12l9 0" />
+                <path d="M11 18l9 0" />
+              </svg>
+            </div>
+            <div style="font-size: 16px; font-weight: 600">No finished tasks yet</div>
+            <p>Complete a few tasks and your week will show up here.</p>
+            <button type="button" class="btn-secondary">Go to My tasks</button>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      // ---- demo data (shape follows the tasks.report output in the memo) ----
+      const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const TODAY = '2026-10-16';
+      const pad = (n) => String(n).padStart(2, '0');
+
+      // [done, onTime, late, noDueDate] per day
+      const weekRaw = [
+        [3, 2, 1, 0],
+        [5, 4, 0, 1],
+        [2, 1, 0, 1],
+        [6, 4, 1, 1],
+        [5, 3, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ];
+      const monthDone = [2, 4, 1, 0, 3, 5, 2, 4, 3, 1, 0, 3, 5, 2, 6, 5];
+
+      function dayEntry(date, d) {
+        return { date, done: d[0], onTime: d[1], late: d[2], noDueDate: d[3] };
+      }
+
+      const DATA = {
+        week: {
+          range: 'Mon 12 – Sun 18 Oct',
+          sub: 'Monday to Sunday',
+          prevName: 'Last week by Fri',
+          days: weekRaw.map((d, i) => dayEntry(`2026-10-${pad(12 + i)}`, d)),
+          totals: { done: 21, onTime: 14, late: 3, noDueDate: 4, added: 18 },
+          previous: { done: 17, onTime: 10, late: 4, added: 22 },
+          overdueNow: 2,
+          byTag: [
+            { name: 'work', color: '#93D3F5', done: 9 },
+            { name: 'home', color: '#9EE0C8', done: 5 },
+            { name: 'study', color: '#B8C4F7', done: 4 },
+            { name: 'freelance', color: '#F4A9C4', done: 2 },
+          ],
+          otherTagsDone: 0,
+          noTagDone: 5,
+        },
+        month: {
+          range: 'October 2026',
+          sub: '1 to 31 October',
+          prevName: 'Last month by the 16th',
+          days: Array.from({ length: 31 }, (_, i) => {
+            const done = monthDone[i] ?? 0;
+            const late = done >= 4 ? 1 : 0,
+              noDue = done >= 3 ? 1 : 0;
+            return dayEntry(`2026-10-${pad(i + 1)}`, [done, done - late - noDue, late, noDue]);
+          }),
+          totals: { done: 46, onTime: 31, late: 6, noDueDate: 9, added: 41 },
+          previous: { done: 38, onTime: 23, late: 8, added: 44 },
+          overdueNow: 2,
+          byTag: [
+            { name: 'work', color: '#93D3F5', done: 19 },
+            { name: 'home', color: '#9EE0C8', done: 11 },
+            { name: 'study', color: '#B8C4F7', done: 8 },
+            { name: 'freelance', color: '#F4A9C4', done: 6 },
+            { name: 'health', color: '#C6E46E', done: 3 },
+          ],
+          otherTagsDone: 2,
+          noTagDone: 9,
+        },
+      };
+
+      const state = {
+        period: 'week',
+        empty: false,
+        never: false,
+        table1: false,
+        table2: false,
+        active: -1,
+      };
+
+      function emptyCopy(d) {
+        return {
+          ...d,
+          days: d.days.map((x) => ({ ...x, done: 0, onTime: 0, late: 0, noDueDate: 0 })),
+          totals: { done: 0, onTime: 0, late: 0, noDueDate: 0, added: 0 },
+          byTag: [],
+          otherTagsDone: 0,
+          noTagDone: 0,
+        };
+      }
+      const current = () => (state.empty ? emptyCopy(DATA[state.period]) : DATA[state.period]);
+
+      // India-date helpers for the demo (the real app uses its own Monday-first helpers, never the locale)
+      const dateParts = (s) => s.split('-').map(Number);
+      const weekdayOf = (s) => {
+        const [y, m, d] = dateParts(s);
+        return (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7;
+      };
+      const longLabel = (s) => {
+        const [, , d] = dateParts(s);
+        return `${WEEKDAYS[weekdayOf(s)]} ${d} Oct`;
+      };
+      const rate = (on, late) => (on + late === 0 ? null : Math.round((100 * on) / (on + late)));
+
+      // ---- tiles ----
+      function renderTiles(d) {
+        const word = state.period === 'week' ? 'week' : 'month';
+        document.getElementById('range').textContent = d.range;
+        document.getElementById('t-done').textContent = d.totals.done;
+        document.getElementById('t-done-sub').textContent = `${d.prevName}: ${d.previous.done}`;
+        const r = rate(d.totals.onTime, d.totals.late);
+        const pr = rate(d.previous.onTime, d.previous.late);
+        document.getElementById('t-rate').textContent = r === null ? '–' : `${r}%`;
+        document.getElementById('t-rate-sub').textContent =
+          r === null
+            ? `No due dates this ${word}`
+            : `${d.totals.onTime} of ${d.totals.onTime + d.totals.late} with a due date · last ${word} ${pr}%`;
+        document.getElementById('t-overdue').textContent = d.overdueNow;
+        document.getElementById('t-added').textContent = d.totals.added;
+        document.getElementById('t-added-sub').textContent = `${d.prevName}: ${d.previous.added}`;
+      }
+
+      // ---- chart 1: done per day (inline SVG, drawn like the Recharts spec in the memo) ----
+      const NS = 'http://www.w3.org/2000/svg';
+      function el(name, attrs, text) {
+        const n = document.createElementNS(NS, name);
+        for (const k in attrs) n.setAttribute(k, attrs[k]);
+        if (text !== undefined) n.textContent = text;
+        return n;
+      }
+
+      function niceMax(v) {
+        if (v <= 4) return 4;
+        if (v <= 6) return 6;
+        if (v <= 8) return 8;
+        return Math.ceil(v / 4) * 4;
+      }
+
+      function renderChart1(d) {
+        const svg = document.getElementById('c1');
+        svg.replaceChildren();
+        document.getElementById('c1-sub').textContent = d.sub;
+        const W = svg.clientWidth || 560,
+          H = 210,
+          left = 24,
+          right = 4,
+          top = 16,
+          bottom = 22;
+        const pw = W - left - right,
+          ph = H - top - bottom;
+        const n = d.days.length,
+          max = niceMax(Math.max(...d.days.map((x) => x.done)));
+        const slot = pw / n,
+          bw = Math.min(24, slot * 0.6);
+        const y = (v) => top + ph - (v / max) * ph;
+
+        // gridlines: 3 at most, solid hairlines; Y ticks are whole numbers. An empty period keeps only the baseline.
+        (d.totals.done === 0 ? [0] : [0, max / 2, max]).forEach((v) => {
+          svg.append(
+            el('line', {
+              class: 'grid',
+              x1: left,
+              x2: W - right,
+              y1: Math.round(y(v)) + 0.5,
+              y2: Math.round(y(v)) + 0.5,
+            }),
+          );
+          if (d.totals.done > 0)
+            svg.append(
+              el(
+                'text',
+                { class: 'tick', x: left - 6, y: y(v) + 4, 'text-anchor': 'end' },
+                String(v),
+              ),
+            );
+        });
+
+        d.days.forEach((day, i) => {
+          const cx = left + slot * i + slot / 2;
+          const future = day.date > TODAY;
+          const band = el('rect', {
+            class: 'band' + (i === state.active ? ' active' : ''),
+            x: left + slot * i + 1,
+            y: top,
+            width: slot - 2,
+            height: ph,
+            rx: 6,
+          });
+          band.dataset.i = i;
+          svg.append(band);
+          if (day.done > 0) {
+            const h = (day.done / max) * ph,
+              x = cx - bw / 2,
+              yy = top + ph - h,
+              r = Math.min(4, bw / 2, h);
+            // 4 px rounded top, square at the baseline
+            svg.append(
+              el('path', {
+                class: 'bar',
+                d: `M${x},${top + ph} V${yy + r} Q${x},${yy} ${x + r},${yy} H${x + bw - r} Q${x + bw},${yy} ${x + bw},${yy + r} V${top + ph} Z`,
+                'pointer-events': 'none',
+              }),
+            );
+            if (state.period === 'week')
+              svg.append(
+                el(
+                  'text',
+                  { class: 'val', x: cx, y: yy - 5, 'text-anchor': 'middle' },
+                  String(day.done),
+                ),
+              );
+          }
+          const dayNum = Number(day.date.slice(8));
+          const showTick = state.period === 'week' || dayNum === 1 || weekdayOf(day.date) === 0;
+          if (showTick) {
+            const label = state.period === 'week' ? WEEKDAYS[i] : String(dayNum);
+            const t = el(
+              'text',
+              {
+                class: 'tick' + (day.date === TODAY ? ' today' : ''),
+                x: cx,
+                y: H - 4,
+                'text-anchor': 'middle',
+              },
+              label,
+            );
+            if (future) t.setAttribute('opacity', '0.6');
+            svg.append(t);
+          }
+        });
+
+        if (d.totals.done === 0) {
+          svg.append(
+            el(
+              'text',
+              { class: 'empty-line', x: left + pw / 2, y: top + ph / 2, 'text-anchor': 'middle' },
+              `Nothing done this ${state.period} yet`,
+            ),
+          );
+        }
+
+        // accessible summary sentence (also what a screen reader hears for the chart)
+        const best = d.days.reduce((a, b) => (b.done > a.done ? b : a), d.days[0]);
+        document.getElementById('c1-summary').textContent =
+          d.totals.done === 0
+            ? `Done per day: nothing done this ${state.period} yet.`
+            : `Done per day this ${state.period}: ${d.totals.done} tasks, most on ${longLabel(best.date)} (${best.done}). Use the arrow keys to read each day.`;
+
+        renderTable1(d);
+      }
+
+      function showTip(i) {
+        const d = current(),
+          day = d.days[i],
+          tip = document.getElementById('c1-tip'),
+          svg = document.getElementById('c1');
+        state.active = i;
+        svg
+          .querySelectorAll('.band')
+          .forEach((b) => b.classList.toggle('active', Number(b.dataset.i) === i));
+        const band = svg.querySelector(`.band[data-i="${i}"]`);
+        const x = Number(band.getAttribute('x')) + Number(band.getAttribute('width')) / 2;
+        tip.replaceChildren();
+        const l1 = document.createElement('div');
+        const s = document.createElement('strong');
+        s.textContent = `${day.done} done`;
+        const dim = document.createElement('span');
+        dim.className = 'dim';
+        dim.textContent = ` · ${longLabel(day.date)}`;
+        l1.append(s, dim);
+        tip.append(l1);
+        if (day.done > 0) {
+          const l2 = document.createElement('div');
+          l2.className = 'dim';
+          l2.textContent =
+            `${day.onTime} on time · ${day.late} late` +
+            (day.noDueDate ? ` · ${day.noDueDate} no date` : '');
+          tip.append(l2);
+        } else if (day.date > TODAY) {
+          const l2 = document.createElement('div');
+          l2.className = 'dim';
+          l2.textContent = 'Not yet';
+          tip.append(l2);
+        }
+        tip.style.left = `${x}px`;
+        tip.style.top = '16px';
+        tip.style.display = 'block';
+      }
+      function hideTip() {
+        state.active = -1;
+        document.getElementById('c1-tip').style.display = 'none';
+        document.querySelectorAll('#c1 .band').forEach((b) => b.classList.remove('active'));
+      }
+
+      const c1 = document.getElementById('c1');
+      c1.addEventListener('pointermove', (e) => {
+        const i = e.target.dataset && e.target.dataset.i;
+        if (i !== undefined) showTip(Number(i));
+      });
+      c1.addEventListener('pointerleave', hideTip);
+      c1.addEventListener('blur', hideTip);
+      c1.addEventListener('keydown', (e) => {
+        const n = current().days.length;
+        if (e.key === 'ArrowRight') {
+          showTip(state.active < 0 ? 0 : Math.min(n - 1, state.active + 1));
+          e.preventDefault();
+        }
+        if (e.key === 'ArrowLeft') {
+          showTip(state.active < 0 ? 0 : Math.max(0, state.active - 1));
+          e.preventDefault();
+        }
+        if (e.key === 'Escape') hideTip();
+      });
+
+      function makeTable(head, rows) {
+        const t = document.createElement('table');
+        const tr = document.createElement('tr');
+        head.forEach((h, i) => {
+          const th = document.createElement('th');
+          th.textContent = h;
+          if (i) th.className = 'num';
+          tr.append(th);
+        });
+        const thead = document.createElement('thead');
+        thead.append(tr);
+        t.append(thead);
+        const tb = document.createElement('tbody');
+        rows.forEach((r) => {
+          const row = document.createElement('tr');
+          r.forEach((c, i) => {
+            const td = document.createElement('td');
+            td.textContent = c;
+            if (i) td.className = 'num';
+            row.append(td);
+          });
+          tb.append(row);
+        });
+        t.append(tb);
+        return t;
+      }
+      function renderTable1(d) {
+        const rows = d.days
+          .filter((x) => x.date <= TODAY)
+          .map((x) => [longLabel(x.date), x.done, x.onTime, x.late]);
+        document
+          .getElementById('c1-table')
+          .replaceChildren(makeTable(['Day', 'Done', 'On time', 'Late'], rows));
+      }
+
+      // ---- chart 2: done by tag (horizontal bars, one hue, tag colour only as a dot) ----
+      function renderChart2(d) {
+        const box = document.getElementById('c2');
+        box.replaceChildren();
+        const rows = d.byTag.map((t) => ({ ...t }));
+        if (d.otherTagsDone) rows.push({ name: 'Other tags', color: null, done: d.otherTagsDone });
+        if (d.noTagDone) rows.push({ name: 'No tag', color: 'none', done: d.noTagDone });
+        if (rows.length === 0) {
+          const p = document.createElement('p');
+          p.style.cssText =
+            'color:var(--text-muted);margin:auto;padding-top:80px;text-align:center';
+          p.textContent = `No tags yet this ${state.period}`;
+          box.append(p);
+        }
+        const max = Math.max(1, ...rows.map((r) => r.done));
+        rows.forEach((r) => {
+          const row = document.createElement('div');
+          row.className = 'tag-row';
+          row.tabIndex = 0;
+          row.setAttribute('aria-label', `${r.name}: ${r.done} done`);
+          const name = document.createElement('div');
+          name.className = 'tag-name';
+          const dot = document.createElement('span');
+          dot.className = 'dot' + (r.color === 'none' ? ' none' : '');
+          if (r.color && r.color !== 'none') dot.style.background = r.color;
+          if (r.color === null) dot.style.background = 'var(--text-muted)';
+          const label = document.createElement('span');
+          label.textContent = r.name;
+          name.append(dot, label);
+          const track = document.createElement('div');
+          track.className = 'tag-track';
+          const bar = document.createElement('div');
+          bar.className = 'tag-bar';
+          bar.style.width = `${(r.done / max) * 100}%`;
+          track.append(bar);
+          const count = document.createElement('div');
+          count.className = 'tag-count';
+          count.textContent = r.done;
+          row.append(name, track, count);
+          box.append(row);
+        });
+        document.getElementById('c2-table').replaceChildren(
+          makeTable(
+            ['Tag', 'Done'],
+            rows.map((r) => [r.name, r.done]),
+          ),
+        );
+      }
+
+      // ---- render + controls ----
+      function render() {
+        const d = current();
+        document.getElementById('report').hidden = state.never;
+        document.getElementById('never').hidden = !state.never;
+        renderTiles(d);
+        renderChart1(d);
+        renderChart2(d);
+        document.getElementById('c1-plot').hidden = state.table1;
+        document.getElementById('c1-table').hidden = !state.table1;
+        document.getElementById('c2').hidden = state.table2;
+        document.getElementById('c2-table').hidden = !state.table2;
+      }
+
+      // Segmented control: radio group with arrow keys (DESIGN.md). Refetch keeps the old render at 50% for a moment.
+      const radios = [...document.querySelectorAll('#period [role=radio]')];
+      function choose(p, focus) {
+        if (p === state.period) return;
+        const main = document.getElementById('main');
+        main.classList.add('refetching');
+        radios.forEach((r) => {
+          const on = r.dataset.period === p;
+          r.setAttribute('aria-checked', on);
+          r.tabIndex = on ? 0 : -1;
+          if (on && focus) r.focus();
+        });
+        setTimeout(() => {
+          state.period = p;
+          hideTip();
+          render();
+          main.classList.remove('refetching');
+        }, 250);
+      }
+      radios.forEach((r) => {
+        r.addEventListener('click', () => choose(r.dataset.period));
+        r.addEventListener('keydown', (e) => {
+          if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+            e.preventDefault();
+            choose(state.period === 'week' ? 'month' : 'week', true);
+          }
+        });
+      });
+
+      function tableToggle(id, key) {
+        const b = document.getElementById(id);
+        b.addEventListener('click', () => {
+          state[key] = !state[key];
+          b.textContent = state[key] ? 'Show chart' : 'Show table';
+          b.setAttribute('aria-pressed', state[key]);
+          render();
+        });
+      }
+      tableToggle('c1-toggle', 'table1');
+      tableToggle('c2-toggle', 'table2');
+
+      document.getElementById('toggle-theme').addEventListener('click', () => {
+        const root = document.documentElement;
+        root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      });
+      document.getElementById('toggle-empty').addEventListener('click', (e) => {
+        state.empty = !state.empty;
+        state.never = false;
+        e.target.textContent = state.empty ? 'Show demo data' : 'Show empty period';
+        render();
+      });
+      document.getElementById('toggle-never').addEventListener('click', (e) => {
+        state.never = !state.never;
+        e.target.textContent = state.never ? 'Show report' : 'Show "nothing ever done"';
+        render();
+      });
+      window.addEventListener('resize', () => renderChart1(current()));
+
+      render();
+    </script>
+  </body>
+</html>

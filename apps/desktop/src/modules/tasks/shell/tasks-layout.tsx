@@ -1,4 +1,5 @@
 import { Outlet } from '@tanstack/react-router';
+import { ManageTagsDialog } from '../manage-tags/manage-tags-dialog';
 import { SidePanel } from './side-panel';
 
 /** The Tasks module frame: the slim inner side panel on the left, the page on the right. */
@@ -9,6 +10,7 @@ export function TasksLayout() {
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <Outlet />
       </div>
+      <ManageTagsDialog />
     </div>
   );
 }

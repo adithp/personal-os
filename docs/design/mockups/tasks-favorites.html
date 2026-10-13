@@ -1,0 +1,1240 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mockup: Tasks Favorites and Manage tags (Feature 5)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      /* Tokens copied from packages/ui/src/styles/tokens.css (demo only) */
+      :root,
+      [data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #15171c;
+        --glass: rgba(255, 255, 255, 0.07);
+        --glass-border: rgba(255, 255, 255, 0.12);
+        --glass-strong: rgba(40, 43, 50, 0.92);
+        --text-primary: #f2f2f2;
+        --text-secondary: rgba(255, 255, 255, 0.65);
+        --text-muted: rgba(255, 255, 255, 0.45);
+        --text-on-tile: #1c1c1c;
+        --danger: #f28b82;
+        --input-bg: rgba(255, 255, 255, 0.06);
+        --tint: rgba(21, 23, 28, 0.55);
+        --lg-shine: rgba(255, 255, 255, 0.15);
+        --lg-glow: rgba(255, 255, 255, 0.08);
+        --wallpaper-default:
+          radial-gradient(ellipse 80% 60% at 15% 0%, #3d3a70 0%, transparent 60%),
+          radial-gradient(ellipse 70% 50% at 90% 15%, #1f5466 0%, transparent 60%),
+          radial-gradient(ellipse 90% 60% at 50% 100%, #2a2440 0%, transparent 70%),
+          linear-gradient(180deg, #1c1f2b 0%, #15171c 100%);
+      }
+      [data-theme='light'] {
+        color-scheme: light;
+        --bg: #eef0f3;
+        --glass: rgba(255, 255, 255, 0.65);
+        --glass-border: rgba(0, 0, 0, 0.07);
+        --glass-strong: rgba(255, 255, 255, 0.85);
+        --text-primary: #1c1c1c;
+        --text-secondary: rgba(0, 0, 0, 0.6);
+        --text-muted: rgba(0, 0, 0, 0.4);
+        --danger: #c5221f;
+        --input-bg: rgba(0, 0, 0, 0.04);
+        --tint: rgba(238, 240, 243, 0.55);
+        --lg-shine: rgba(255, 255, 255, 0.75);
+        --lg-glow: rgba(255, 255, 255, 0.5);
+        --wallpaper-default:
+          radial-gradient(ellipse 80% 60% at 15% 0%, #d9defc 0%, transparent 60%),
+          radial-gradient(ellipse 70% 50% at 90% 15%, #fde0cc 0%, transparent 60%),
+          radial-gradient(ellipse 90% 60% at 50% 100%, #d4efe4 0%, transparent 70%),
+          linear-gradient(180deg, #f5f6f9 0%, #eef0f3 100%);
+      }
+      :root {
+        --module-tasks: #f7d96b;
+        --module-habits: #c6e46e;
+        --module-notes: #f0c9a0;
+        --module-graph: #b8c4f7;
+        --module-calendar: #f6a462;
+        --module-mail: #93d3f5;
+        --module-drive: #c5ccd6;
+        --module-projects: #f4a9c4;
+        --module-money: #9ee0c8;
+        --module-assistant: #c9b4f7;
+        --accent: var(--module-assistant);
+        --tile-action-bg: rgba(0, 0, 0, 0.12);
+        --glass-blur: 24px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--wallpaper-default);
+        background-attachment: fixed;
+        color: var(--text-primary);
+        font:
+          13px/1.4 Inter,
+          'Segoe UI Variable',
+          'Segoe UI',
+          system-ui,
+          sans-serif;
+      }
+      .glass {
+        background: var(--glass);
+        border: 0.5px solid var(--glass-border);
+        backdrop-filter: blur(var(--glass-blur));
+      }
+      .glass-strong {
+        background: var(--glass-strong);
+        border: 0.5px solid var(--glass-border);
+        backdrop-filter: blur(var(--glass-blur));
+      }
+      svg.i {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.5;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex-shrink: 0;
+      }
+      svg.s {
+        width: 12px;
+        height: 12px;
+        stroke-width: 2;
+      }
+      svg.m {
+        width: 16px;
+        height: 16px;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 24px;
+        color: var(--text-muted);
+        font-size: 11px;
+      }
+      .btn {
+        height: 28px;
+        padding: 0 12px;
+        border-radius: 10px;
+        color: var(--text-primary);
+        cursor: pointer;
+        font: inherit;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #1c1c1c;
+        border: 0;
+        height: 34px;
+        padding: 0 16px;
+        border-radius: 10px;
+        font:
+          500 13px Inter,
+          'Segoe UI',
+          sans-serif;
+        cursor: pointer;
+      }
+      .caption {
+        color: var(--text-muted);
+        font-size: 11px;
+        margin: 0 0 8px;
+      }
+
+      .stage {
+        display: flex;
+        gap: 24px;
+        padding: 0 24px 32px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+
+      /* App frame: side panel + Overview */
+      .frame {
+        display: flex;
+        gap: 12px;
+        width: 900px;
+        height: 600px;
+        padding: 12px;
+        border-radius: 8px;
+        background: var(--tint);
+      }
+      .panel {
+        width: 224px;
+        border-radius: 16px;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        overflow-y: auto;
+      }
+      .panel.collapsed {
+        width: 56px;
+        align-items: center;
+      }
+      .panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-left: 10px;
+      }
+      .panel-head span {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .iconbtn {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        color: var(--text-muted);
+        background: none;
+        border: 0;
+        cursor: pointer;
+      }
+      .iconbtn.sm {
+        width: 24px;
+        height: 24px;
+      }
+      .iconbtn:hover {
+        background: var(--tint);
+        color: var(--text-primary);
+      }
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .row {
+        height: 32px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 10px;
+        border-radius: 8px;
+        color: var(--text-secondary);
+        text-decoration: none;
+      }
+      .row:hover,
+      .row.hover {
+        background: var(--tint);
+        color: var(--text-primary);
+      }
+      .row.active {
+        background: var(--tint);
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+      .row.disabled {
+        color: var(--text-muted);
+        opacity: 0.6;
+      }
+      .row .soon {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .row .more {
+        margin-left: auto;
+        visibility: hidden;
+      }
+      .row:hover .more,
+      .row.hover .more,
+      .row:focus-within .more {
+        visibility: visible;
+      }
+      .row .name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .fav-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 4px 0 10px;
+        height: 24px;
+      }
+      .fav-head span {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .sq {
+        width: 16px;
+        height: 16px;
+        border-radius: 5px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #1c1c1c;
+        flex-shrink: 0;
+        background-image: radial-gradient(
+          130% 90% at 0% 0%,
+          rgb(255 255 255 / 0.55) 0%,
+          transparent 58%
+        );
+      }
+      .empty-line {
+        font-size: 11px;
+        color: var(--text-muted);
+        padding: 2px 10px;
+      }
+      .collapsed .row {
+        width: 40px;
+        justify-content: center;
+        padding: 0;
+      }
+
+      /* Overview */
+      .main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 4px 8px;
+        overflow: hidden;
+      }
+      h1 {
+        font-size: 22px;
+        font-weight: 600;
+        margin: 0;
+      }
+      .sub {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .card {
+        border-radius: 16px;
+        padding: 12px 16px;
+      }
+      .card h2,
+      .section-title {
+        font-size: 13px;
+        font-weight: 500;
+        margin: 0 0 8px;
+      }
+      .due-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 30px;
+        color: var(--text-secondary);
+      }
+      .check {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1.5px solid var(--text-muted);
+        flex-shrink: 0;
+      }
+      .due-row .when {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .due-row .when.late {
+        color: var(--danger);
+      }
+      .tiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px;
+      }
+      .tile {
+        position: relative;
+        border-radius: 16px;
+        padding: 12px;
+        height: 104px;
+        color: #1c1c1c;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        cursor: pointer;
+        background-image:
+          radial-gradient(130% 90% at 0% 0%, rgb(255 255 255 / 0.55) 0%, transparent 58%),
+          linear-gradient(180deg, rgb(255 255 255 / 0.2) 0%, transparent 42%);
+        box-shadow:
+          inset 0 -6px 10px -6px rgb(0 0 0 / 0.22),
+          inset 0 0 18px 0 rgb(255 255 255 / 0.2);
+        transition:
+          transform 150ms ease-out,
+          filter 150ms ease-out;
+      }
+      .tile:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.07) saturate(1.12);
+      }
+      .tile .t-title {
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .tile .t-act {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 24px;
+        height: 24px;
+        border-radius: 7px;
+        background: var(--tile-action-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .tile .t-mid {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .tile .t-num {
+        font-size: 28px;
+        font-weight: 600;
+        line-height: 1;
+      }
+      .tile .t-unit,
+      .tile .t-foot {
+        font-size: 11px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .tile {
+          transition: none;
+        }
+        .tile:hover {
+          transform: none;
+        }
+      }
+
+      /* Popovers and dialog */
+      .pop {
+        border-radius: 16px;
+        padding: 6px;
+        width: 240px;
+      }
+      .menu-item {
+        height: 28px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 8px;
+        border-radius: 8px;
+        color: var(--text-primary);
+      }
+      .menu-item.sel {
+        background: var(--input-bg);
+      }
+      .menu-item.off {
+        color: var(--text-muted);
+      }
+      .menu-sep {
+        height: 0.5px;
+        background: var(--glass-border);
+        margin: 4px 6px;
+      }
+      .menu-label {
+        font-size: 11px;
+        color: var(--text-muted);
+        padding: 4px 8px 2px;
+      }
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+      }
+      .hint {
+        font-size: 11px;
+        color: var(--text-muted);
+        padding: 0 8px 4px 32px;
+      }
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(5, 24px);
+        gap: 8px;
+        padding: 8px;
+      }
+      .swatch {
+        width: 24px;
+        height: 24px;
+        border-radius: 8px;
+        border: 0;
+        cursor: pointer;
+      }
+      .swatch.on {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .icons {
+        display: grid;
+        grid-template-columns: repeat(6, 28px);
+        gap: 6px;
+        padding: 4px 8px 8px;
+      }
+      .icons span {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+      }
+      .icons span.on {
+        background: var(--input-bg);
+        color: var(--text-primary);
+        box-shadow: inset 0 0 0 1px var(--accent);
+      }
+
+      .dialog-wrap {
+        position: relative;
+        width: 480px;
+        height: 600px;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      [data-theme='light'] .dialog-wrap {
+        background: rgba(0, 0, 0, 0.12);
+      }
+      .dialog {
+        width: 440px;
+        border-radius: 16px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .d-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .d-head h2 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0;
+      }
+      .d-head .count {
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+      .d-head .iconbtn {
+        margin-left: auto;
+      }
+      .input {
+        height: 34px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 10px;
+        border-radius: 10px;
+        background: var(--input-bg);
+        color: var(--text-muted);
+        border: 0.5px solid transparent;
+      }
+      .input.focus {
+        border-color: var(--accent);
+        color: var(--text-primary);
+      }
+      .tag-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        max-height: 360px;
+        overflow-y: auto;
+      }
+      .tag-row {
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 6px 0 10px;
+        border-radius: 10px;
+      }
+      .tag-row:hover,
+      .tag-row.hover {
+        background: var(--input-bg);
+      }
+      .tag-row .tname {
+        flex: 1;
+      }
+      .tag-row .use {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .tag-row .acts {
+        display: none;
+        gap: 2px;
+      }
+      .tag-row:hover .acts,
+      .tag-row.hover .acts,
+      .tag-row:focus-within .acts {
+        display: flex;
+      }
+      .tag-row:hover .use,
+      .tag-row.hover .use {
+        display: none;
+      }
+      .tag-row.ask {
+        flex-wrap: wrap;
+        padding: 8px 10px;
+        background: var(--input-bg);
+      }
+      .ask-text {
+        flex-basis: 100%;
+        font-size: 12px;
+        color: var(--text-secondary);
+        padding-left: 22px;
+      }
+      .ask-btns {
+        flex-basis: 100%;
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+      .btn-sec {
+        height: 28px;
+        padding: 0 12px;
+        border-radius: 10px;
+        background: var(--glass);
+        border: 0.5px solid var(--glass-border);
+        color: var(--text-primary);
+        font: inherit;
+        cursor: pointer;
+      }
+      .btn-danger {
+        height: 28px;
+        padding: 0 12px;
+        border-radius: 10px;
+        background: var(--glass);
+        border: 0.5px solid var(--glass-border);
+        color: var(--danger);
+        font:
+          500 13px Inter,
+          'Segoe UI',
+          sans-serif;
+        cursor: pointer;
+      }
+      .btn-sec.focus {
+        box-shadow: 0 0 0 2px var(--accent);
+      }
+      .rename {
+        flex: 1;
+        height: 28px;
+        border-radius: 8px;
+        background: var(--input-bg);
+        border: 0.5px solid var(--accent);
+        color: var(--text-primary);
+        padding: 0 8px;
+        font: inherit;
+      }
+      .d-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .d-foot .note {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .toast {
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-radius: 10px;
+        padding: 8px 16px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        white-space: nowrap;
+      }
+      .toast .undo {
+        color: var(--accent);
+        font-weight: 500;
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-dash" viewBox="0 0 24 24">
+          <rect x="4" y="4" width="6" height="8" rx="1" />
+          <rect x="4" y="16" width="6" height="4" rx="1" />
+          <rect x="14" y="4" width="6" height="4" rx="1" />
+          <rect x="14" y="12" width="6" height="8" rx="1" />
+        </symbol>
+        <symbol id="i-check" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M9 12l2 2 4-4" />
+        </symbol>
+        <symbol id="i-inbox" viewBox="0 0 24 24">
+          <rect x="4" y="4" width="16" height="16" rx="2" />
+          <path d="M4 13h3l3 3h4l3-3h3" />
+        </symbol>
+        <symbol id="i-chart" viewBox="0 0 24 24">
+          <path d="M4 20h16M7 16v-4M12 16V8M17 16v-7" />
+        </symbol>
+        <symbol id="i-target" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" />
+          <circle cx="12" cy="12" r="5" />
+          <circle cx="12" cy="12" r="1" />
+        </symbol>
+        <symbol id="i-brief" viewBox="0 0 24 24">
+          <rect x="3" y="7" width="18" height="13" rx="2" />
+          <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18" />
+        </symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+        <symbol id="i-dots" viewBox="0 0 24 24">
+          <circle cx="5" cy="12" r="1" />
+          <circle cx="12" cy="12" r="1" />
+          <circle cx="19" cy="12" r="1" />
+        </symbol>
+        <symbol id="i-hash" viewBox="0 0 24 24">
+          <path d="M5 9h14M5 15h14M11 4L7 20M17 4l-4 16" />
+        </symbol>
+        <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></symbol>
+        <symbol id="i-cal" viewBox="0 0 24 24">
+          <rect x="4" y="5" width="16" height="16" rx="2" />
+          <path d="M16 3v4M8 3v4M4 11h16" />
+        </symbol>
+        <symbol id="i-prog" viewBox="0 0 24 24">
+          <path d="M12 3a9 9 0 1 0 9 9" />
+          <path d="M12 7v5l3 3" />
+        </symbol>
+        <symbol id="i-arch" viewBox="0 0 24 24">
+          <rect x="3" y="4" width="18" height="4" rx="1" />
+          <path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 12h4" />
+        </symbol>
+        <symbol id="i-star" viewBox="0 0 24 24">
+          <path d="M12 17.8l-6.2 3.2 1.2-6.9-5-4.9 6.9-1L12 2l3.1 6.2 6.9 1-5 4.9 1.2 6.9z" />
+        </symbol>
+        <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3v7h6l-8 11v-7H5z" /></symbol>
+        <symbol id="i-home" viewBox="0 0 24 24">
+          <path d="M5 12H3l9-9 9 9h-2M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
+          <path d="M9 21v-6h6v6" />
+        </symbol>
+        <symbol id="i-heart" viewBox="0 0 24 24">
+          <path d="M19.5 12.6L12 20l-7.5-7.4A5 5 0 1 1 12 6a5 5 0 1 1 7.5 6.6" />
+        </symbol>
+        <symbol id="i-book" viewBox="0 0 24 24">
+          <path
+            d="M3 19a9 9 0 0 1 9 0 9 9 0 0 1 9 0M3 6a9 9 0 0 1 9 0 9 9 0 0 1 9 0M3 6v13M12 6v13M21 6v13"
+          />
+        </symbol>
+        <symbol id="i-adj" viewBox="0 0 24 24">
+          <path d="M4 6h8M16 6h4M4 12h2M10 12h10M4 18h11M19 18h1" />
+          <circle cx="14" cy="6" r="2" />
+          <circle cx="8" cy="12" r="2" />
+          <circle cx="17" cy="18" r="2" />
+        </symbol>
+        <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M17 7L7 17M8 7h9v9" /></symbol>
+        <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" /></symbol>
+        <symbol id="i-pencil" viewBox="0 0 24 24">
+          <path d="M4 20h4L18.5 9.5a2.8 2.8 0 0 0-4-4L4 16z" />
+          <path d="M13.5 6.5l4 4" />
+        </symbol>
+        <symbol id="i-trash" viewBox="0 0 24 24">
+          <path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+        </symbol>
+        <symbol id="i-search" viewBox="0 0 24 24">
+          <circle cx="10" cy="10" r="7" />
+          <path d="M21 21l-6-6" />
+        </symbol>
+        <symbol id="i-side" viewBox="0 0 24 24">
+          <rect x="4" y="4" width="16" height="16" rx="2" />
+          <path d="M9 4v16M15 10l-2 2 2 2" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <div class="topbar">
+      <span>Personal OS · Mockup: Tasks Feature 5, Favorites and Manage tags (demo values)</span>
+      <button class="btn glass" id="theme" type="button">Switch to light</button>
+    </div>
+
+    <div class="stage">
+      <!-- 1. Side panel + Overview -->
+      <div>
+        <p class="caption">
+          1. Side panel with Favorites (one active, one hovered) and the Overview favorite tiles
+        </p>
+        <div class="frame">
+          <aside class="panel glass" aria-label="Tasks navigation">
+            <div class="panel-head">
+              <span>Tasks</span
+              ><button class="iconbtn" aria-label="Collapse side panel">
+                <svg class="i"><use href="#i-side" /></svg>
+              </button>
+            </div>
+            <ul>
+              <li>
+                <a class="row active"
+                  ><svg class="i"><use href="#i-dash" /></svg>Overview</a
+                >
+              </li>
+              <li>
+                <a class="row"
+                  ><svg class="i"><use href="#i-check" /></svg>My tasks</a
+                >
+              </li>
+              <li>
+                <div class="row disabled">
+                  <svg class="i"><use href="#i-inbox" /></svg>Inbox<span class="soon">Soon</span>
+                </div>
+              </li>
+              <li>
+                <div class="row disabled">
+                  <svg class="i"><use href="#i-chart" /></svg>Reporting<span class="soon"
+                    >Soon</span
+                  >
+                </div>
+              </li>
+              <li>
+                <div class="row disabled">
+                  <svg class="i"><use href="#i-target" /></svg>Goals<span class="soon">Soon</span>
+                </div>
+              </li>
+              <li>
+                <div class="row disabled">
+                  <svg class="i"><use href="#i-brief" /></svg>Portfolios<span class="soon"
+                    >Soon</span
+                  >
+                </div>
+              </li>
+            </ul>
+            <div>
+              <div class="fav-head">
+                <span>Favorites</span
+                ><button class="iconbtn sm" aria-label="Add favorite">
+                  <svg class="i m"><use href="#i-plus" /></svg>
+                </button>
+              </div>
+              <ul>
+                <li>
+                  <a class="row"
+                    ><span class="sq" style="background-color: var(--module-mail)"
+                      ><svg class="i s"><use href="#i-hash" /></svg></span
+                    ><span class="name">work</span
+                    ><button class="iconbtn sm more" aria-label="More for work">
+                      <svg class="i m"><use href="#i-dots" /></svg></button
+                  ></a>
+                </li>
+                <li>
+                  <a class="row hover"
+                    ><span class="sq" style="background-color: var(--module-calendar)"
+                      ><svg class="i s"><use href="#i-flag" /></svg></span
+                    ><span class="name">High priority · This week</span
+                    ><button class="iconbtn sm more" aria-label="More for High priority, This week">
+                      <svg class="i m"><use href="#i-dots" /></svg></button
+                  ></a>
+                </li>
+                <li>
+                  <a class="row"
+                    ><span class="sq" style="background-color: var(--module-money)"
+                      ><svg class="i s"><use href="#i-home" /></svg></span
+                    ><span class="name">home</span
+                    ><button class="iconbtn sm more" aria-label="More for home">
+                      <svg class="i m"><use href="#i-dots" /></svg></button
+                  ></a>
+                </li>
+                <li>
+                  <a class="row"
+                    ><span class="sq" style="background-color: var(--module-assistant)"
+                      ><svg class="i s"><use href="#i-prog" /></svg></span
+                    ><span class="name">In progress</span
+                    ><button class="iconbtn sm more" aria-label="More for In progress">
+                      <svg class="i m"><use href="#i-dots" /></svg></button
+                  ></a>
+                </li>
+              </ul>
+            </div>
+          </aside>
+
+          <main class="main">
+            <div>
+              <h1>Good evening, Adith</h1>
+              <div class="sub">Monday, 13 October · 7 open · 2 overdue</div>
+            </div>
+            <section class="card glass" aria-label="Tasks due soon">
+              <h2>Tasks due soon</h2>
+              <div class="due-row">
+                <span class="check"></span>Pay electricity bill<span class="when late"
+                  >Sat, 11 Oct</span
+                >
+              </div>
+              <div class="due-row">
+                <span class="check"></span>Send invoice to client<span class="when"
+                  >Today, 5:00 PM</span
+                >
+              </div>
+              <div class="due-row">
+                <span class="check"></span>Book train tickets<span class="when">Tomorrow</span>
+              </div>
+            </section>
+            <section aria-label="Favorites">
+              <h2 class="section-title">Favorites</h2>
+              <div class="tiles">
+                <div class="tile" style="background-color: var(--module-mail)">
+                  <span class="t-title">work</span
+                  ><span class="t-act"
+                    ><svg class="i m"><use href="#i-arrow" /></svg
+                  ></span>
+                  <div class="t-mid">
+                    <svg class="i"><use href="#i-hash" /></svg><span class="t-num">5</span
+                    ><span class="t-unit">open</span>
+                  </div>
+                  <span class="t-foot">1 overdue</span>
+                </div>
+                <div class="tile" style="background-color: var(--module-calendar)">
+                  <span class="t-title">High priority · This week</span
+                  ><span class="t-act"
+                    ><svg class="i m"><use href="#i-arrow" /></svg
+                  ></span>
+                  <div class="t-mid">
+                    <svg class="i"><use href="#i-flag" /></svg><span class="t-num">3</span
+                    ><span class="t-unit">open</span>
+                  </div>
+                  <span class="t-foot">Nothing overdue</span>
+                </div>
+                <div class="tile" style="background-color: var(--module-money)">
+                  <span class="t-title">home</span
+                  ><span class="t-act"
+                    ><svg class="i m"><use href="#i-arrow" /></svg
+                  ></span>
+                  <div class="t-mid">
+                    <svg class="i"><use href="#i-home" /></svg><span class="t-num">2</span
+                    ><span class="t-unit">open</span>
+                  </div>
+                  <span class="t-foot">1 overdue</span>
+                </div>
+                <div class="tile" style="background-color: var(--module-assistant)">
+                  <span class="t-title">In progress</span
+                  ><span class="t-act"
+                    ><svg class="i m"><use href="#i-arrow" /></svg
+                  ></span>
+                  <div class="t-mid">
+                    <svg class="i"><use href="#i-prog" /></svg><span class="t-num">4</span
+                    ><span class="t-unit">open</span>
+                  </div>
+                  <span class="t-foot">Nothing overdue</span>
+                </div>
+              </div>
+            </section>
+          </main>
+        </div>
+      </div>
+
+      <!-- 2. Small states -->
+      <div class="col">
+        <div>
+          <p class="caption">2. The + menu (on My tasks with a filter set)</p>
+          <div class="pop glass-strong" role="menu" aria-label="Add favorite">
+            <div class="menu-item sel" role="menuitem">
+              <svg class="i m"><use href="#i-adj" /></svg>Save this view
+            </div>
+            <div class="hint">Priority: High · Due: This week</div>
+            <div class="menu-sep"></div>
+            <div class="menu-label">Tags</div>
+            <div class="menu-item" role="menuitem">
+              <span class="dot" style="background: var(--module-projects)"></span>clients
+            </div>
+            <div class="menu-item" role="menuitem">
+              <span class="dot" style="background: var(--module-habits)"></span>health
+            </div>
+            <div class="menu-item off" role="menuitem" aria-disabled="true">
+              <span class="dot" style="background: var(--module-money)"></span>home<span
+                style="margin-left: auto; font-size: 11px"
+                >Added</span
+              >
+            </div>
+          </div>
+        </div>
+        <div>
+          <p class="caption">3. Color and icon popover (row menu)</p>
+          <div class="pop glass-strong" style="width: auto" aria-label="Color and icon">
+            <div class="menu-label">Color</div>
+            <div class="swatches">
+              <button
+                class="swatch"
+                style="background: var(--module-tasks)"
+                aria-label="Yellow"
+              ></button>
+              <button
+                class="swatch"
+                style="background: var(--module-mail)"
+                aria-label="Sky blue"
+              ></button>
+              <button
+                class="swatch"
+                style="background: var(--module-projects)"
+                aria-label="Pink"
+              ></button>
+              <button
+                class="swatch on"
+                style="background: var(--module-money)"
+                aria-label="Mint, chosen"
+              ></button>
+              <button
+                class="swatch"
+                style="background: var(--module-assistant)"
+                aria-label="Lavender"
+              ></button>
+              <button
+                class="swatch"
+                style="background: var(--module-calendar)"
+                aria-label="Orange"
+              ></button>
+              <button
+                class="swatch"
+                style="background: var(--module-habits)"
+                aria-label="Lime"
+              ></button>
+              <button
+                class="swatch"
+                style="background: var(--module-notes)"
+                aria-label="Peach"
+              ></button>
+              <button
+                class="swatch"
+                style="background: var(--module-graph)"
+                aria-label="Periwinkle"
+              ></button>
+              <button
+                class="swatch"
+                style="background: var(--module-drive)"
+                aria-label="Slate"
+              ></button>
+            </div>
+            <div class="menu-label">Icon</div>
+            <div class="icons">
+              <span
+                ><svg class="i m"><use href="#i-hash" /></svg></span
+              ><span
+                ><svg class="i m"><use href="#i-flag" /></svg
+              ></span>
+              <span
+                ><svg class="i m"><use href="#i-cal" /></svg></span
+              ><span
+                ><svg class="i m"><use href="#i-prog" /></svg
+              ></span>
+              <span
+                ><svg class="i m"><use href="#i-arch" /></svg></span
+              ><span
+                ><svg class="i m"><use href="#i-star" /></svg
+              ></span>
+              <span
+                ><svg class="i m"><use href="#i-bolt" /></svg></span
+              ><span
+                ><svg class="i m"><use href="#i-brief" /></svg
+              ></span>
+              <span class="on"
+                ><svg class="i m"><use href="#i-home" /></svg></span
+              ><span
+                ><svg class="i m"><use href="#i-heart" /></svg
+              ></span>
+              <span
+                ><svg class="i m"><use href="#i-book" /></svg></span
+              ><span
+                ><svg class="i m"><use href="#i-target" /></svg
+              ></span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <p class="caption">4. Collapsed panel and empty state</p>
+          <div style="display: flex; gap: 12px; align-items: flex-start">
+            <aside class="panel collapsed glass" style="height: auto">
+              <button class="iconbtn" aria-label="Expand side panel">
+                <svg class="i"><use href="#i-side" /></svg>
+              </button>
+              <ul>
+                <li>
+                  <a class="row" title="work"
+                    ><span class="sq" style="background-color: var(--module-mail)"
+                      ><svg class="i s"><use href="#i-hash" /></svg></span
+                  ></a>
+                </li>
+                <li>
+                  <a class="row" title="High priority · This week"
+                    ><span class="sq" style="background-color: var(--module-calendar)"
+                      ><svg class="i s"><use href="#i-flag" /></svg></span
+                  ></a>
+                </li>
+                <li>
+                  <a class="row" title="home"
+                    ><span class="sq" style="background-color: var(--module-money)"
+                      ><svg class="i s"><use href="#i-home" /></svg></span
+                  ></a>
+                </li>
+              </ul>
+              <button class="iconbtn sm" aria-label="Add favorite">
+                <svg class="i m"><use href="#i-plus" /></svg>
+              </button>
+            </aside>
+            <aside class="panel glass" style="height: auto; width: 224px">
+              <div class="fav-head">
+                <span>Favorites</span
+                ><button class="iconbtn sm" aria-label="Add favorite">
+                  <svg class="i m"><use href="#i-plus" /></svg>
+                </button>
+              </div>
+              <div class="empty-line">Save a view or a tag here</div>
+            </aside>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Manage tags dialog -->
+      <div>
+        <p class="caption">
+          5. Manage tags dialog: hover, rename that turns into a merge, delete question, toast
+        </p>
+        <div class="dialog-wrap">
+          <div
+            class="dialog glass-strong"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tags-title"
+          >
+            <div class="d-head">
+              <h2 id="tags-title">Tags</h2>
+              <span class="count">9</span
+              ><button class="iconbtn" aria-label="Close">
+                <svg class="i m"><use href="#i-x" /></svg>
+              </button>
+            </div>
+            <div class="input">
+              <svg class="i m"><use href="#i-search" /></svg>Find a tag
+            </div>
+            <div class="tag-list" role="list">
+              <div class="tag-row" role="listitem">
+                <button
+                  class="dot"
+                  style="background: var(--module-projects)"
+                  aria-label="Color of clients"
+                ></button
+                ><span class="tname">clients</span><span class="use">8 tasks</span
+                ><span class="acts"
+                  ><button class="iconbtn sm" aria-label="Rename clients">
+                    <svg class="i m"><use href="#i-pencil" /></svg></button
+                  ><button class="iconbtn sm" aria-label="Delete clients">
+                    <svg class="i m"><use href="#i-trash" /></svg></button
+                ></span>
+              </div>
+              <div class="tag-row hover" role="listitem">
+                <button
+                  class="dot"
+                  style="background: var(--module-habits)"
+                  aria-label="Color of health"
+                ></button
+                ><span class="tname">health</span><span class="use">3 tasks</span
+                ><span class="acts"
+                  ><button class="iconbtn sm" aria-label="Rename health">
+                    <svg class="i m"><use href="#i-pencil" /></svg></button
+                  ><button class="iconbtn sm" aria-label="Delete health">
+                    <svg class="i m"><use href="#i-trash" /></svg></button
+                ></span>
+              </div>
+              <div class="tag-row ask" role="listitem">
+                <button
+                  class="dot"
+                  style="background: var(--module-money)"
+                  aria-label="Color of home"
+                ></button
+                ><span class="tname">home</span>
+                <div class="ask-text">
+                  Delete "home"? It is removed from 12 tasks and 1 favorite. The tasks stay.
+                </div>
+                <div class="ask-btns">
+                  <button class="btn-sec focus">Cancel</button
+                  ><button class="btn-danger">Delete tag</button>
+                </div>
+              </div>
+              <div class="tag-row ask" role="listitem">
+                <button
+                  class="dot"
+                  style="background: var(--module-tasks)"
+                  aria-label="Color of house"
+                ></button
+                ><input class="rename" value="Home" aria-label="New name for house" />
+                <div class="ask-text">
+                  "home" already exists. Merge "house" into it? 5 tasks will get "home".
+                </div>
+                <div class="ask-btns">
+                  <button class="btn-sec focus">Cancel</button
+                  ><button class="btn-sec">Merge</button>
+                </div>
+              </div>
+              <div class="tag-row" role="listitem">
+                <button
+                  class="dot"
+                  style="background: var(--module-graph)"
+                  aria-label="Color of reading"
+                ></button
+                ><span class="tname">reading</span><span class="use">Not used</span
+                ><span class="acts"
+                  ><button class="iconbtn sm" aria-label="Rename reading">
+                    <svg class="i m"><use href="#i-pencil" /></svg></button
+                  ><button class="iconbtn sm" aria-label="Delete reading">
+                    <svg class="i m"><use href="#i-trash" /></svg></button
+                ></span>
+              </div>
+              <div class="tag-row" role="listitem">
+                <button
+                  class="dot"
+                  style="background: var(--module-mail)"
+                  aria-label="Color of work"
+                ></button
+                ><span class="tname">work</span><span class="use">5 tasks</span
+                ><span class="acts"
+                  ><button class="iconbtn sm" aria-label="Rename work">
+                    <svg class="i m"><use href="#i-pencil" /></svg></button
+                  ><button class="iconbtn sm" aria-label="Delete work">
+                    <svg class="i m"><use href="#i-trash" /></svg></button
+                ></span>
+              </div>
+            </div>
+            <div class="d-foot">
+              <span class="note">Deleting a tag removes it from its tasks. The tasks stay.</span
+              ><button class="btn-primary">Done</button>
+            </div>
+          </div>
+          <div class="toast glass-strong" role="status">
+            Tag deleted.<span class="undo">Undo</span
+            ><svg class="i m" style="color: var(--text-muted)"><use href="#i-x" /></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const root = document.documentElement;
+      const btn = document.getElementById('theme');
+      btn.addEventListener('click', () => {
+        const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+        root.dataset.theme = next;
+        btn.textContent = next === 'dark' ? 'Switch to light' : 'Switch to dark';
+      });
+    </script>
+  </body>
+</html>

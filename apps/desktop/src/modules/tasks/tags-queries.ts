@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../api/api-client';
 import { useApi } from '../../api/api-context';
 import { useToasts } from '../../store/toast-store';
+import { FAVORITES_KEY } from './favorites/favorites-queries';
 import { TAGS_KEY, TASKS_KEY } from './tasks-queries';
 
 export { TAGS_KEY };
@@ -33,7 +34,20 @@ export function useTagActions() {
     await Promise.all([
       client.invalidateQueries({ queryKey: TAGS_KEY }),
       client.invalidateQueries({ queryKey: TASKS_KEY }),
+      client.invalidateQueries({ queryKey: FAVORITES_KEY }),
     ]);
+  };
+
+  const offerUndo = (message: string, undo: UndoDescriptor | null) => {
+    if (!undo) return;
+    useToasts.getState().show(message, {
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          void api.request('POST', '/undo', { body: undo }).then(refresh).catch(fail);
+        },
+      },
+    });
   };
   const fail = (error: unknown) => {
     useToasts
@@ -57,5 +71,26 @@ export function useTagActions() {
     onError: fail,
   });
 
-  return { create, update };
+  /** Delete a tag: removed from every task and favorite (the tasks stay). Offers Undo. */
+  const remove = useMutation({
+    mutationFn: (id: string) => api.request<TagWriteResult>('DELETE', `/tags/${id}`),
+    onSuccess: ({ undo }) => {
+      offerUndo('Tag deleted.', undo);
+      return refresh();
+    },
+    onError: fail,
+  });
+
+  /** Merge `sourceId` into `targetId`: its tasks and favorites move, then it is deleted. Offers Undo. */
+  const merge = useMutation({
+    mutationFn: ({ sourceId, targetId }: { sourceId: string; targetId: string }) =>
+      api.request<TagWriteResult>('POST', `/tags/${sourceId}/merge`, { body: { targetId } }),
+    onSuccess: ({ undo }) => {
+      offerUndo('Tags merged.', undo);
+      return refresh();
+    },
+    onError: fail,
+  });
+
+  return { create, update, remove, merge };
 }

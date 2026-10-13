@@ -1,7 +1,7 @@
 import { ENTITY_TYPES, LINK_RELATIONS } from '@personal-os/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { entities, links } from './schema';
+import { entities, links, taskFavorites } from './schema';
 import {
   asRole,
   createTestDb,
@@ -69,6 +69,8 @@ describe('the generated migrations', () => {
       '0003_tasks_updated_at_trigger.sql',
       '0004_tags_and_all_day.sql',
       '0005_tags_updated_at_trigger.sql',
+      '0006_task_favorites_table.sql',
+      '0007_task_favorites_updated_at_trigger.sql',
     ]);
     const all = migrationFiles().flatMap(migrationStatements).join('\n').toUpperCase();
     for (const dangerous of [
@@ -91,6 +93,7 @@ describe('the generated migrations', () => {
       'entity_tags',
       'links',
       'tags',
+      'task_favorites',
       'tasks',
     ]);
   });
@@ -204,13 +207,14 @@ describe('docs/DATABASE.md rules', () => {
 describe('Row Level Security is on, with an own-rows policy', () => {
   it('is enabled on every table', async () => {
     const result = await rows(
-      "select relname, relrowsecurity from pg_class where relname in ('entities','entity_tags','links','tags','tasks') order by relname",
+      "select relname, relrowsecurity from pg_class where relname in ('entities','entity_tags','links','tags','task_favorites','tasks') order by relname",
     );
     expect(result).toEqual([
       { relname: 'entities', relrowsecurity: true },
       { relname: 'entity_tags', relrowsecurity: true },
       { relname: 'links', relrowsecurity: true },
       { relname: 'tags', relrowsecurity: true },
+      { relname: 'task_favorites', relrowsecurity: true },
       { relname: 'tasks', relrowsecurity: true },
     ]);
   });
@@ -224,6 +228,7 @@ describe('Row Level Security is on, with an own-rows policy', () => {
       'entity_tags',
       'links',
       'tags',
+      'task_favorites',
       'tasks',
     ]);
     for (const policy of policies) {
@@ -473,5 +478,44 @@ describe('updated_at trigger', () => {
       .where(and(eq(links.id, link?.id ?? '')))
       .returning();
     expect(after?.updatedAt.getTime()).toBeGreaterThan(link?.updatedAt.getTime() ?? 0);
+  });
+});
+
+describe('task_favorites', () => {
+  const favorite = (userId: string, name = 'Mine') => ({
+    userId,
+    name,
+    color: '#F7D96B',
+    icon: 'hash',
+    view: { tagIds: ['3f6b2c1e-8d4a-4b7e-9c11-2a5d6e7f8091'] },
+  });
+
+  it('stores a view and refreshes updated_at on update', async () => {
+    const [row] = await t.db.insert(taskFavorites).values(favorite(ALICE)).returning();
+    expect(row?.view).toEqual({ tagIds: ['3f6b2c1e-8d4a-4b7e-9c11-2a5d6e7f8091'] });
+    expect(row?.position).toBe(0);
+    await new Promise((resolve) => setTimeout(resolve, 15));
+    const [after] = await t.db
+      .update(taskFavorites)
+      .set({ name: 'Renamed' })
+      .where(eq(taskFavorites.id, row?.id ?? ''))
+      .returning();
+    expect(after?.updatedAt.getTime()).toBeGreaterThan(row?.updatedAt.getTime() ?? 0);
+  });
+
+  it('is deleted with its user', async () => {
+    await t.db.insert(taskFavorites).values(favorite(ALICE));
+    await t.db.execute(sql`truncate table auth.users cascade`);
+    expect(await t.db.select().from(taskFavorites)).toHaveLength(0);
+  });
+
+  it('lets a user see and write only their own favorites', async () => {
+    await t.db.insert(taskFavorites).values([favorite(ALICE, 'Alice'), favorite(BOB, 'Bob')]);
+    const seen = await asRole(t.db, ALICE, (tx) => tx.select().from(taskFavorites));
+    expect(seen.map((row) => row.name)).toEqual(['Alice']);
+    const message = await dbError(
+      asRole(t.db, ALICE, (tx) => tx.insert(taskFavorites).values(favorite(BOB, 'Planted'))),
+    );
+    expect(message).toMatch(/row-level security/i);
   });
 });

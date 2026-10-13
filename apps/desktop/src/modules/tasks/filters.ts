@@ -1,5 +1,11 @@
 import {
+  DUE_FILTERS,
+  GROUP_KEYS,
+  SORT_KEYS,
   TASK_PRIORITY_LABELS,
+  type DueFilter,
+  type GroupKey,
+  type SortKey,
   type Task,
   type TaskPriority,
   type TaskStatus,
@@ -12,8 +18,8 @@ import { sectionOf, SECTION_IDS, SECTION_LABELS } from './sections';
  * loads them once and these pure functions shape them. The filter also travels in the URL
  * (search params), which is how a favorite opens My tasks with its saved filter.
  */
-export const DUE_FILTERS = ['any', 'overdue', 'today', 'week', 'none'] as const;
-export type DueFilter = (typeof DUE_FILTERS)[number];
+export { DUE_FILTERS, GROUP_KEYS, SORT_KEYS };
+export type { DueFilter, GroupKey, SortKey };
 
 export interface TaskFilters {
   status?: TaskStatus[];
@@ -24,11 +30,6 @@ export interface TaskFilters {
   /** true: show archived tasks only. */
   archived?: boolean;
 }
-
-export const SORT_KEYS = ['manual', 'due', 'priority', 'created', 'title'] as const;
-export type SortKey = (typeof SORT_KEYS)[number];
-export const GROUP_KEYS = ['due', 'none', 'tag', 'priority'] as const;
-export type GroupKey = (typeof GROUP_KEYS)[number];
 
 /** Defaults agreed for My tasks: grouped by due date sections, manual order. */
 export const DEFAULT_SORT: SortKey = 'manual';
