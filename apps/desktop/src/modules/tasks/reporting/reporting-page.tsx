@@ -1,4 +1,4 @@
-import type { ReportPeriod, TaskReport } from '@personal-os/shared';
+import type { ReportPeriod } from '@personal-os/shared';
 import { Button, GlassCard, SegmentedControl, cx } from '@personal-os/ui';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -13,15 +13,6 @@ const PERIODS = [
   { value: 'week', label: 'This week' },
   { value: 'month', label: 'This month' },
 ] as const;
-
-/** True when nothing was ever finished: both periods and every day are zero. */
-function neverDone(report: TaskReport): boolean {
-  return (
-    report.totals.done === 0 &&
-    report.previous.done === 0 &&
-    report.days.every((day) => day.done === 0)
-  );
-}
 
 function ChartsLoading() {
   return (
@@ -46,8 +37,8 @@ export function ReportingPage() {
   const navigate = useNavigate();
   const query = useReport(period);
   const report = query.data;
-  // The picture of the other period (or an older fetch) stays on screen at half opacity
-  const refreshing = report !== undefined && (query.isPlaceholderData || query.isFetching);
+  // Only the picture of the other period (placeholder data) is dimmed, not every background refetch
+  const dimmed = query.isPlaceholderData;
 
   return (
     <div className="flex w-full flex-col gap-3 px-2 pb-4">
@@ -82,10 +73,13 @@ export function ReportingPage() {
         </GlassCard>
       ) : !report ? (
         <div className="flex flex-col gap-3" aria-busy="true">
+          <p role="status" className="sr-only">
+            Loading report…
+          </p>
           <StatCardsLoading />
           <ChartsLoading />
         </div>
-      ) : neverDone(report) ? (
+      ) : !report.hasEverDone ? (
         <GlassCard className="mx-auto mt-8 flex max-w-[420px] flex-col items-center gap-2 py-8 text-center">
           <h2 className="text-section font-semibold text-fg">No finished tasks yet</h2>
           <p className="text-body text-fg-secondary">
@@ -103,12 +97,26 @@ export function ReportingPage() {
         </GlassCard>
       ) : (
         <div
-          aria-busy={refreshing}
+          aria-busy={query.isFetching}
           className={cx(
             'flex flex-col gap-3 transition-opacity duration-150 ease-out',
-            refreshing && 'opacity-50',
+            dimmed && 'opacity-50',
           )}
         >
+          {query.isError ? (
+            <p role="status" className="flex items-center gap-2 text-small text-fg-secondary">
+              Could not refresh.
+              <button
+                type="button"
+                onClick={() => {
+                  void query.refetch();
+                }}
+                className="min-h-6 min-w-6 rounded-chip px-2 py-1 text-small text-fg focus-ring hover:bg-input"
+              >
+                Try again
+              </button>
+            </p>
+          ) : null}
           <StatCards report={report} />
           <div className="grid grid-cols-3 gap-3">
             <DonePerDayCard report={report} />

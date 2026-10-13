@@ -12,16 +12,11 @@ interface StatProps {
 
 function Stat({ title, value, line, danger = false, hint }: StatProps) {
   return (
-    <GlassCard
-      role="group"
-      aria-label={title}
-      title={hint}
-      className="flex min-h-[104px] flex-col gap-1"
-    >
+    <GlassCard role="group" aria-label={title} className="flex min-h-[104px] flex-col gap-1">
       <p className="text-card text-fg-secondary">{title}</p>
       <p className={cx('text-big font-semibold', danger ? 'text-danger' : 'text-fg')}>{value}</p>
+      {hint ? <p className="text-small text-fg-muted">{hint}</p> : null}
       <p className="mt-auto text-small text-fg-muted">{line}</p>
-      {hint ? <span className="sr-only">{hint}</span> : null}
     </GlassCard>
   );
 }
@@ -61,7 +56,7 @@ export function StatCards({ report }: { report: TaskReport }) {
       <Stat
         title="Overdue now"
         value={String(report.overdueNow)}
-        line="right now"
+        line="Not done and past due"
         danger={report.overdueNow > 0}
       />
       <Stat

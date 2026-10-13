@@ -1,6 +1,7 @@
 import { IconButton, Kbd } from '@personal-os/ui';
 import { IconX } from '@tabler/icons-react';
 import { useEffect, useRef, type KeyboardEvent } from 'react';
+import { trapTab } from '../inbox/trap-tab';
 
 const SHORTCUTS: readonly { keys: readonly string[]; action: string }[] = [
   { keys: ['N'], action: 'New task' },
@@ -36,7 +37,9 @@ export function ShortcutsHelp({ onClose }: ShortcutsHelpProps) {
       event.preventDefault();
       event.stopPropagation();
       onClose();
+      return;
     }
+    trapTab(event, box.current);
   };
 
   return (

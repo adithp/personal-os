@@ -1,6 +1,7 @@
 import { IconButton, Kbd } from '@personal-os/ui';
 import { IconX } from '@tabler/icons-react';
 import { useEffect, useRef, type KeyboardEvent } from 'react';
+import { trapTab } from './trap-tab';
 
 interface Shortcut {
   keys: readonly string[];
@@ -58,7 +59,9 @@ export function InboxShortcutsHelp({ onClose }: { onClose: () => void }) {
       event.preventDefault();
       event.stopPropagation();
       onClose();
+      return;
     }
+    trapTab(event, box.current);
   };
 
   return (

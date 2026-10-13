@@ -1,5 +1,5 @@
 import { GlassCard, cx } from '@personal-os/ui';
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 
 export interface ReportCardProps {
   title: string;
@@ -20,6 +20,7 @@ export function ReportCard({
   className,
   children,
 }: ReportCardProps) {
+  const contentId = useId();
   return (
     <GlassCard
       role="region"
@@ -33,13 +34,18 @@ export function ReportCard({
         </div>
         <button
           type="button"
+          aria-pressed={table}
+          aria-controls={contentId}
           onClick={onToggleTable}
-          className="rounded-chip px-2 py-1 text-small text-fg-secondary focus-ring transition-colors duration-150 ease-out hover:bg-input hover:text-fg"
+          className="min-h-6 min-w-6 rounded-chip px-2 py-1 text-small text-fg-secondary focus-ring transition-colors duration-150 ease-out hover:bg-input hover:text-fg"
         >
           {table ? 'Show chart' : 'Show table'}
         </button>
       </div>
-      {children}
+      {/* Same height for the chart and the table, so the row does not grow when they swap */}
+      <div id={contentId} className="flex h-[200px] min-h-0 flex-col">
+        {children}
+      </div>
     </GlassCard>
   );
 }
@@ -55,7 +61,12 @@ export function ReportTable({
   rows: readonly (readonly (string | number)[])[];
 }) {
   return (
-    <div className="max-h-[220px] min-h-0 flex-1 overflow-y-auto">
+    <div
+      role="region"
+      aria-label={`${label} table`}
+      tabIndex={0}
+      className="h-full min-h-0 overflow-y-auto rounded-chip focus-ring"
+    >
       <table aria-label={label} className="w-full text-left text-small text-fg-secondary">
         <thead>
           <tr>
