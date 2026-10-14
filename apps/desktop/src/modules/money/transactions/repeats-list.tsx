@@ -26,7 +26,7 @@ export function RepeatsList({
             rule.kind === 'transfer'
               ? `${wallets.get(rule.walletId)?.name ?? 'Wallet'} to ${wallets.get(rule.toWalletId ?? '')?.name ?? 'Wallet'}`
               : ((rule.categoryId ? categories.get(rule.categoryId)?.name : undefined) ??
-                (rule.note || 'Uncategorised'));
+                (rule.note === null || rule.note === '' ? 'Uncategorised' : rule.note));
           return (
             <li
               key={rule.id}

@@ -63,7 +63,7 @@ export function TimePage() {
   const projects = useProjects();
   const [projectId, setProjectId] = useState('');
   const active = (projects.data ?? []).filter((project) => project.status === 'active');
-  const chosen = projectId || active[0]?.id || '';
+  const chosen = projectId !== '' ? projectId : (active[0]?.id ?? '');
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col gap-4 overflow-y-auto px-4 pb-4">

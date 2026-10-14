@@ -11,7 +11,7 @@ interface Row {
 }
 
 /** Expense rows of the summary, biggest first, named from the categories (null id: Uncategorised). */
-export function categoryRows(summary: MonthSummary, categories: readonly Category[]): Row[] {
+function categoryRows(summary: MonthSummary, categories: readonly Category[]): Row[] {
   const byId = new Map(categories.map((category) => [category.id, category]));
   return summary.byCategory
     .filter((row) => row.kind === 'expense' && row.totalPaise > 0)

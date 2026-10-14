@@ -53,6 +53,10 @@ afterEach(async () => {
 
 const MISSING = '8d3a4c55-0b2e-4e0e-9a56-5f4d0a1b2c3d';
 const today = () => indiaDay(new Date());
+const must = <T>(value: T | undefined): T => {
+  if (value === undefined) throw new Error('expected a value');
+  return value;
+};
 
 const call = (
   method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
@@ -61,7 +65,11 @@ const call = (
   payload?: unknown,
 ) => app.inject({ method, url: `/api/v1${url}`, headers, payload: payload as object | undefined });
 
-interface Written<T = Record<string, any>> {
+interface Row {
+  id: string;
+  [key: string]: unknown;
+}
+interface Written<T = Row> {
   item: T;
   undo: { action: string; input: Record<string, unknown> } | null;
 }
@@ -72,7 +80,7 @@ const write = async (
   headers = alice,
 ) => (await call(method, url, headers, payload)).json<Written>();
 const items = async (url: string, headers = alice) =>
-  (await call('GET', url, headers)).json<{ items: Record<string, any>[] }>().items;
+  (await call('GET', url, headers)).json<{ items: Row[] }>().items;
 
 describe('login is required on every money route', () => {
   it.each([
@@ -230,7 +238,7 @@ describe('repeats, budgets, goals and the summary', () => {
 
   it('sets budgets with PUT (200), lists progress for a month, and deletes', async () => {
     const wallet = (await write('POST', '/wallets', { name: 'W' })).item;
-    const food = (await items('/categories')).find((c) => c.name === 'Food')!;
+    const food = must((await items('/categories')).find((c) => c.name === 'Food'));
     const month = today().slice(0, 7);
     const set = await call('PUT', '/budgets', alice, {
       categoryId: food.id,
@@ -319,7 +327,7 @@ describe('subscriptions', () => {
     expect(created.statusCode).toBe(201);
     const { item } = created.json<Written>();
     const list = (await call('GET', '/subscriptions')).json<{
-      items: Record<string, any>[];
+      items: Row[];
       summary: Record<string, number>;
     }>();
     expect(list.items[0]).toMatchObject({ overdue: true, daysUntilRenewal: -1 });
@@ -333,10 +341,7 @@ describe('subscriptions', () => {
 
     const renewed = await call('POST', `/subscriptions/${item.id}/renew`, alice, {});
     expect(renewed.statusCode).toBe(200);
-    const body =
-      renewed.json<
-        Written<{ subscription: Record<string, any>; transaction: Record<string, any> | null }>
-      >();
+    const body = renewed.json<Written<{ subscription: Row; transaction: Row | null }>>();
     expect(body.item.subscription.overdue).toBe(false);
     expect(body.item.transaction).toMatchObject({ amountPaise: 64900, subscriptionId: item.id });
     expect(await items('/transactions')).toHaveLength(1);

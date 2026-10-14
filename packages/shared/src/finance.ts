@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { defineAction } from './actions';
-import { parseRecurrence, recurrenceRuleSchema, WEEKDAYS } from './recurrence';
+import type { WEEKDAYS } from './recurrence';
+import { parseRecurrence, recurrenceRuleSchema } from './recurrence';
 
 /**
  * Money module, Finance and Wallet part (docs/features/money.md, finance.md, wallet.md; research

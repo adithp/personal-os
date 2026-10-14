@@ -378,7 +378,7 @@ export function createProjectsFake(): ProjectsFake {
             (current as unknown as Record<string, unknown>)[key],
           ]),
         );
-        const next = touch({ ...current, ...patch }) as Client;
+        const next = touch<Client>({ ...current, ...patch });
         clients.set(id, next);
         return result(clientView(next), { action: 'clients.update', input: { id, ...previous } });
       }
@@ -479,7 +479,7 @@ export function createProjectsFake(): ProjectsFake {
           const found = typeof clientId === 'string' ? find(clients, clientId, 'Client') : null;
           client = found ? { id: found.id, name: found.name } : null;
         }
-        const next = touch({ ...current, ...patch, client }) as Project;
+        const next = touch<Project>({ ...current, ...patch, client });
         projects.set(id, next);
         return result(projectView(next), {
           action: 'projects.update',
@@ -579,12 +579,12 @@ export function createProjectsFake(): ProjectsFake {
       if (method === 'PATCH') {
         const current = find(milestones, id, 'Milestone');
         const { id: _ignored, done, ...patch } = body;
-        const next = touch({
+        const next = touch<Milestone>({
           ...current,
           ...patch,
           ...(done === true ? { doneAt: new Date().toISOString() } : {}),
           ...(done === false ? { doneAt: null } : {}),
-        }) as Milestone;
+        });
         milestones.set(id, next);
         return result(next, {
           action: 'milestones.update',
@@ -669,7 +669,7 @@ export function createProjectsFake(): ProjectsFake {
       if (method === 'PATCH') {
         const current = find(entries, id, 'Time entry');
         const { id: _ignored, ...patch } = body;
-        const next = { ...current, ...patch } as TimeEntry;
+        const next = { ...current, ...patch };
         entries.set(id, next);
         return result(entryView(next), {
           action: 'time.update',

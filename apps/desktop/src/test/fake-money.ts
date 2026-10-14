@@ -219,12 +219,12 @@ function build() {
   const undoAction = (action: string, input: Record<string, unknown>): unknown => {
     const id = String(input.id);
     const tables: Record<string, Table<{ id: string }>> = {
-      wallets: wallets as Table<{ id: string }>,
-      categories: categories as Table<{ id: string }>,
-      transactions: transactions as Table<{ id: string }>,
-      recurring: recurring as Table<{ id: string }>,
-      goals: goals as Table<{ id: string }>,
-      subscriptions: subscriptions as Table<{ id: string }>,
+      wallets: wallets,
+      categories: categories,
+      transactions: transactions,
+      recurring: recurring,
+      goals: goals,
+      subscriptions: subscriptions,
     };
     const [, part, verb] = action.startsWith('subscriptions.')
       ? ['', 'subscriptions', action.split('.')[1]]
@@ -232,7 +232,9 @@ function build() {
     if (action === 'subscriptions.undo_renew') {
       const sub = find(subscriptions, id, 'Subscription');
       subscriptions.rows.set(id, { ...sub, nextRenewalOn: String(input.previousRenewalOn) });
-      if (input.transactionId) transactions.gone.add(String(input.transactionId));
+      if (typeof input.transactionId === 'string' && input.transactionId !== '') {
+        transactions.gone.add(input.transactionId);
+      }
       return write(null, null);
     }
     if (part === 'budgets') {
@@ -378,7 +380,7 @@ function build() {
         walletId: input.walletId,
         toWalletId: input.toWalletId ?? null,
         categoryId: input.categoryId ?? null,
-        note: input.note || null,
+        note: input.note === '' ? null : (input.note ?? null),
         ...(input.occurredOn ? { occurredOn: input.occurredOn } : {}),
       });
       return write(tx, { action: 'finance.transactions.delete', input: { id: tx.id } });
@@ -439,7 +441,7 @@ function build() {
         walletId: input.walletId,
         toWalletId: input.toWalletId ?? null,
         categoryId: input.categoryId ?? null,
-        note: input.note || null,
+        note: input.note === '' ? null : (input.note ?? null),
         rule: input.rule,
         nextOn: input.startOn ?? today(),
         endsOn: input.endsOn ?? null,
@@ -593,7 +595,7 @@ function build() {
         walletId: input.walletId ?? null,
         categoryId: input.categoryId ?? null,
         color: input.color ?? '#F4A9C4',
-        note: input.note || null,
+        note: input.note === '' ? null : (input.note ?? null),
         monthlyPaise: 0,
         yearlyPaise: 0,
         daysUntilRenewal: 0,

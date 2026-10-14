@@ -76,7 +76,7 @@ describe('POST /search', () => {
       { q: '' },
       { q: '   ' },
       { q: 'a'.repeat(101) },
-      { q: 'rent', types: ['note'] },
+      { q: 'rent', types: ['bogus'] },
       { q: 'rent', limit: 0 },
       { q: 'rent', limit: 21 },
     ];

@@ -38,7 +38,7 @@ describe('recent items', () => {
     const stored = [
       good,
       { type: 'task', id: 'not-a-uuid', title: 'Bad id' },
-      { type: 'note', id: '00000000-0000-4000-8000-000000000002', title: 'Bad type' },
+      { type: 'bogus', id: '00000000-0000-4000-8000-000000000002', title: 'Bad type' },
       { type: 'task', id: '00000000-0000-4000-8000-000000000003', title: 'x'.repeat(201) },
       {
         type: 'tag',

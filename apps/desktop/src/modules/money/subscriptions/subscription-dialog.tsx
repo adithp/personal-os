@@ -11,22 +11,17 @@ import { useState } from 'react';
 import { useSubscriptionActions } from '../money-actions';
 import { parseRupees, rupeesText } from '../money-format';
 import { useCategories, useWallets } from '../money-queries';
-import { ColorPicker, Field, SWATCHES, selectClass } from '../ui/fields';
+import { SWATCHES, selectClass } from '../ui/field-styles';
+import { ColorPicker, Field } from '../ui/fields';
 import { FormDialog } from '../ui/form-dialog';
 import { useToday } from '../use-money-nav';
+import { CYCLE_NAMES } from './cycle-names';
 
-const CYCLE_NAMES: Record<BillingCycle, string> = {
-  weekly: 'Weekly',
-  monthly: 'Monthly',
-  quarterly: 'Every 3 months',
-  yearly: 'Yearly',
-};
 const STATUS_NAMES: Record<SubscriptionStatus, string> = {
   active: 'Active',
   paused: 'Paused',
   cancelled: 'Cancelled',
 };
-export { CYCLE_NAMES };
 
 /** Create a subscription, or edit / pause / cancel / delete one. */
 export function SubscriptionDialog({

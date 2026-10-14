@@ -9,7 +9,7 @@ import {
   useUpcoming,
   useWallets,
 } from '../money-queries';
-import { signedAmount } from '../transactions/transaction-list';
+import { signedAmount } from '../transactions/transaction-math';
 import { ColorDot } from '../ui/fields';
 import { MoneyBar } from '../ui/money-bar';
 

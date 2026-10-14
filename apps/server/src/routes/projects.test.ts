@@ -57,8 +57,19 @@ const call = (
   payload?: unknown,
 ) => app.inject({ method, url: `/api/v1${url}`, headers, payload: payload as object | undefined });
 
-interface Written<T = Record<string, any>> {
+interface Row {
+  id: string;
+  title: string;
+  name: string;
+  status: string;
+  progress: { done: number; total: number };
+  tasks: unknown[];
+  notes: unknown[];
+  [key: string]: unknown;
+}
+interface Written<T = Row> {
   item: T;
+  items: T[];
   undo: { action: string; input: Record<string, unknown> } | null;
 }
 
@@ -100,10 +111,10 @@ describe('clients routes', () => {
     expect(item).toMatchObject({ name: 'Acme', projectCount: 0 });
     expect(undo).toEqual({ action: 'clients.delete', input: { id: item.id } });
 
-    expect((await call('GET', `/clients/${item.id}`)).json().item.name).toBe('Acme');
-    expect((await call('GET', '/clients')).json().items).toHaveLength(1);
+    expect((await call('GET', `/clients/${item.id}`)).json<Written>().item.name).toBe('Acme');
+    expect((await call('GET', '/clients')).json<Written>().items).toHaveLength(1);
     const patched = await call('PATCH', `/clients/${item.id}`, alice, { company: 'Acme Ltd' });
-    expect(patched.json().item.company).toBe('Acme Ltd');
+    expect(patched.json<Written>().item.company).toBe('Acme Ltd');
     expect((await call('PATCH', `/clients/${item.id}`, alice, {})).statusCode).toBe(400);
 
     const deleted = await call('DELETE', `/clients/${item.id}`);
@@ -117,7 +128,7 @@ describe('clients routes', () => {
   it('hides clients from another user', async () => {
     const { item } = await create('/clients', { name: 'Acme' });
     expect((await call('GET', `/clients/${item.id}`, bob)).statusCode).toBe(404);
-    expect((await call('GET', '/clients', bob)).json().items).toEqual([]);
+    expect((await call('GET', '/clients', bob)).json<Written>().items).toEqual([]);
   });
 });
 
@@ -126,15 +137,16 @@ describe('projects routes', () => {
     const created = await call('POST', '/projects', alice, { title: 'Site' });
     expect(created.statusCode).toBe(201);
     const { item } = created.json<Written>();
-    expect((await call('GET', `/projects/${item.id}`)).json().item.title).toBe('Site');
-    expect((await call('GET', '/projects?status=active')).json().items).toHaveLength(1);
+    expect((await call('GET', `/projects/${item.id}`)).json<Written>().item.title).toBe('Site');
+    expect((await call('GET', '/projects?status=active')).json<Written>().items).toHaveLength(1);
     expect((await call('GET', '/projects?status=bogus')).statusCode).toBe(400);
     expect(
-      (await call('PATCH', `/projects/${item.id}`, alice, { title: 'Site 2' })).json().item.title,
+      (await call('PATCH', `/projects/${item.id}`, alice, { title: 'Site 2' })).json<Written>().item
+        .title,
     ).toBe('Site 2');
     const status = await call('POST', `/projects/${item.id}/status`, alice, { status: 'done' });
-    expect(status.json().item.status).toBe('done');
-    expect(status.json().undo).toEqual({
+    expect(status.json<Written>().item.status).toBe('done');
+    expect(status.json<Written>().undo).toEqual({
       action: 'projects.setStatus',
       input: { id: item.id, status: 'active' },
     });
@@ -150,26 +162,26 @@ describe('projects routes', () => {
 
     const put = await call('PUT', `/tasks/${task.id}/project`, alice, { projectId: project.id });
     expect(put.statusCode).toBe(200);
-    expect(put.json().item.progress).toEqual({ done: 0, total: 1 });
-    expect(put.json().undo).toEqual({
+    expect(put.json<Written>().item.progress).toEqual({ done: 0, total: 1 });
+    expect(put.json<Written>().undo).toEqual({
       action: 'projects.setTaskProject',
       input: { taskId: task.id, projectId: null },
     });
     await call('PUT', `/notes/${note.id}/project`, alice, { projectId: project.id });
 
-    expect((await call('GET', `/tasks/${task.id}/project`)).json().item).toEqual({
+    expect((await call('GET', `/tasks/${task.id}/project`)).json<Written>().item).toEqual({
       id: project.id,
       title: 'P',
     });
-    const items = (await call('GET', `/projects/${project.id}/items`)).json().item;
+    const items = (await call('GET', `/projects/${project.id}/items`)).json<Written>().item;
     expect(items.tasks).toHaveLength(1);
     expect(items.notes).toHaveLength(1);
 
     const out = await call('PUT', `/tasks/${task.id}/project`, alice, { projectId: null });
     expect(out.statusCode).toBe(200);
-    expect((await call('GET', `/tasks/${task.id}/project`)).json().item).toBeNull();
+    expect((await call('GET', `/tasks/${task.id}/project`)).json<Written>().item).toBeNull();
     const back = await call('POST', '/undo', alice, out.json<Written>().undo);
-    expect(back.json().item.progress.total).toBe(1);
+    expect(back.json<Written>().item.progress.total).toBe(1);
 
     expect(
       (await call('PUT', `/tasks/${task.id}/project`, alice, { projectId: 'nope' })).statusCode,
@@ -188,10 +200,12 @@ describe('milestones routes', () => {
     });
     expect(created.statusCode).toBe(201);
     const milestone = created.json<Written>().item;
-    expect((await call('GET', `/projects/${project.id}/milestones`)).json().items).toHaveLength(1);
+    expect(
+      (await call('GET', `/projects/${project.id}/milestones`)).json<Written>().items,
+    ).toHaveLength(1);
     const done = await call('PATCH', `/milestones/${milestone.id}`, alice, { done: true });
-    expect(done.json().item.doneAt).not.toBeNull();
-    expect((await call('GET', `/projects/${project.id}`)).json().item.milestones).toEqual({
+    expect(done.json<Written>().item.doneAt).not.toBeNull();
+    expect((await call('GET', `/projects/${project.id}`)).json<Written>().item.milestones).toEqual({
       done: 1,
       total: 1,
     });
@@ -201,24 +215,24 @@ describe('milestones routes', () => {
     const deleted = await call('DELETE', `/milestones/${milestone.id}`);
     expect(deleted.statusCode).toBe(200);
     const restored = await call('POST', '/undo', alice, deleted.json<Written>().undo);
-    expect(restored.json().item.id).toBe(milestone.id);
+    expect(restored.json<Written>().item.id).toBe(milestone.id);
   });
 });
 
 describe('time-entries routes', () => {
   it('starts, reads the running one, stops, adds, lists, summarises, edits and deletes', async () => {
     const { item: project } = await addProject('P');
-    expect((await call('GET', '/time-entries/running')).json().item).toBeNull();
+    expect((await call('GET', '/time-entries/running')).json<Written>().item).toBeNull();
 
     const started = await call('POST', '/time-entries/start', alice, { projectId: project.id });
     expect(started.statusCode).toBe(201);
     const entry = started.json<Written>().item;
-    expect((await call('GET', '/time-entries/running')).json().item.id).toBe(entry.id);
+    expect((await call('GET', '/time-entries/running')).json<Written>().item.id).toBe(entry.id);
 
     const stopped = await call('POST', '/time-entries/stop');
     expect(stopped.statusCode).toBe(200);
-    expect(stopped.json().item.endedAt).not.toBeNull();
-    expect(stopped.json().undo).toBeNull();
+    expect(stopped.json<Written>().item.endedAt).not.toBeNull();
+    expect(stopped.json<Written>().undo).toBeNull();
     expect((await call('POST', '/time-entries/stop')).statusCode).toBe(404);
 
     const added = await call('POST', '/time-entries', alice, {
@@ -227,27 +241,27 @@ describe('time-entries routes', () => {
       endedAt: new Date(Date.now() - 3_600_000).toISOString(),
     });
     expect(added.statusCode).toBe(201);
-    expect(added.json().item.seconds).toBe(3600);
+    expect(added.json<Written>().item.seconds).toBe(3600);
     expect(
-      (await call('GET', `/time-entries?projectId=${project.id}&limit=1`)).json().items,
+      (await call('GET', `/time-entries?projectId=${project.id}&limit=1`)).json<Written>().items,
     ).toHaveLength(1);
 
-    const summary = (await call('GET', '/time-entries/summary?weeks=2')).json().item;
+    const summary = (await call('GET', '/time-entries/summary?weeks=2')).json<Written>().item;
     expect(summary.byWeek).toHaveLength(2);
     expect(summary.totalSeconds).toBeGreaterThanOrEqual(3600);
     expect((await call('GET', '/time-entries/summary?weeks=0')).statusCode).toBe(400);
 
-    const id = added.json<Written>().item.id as string;
+    const id = added.json<Written>().item.id;
     expect(
-      (await call('PATCH', `/time-entries/${id}`, alice, { note: 'hi' })).json().item.note,
+      (await call('PATCH', `/time-entries/${id}`, alice, { note: 'hi' })).json<Written>().item.note,
     ).toBe('hi');
     expect((await call('PATCH', `/time-entries/${id}`, bob, { note: 'x' })).statusCode).toBe(404);
     const deleted = await call('DELETE', `/time-entries/${id}`);
     expect(deleted.statusCode).toBe(200);
     const restored = await call('POST', '/undo', alice, deleted.json<Written>().undo);
-    expect(restored.json().item.id).toBe(id);
+    expect(restored.json<Written>().item.id).toBe(id);
 
-    expect((await call('GET', '/time-entries', bob)).json().items).toEqual([]);
+    expect((await call('GET', '/time-entries', bob)).json<Written>().items).toEqual([]);
     expect(
       (await call('POST', '/time-entries/start', bob, { projectId: project.id })).statusCode,
     ).toBe(404);

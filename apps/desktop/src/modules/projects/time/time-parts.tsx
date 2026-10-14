@@ -9,12 +9,13 @@ import { Button, GlassCard, IconButton, Input } from '@personal-os/ui';
 import { IconPencil, IconPlayerPlay, IconPlayerStop, IconTrash } from '@tabler/icons-react';
 import { useState, type ReactNode } from 'react';
 import { DateTimeBox } from '../../tasks/detail/date-fields';
-import { ConfirmDialog, Dialog, Field, Select, useTicker } from '../components';
+import { ConfirmDialog, Dialog, Field, Select } from '../components';
 import { formatClock, formatDayShort, formatTimer } from '../format';
+import { useTicker } from '../use-ticker';
 import { useProjectTasks, useRunningTimer, useTimeActions } from '../projects-queries';
 
 /** Seconds a running entry has run, ticking every second. */
-export function useElapsed(entry: TimeEntry | null | undefined): number {
+function useElapsed(entry: TimeEntry | null | undefined): number {
   const now = useTicker(Boolean(entry));
   return entry ? Math.max(0, Math.floor((now - Date.parse(entry.startedAt)) / 1000)) : 0;
 }

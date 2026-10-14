@@ -13,6 +13,10 @@ const KEEP_AT_EDGES = 2;
 
 type Row = { line: DiffLine } | { hidden: number };
 
+function pushLine(rows: Row[], line: DiffLine | undefined): void {
+  if (line) rows.push({ line });
+}
+
 /** The diff as rows: long unchanged runs shrink to "… N unchanged lines". */
 function toRows(lines: DiffLine[]): Row[] {
   const rows: Row[] = [];
@@ -21,15 +25,15 @@ function toRows(lines: DiffLine[]): Row[] {
     while (end < lines.length && lines[end]?.type === 'same') end += 1;
     const run = end - i;
     if (run > MAX_SAME_RUN) {
-      for (let k = i; k < i + KEEP_AT_EDGES; k += 1) rows.push({ line: lines[k] as DiffLine });
+      for (let k = i; k < i + KEEP_AT_EDGES; k += 1) pushLine(rows, lines[k]);
       rows.push({ hidden: run - 2 * KEEP_AT_EDGES });
-      for (let k = end - KEEP_AT_EDGES; k < end; k += 1) rows.push({ line: lines[k] as DiffLine });
+      for (let k = end - KEEP_AT_EDGES; k < end; k += 1) pushLine(rows, lines[k]);
       i = end;
     } else if (run > 0) {
-      for (let k = i; k < end; k += 1) rows.push({ line: lines[k] as DiffLine });
+      for (let k = i; k < end; k += 1) pushLine(rows, lines[k]);
       i = end;
     } else {
-      rows.push({ line: lines[i] as DiffLine });
+      pushLine(rows, lines[i]);
       i += 1;
     }
   }

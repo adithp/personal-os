@@ -196,7 +196,7 @@ describe('finance.wallets', () => {
     await addWallet('a');
     await fails(h.run(h.alice(), 'finance.wallets.restore', { id: wallet.id }), 409, 'name_taken');
     const live = await h.run(h.alice(), 'finance.wallets.restore', {
-      id: (await wallets())[0]!.id,
+      id: (await wallets())[0]?.id,
     });
     expect(live.undo).toBeNull();
   });
@@ -244,9 +244,10 @@ describe('finance.categories', () => {
       'name_taken',
     );
     await h.run(h.alice(), 'finance.categories.create', { name: 'Food', kind: 'income' });
-    const other = (await categories()).find((c) => c.name === 'Transport')!;
+    const other = (await categories()).find((c) => c.name === 'Transport');
+    expect(other).toBeDefined();
     await fails(
-      h.run(h.alice(), 'finance.categories.update', { id: other.id, name: 'FOOD' }),
+      h.run(h.alice(), 'finance.categories.update', { id: other?.id, name: 'FOOD' }),
       409,
       'name_taken',
     );

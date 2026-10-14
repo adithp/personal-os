@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFakeApi } from '../../test/fake-api';
 import { makeHabit, seedHabits, type HabitSeed } from '../../test/fake-habits';
 import { openMyTasks, resetEverything, restoreEverything } from '../tasks/my-tasks/test-utils';
+import { must } from '../../test/must';
 
 vi.mock('@tauri-apps/api/window', async (importOriginal) => ({
   ...(await importOriginal<typeof TauriWindow>()),
@@ -121,9 +122,7 @@ describe('today list', () => {
 describe('create, edit, archive', () => {
   it('creates a weekly habit from the dialog', async () => {
     const { user, fake } = await open();
-    await user.click(
-      (await screen.findAllByRole('button', { name: 'New habit' }))[0] as HTMLElement,
-    );
+    await user.click(must((await screen.findAllByRole('button', { name: 'New habit' })).at(0)));
     const dialog = await screen.findByRole('dialog', { name: 'New habit' });
     expect(dialog.parentElement?.parentElement).toBe(document.body);
     await user.type(within(dialog).getByLabelText('Name'), 'Gym');
@@ -142,9 +141,7 @@ describe('create, edit, archive', () => {
 
   it('asks for a name', async () => {
     const { user, fake } = await open();
-    await user.click(
-      (await screen.findAllByRole('button', { name: 'New habit' }))[0] as HTMLElement,
-    );
+    await user.click(must((await screen.findAllByRole('button', { name: 'New habit' })).at(0)));
     const dialog = await screen.findByRole('dialog', { name: 'New habit' });
     await user.click(within(dialog).getByRole('button', { name: 'Create habit' }));
     expect(within(dialog).getByRole('alert')).toHaveTextContent('Add a name');

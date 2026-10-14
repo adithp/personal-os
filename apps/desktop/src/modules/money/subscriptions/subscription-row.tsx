@@ -2,7 +2,7 @@ import { formatInr, type Subscription } from '@personal-os/shared';
 import { Button } from '@personal-os/ui';
 import { renewalText, shortDay } from '../money-format';
 import { ColorDot } from '../ui/fields';
-import { CYCLE_NAMES } from './subscription-dialog';
+import { CYCLE_NAMES } from './cycle-names';
 
 /** One subscription: price, cycle, when it renews, Overdue badge, Mark paid and Edit. */
 export function SubscriptionRow({

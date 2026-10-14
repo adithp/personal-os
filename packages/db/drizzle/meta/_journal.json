@@ -124,14 +124,14 @@
     {
       "idx": 17,
       "version": "7",
-      "when": 1791959463744,
+      "when": 1791973097438,
       "tag": "0017_habits_money_projects",
       "breakpoints": true
     },
     {
       "idx": 18,
       "version": "7",
-      "when": 1791959466215,
+      "when": 1791973157438,
       "tag": "0018_habits_money_projects_triggers",
       "breakpoints": true
     }

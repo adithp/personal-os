@@ -1,4 +1,4 @@
-import { REALTIME_TABLES } from '@personal-os/shared';
+import { REALTIME_TABLES, type RealtimeTable } from '@personal-os/shared';
 import { QueryClient } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
 import { StrictMode } from 'react';
@@ -27,6 +27,15 @@ afterEach(() => {
 
 const invalidatedKeys = () =>
   invalidate.mock.calls.map((call) => (call[0] as { queryKey: unknown[] }).queryKey);
+
+/** The unique registry keys of these tables (modules add keys over time, so none are hard-coded). */
+const keysFor = (...tables: RealtimeTable[]) => {
+  const seen = new Map<string, unknown>();
+  for (const table of tables) {
+    for (const key of realtimeRegistry[table]) seen.set(JSON.stringify(key), key);
+  }
+  return [...seen.values()];
+};
 
 async function start() {
   const fake = createFakeRealtime();
@@ -70,7 +79,11 @@ describe('startRealtimeSync', () => {
     fake.emit('links');
     fake.emit('entity_tags');
     vi.advanceTimersByTime(300);
-    expect(invalidatedKeys().sort()).toEqual([['tags'], ['tasks']]);
+    expect(invalidatedKeys().sort()).toEqual(
+      keysFor('tasks', 'links', 'entity_tags').sort((a, b) =>
+        JSON.stringify(a).localeCompare(JSON.stringify(b)),
+      ),
+    );
   });
 
   it('refreshes goals and tasks when a goal changes, and favorites when a favorite changes', async () => {
@@ -96,7 +109,7 @@ describe('startRealtimeSync', () => {
     expect(invalidate).not.toHaveBeenCalled();
     mutating.mockReturnValue(0);
     vi.advanceTimersByTime(300);
-    expect(invalidatedKeys()).toEqual([['tasks']]);
+    expect(invalidatedKeys()).toEqual(keysFor('tasks'));
   });
 
   it('stops waiting for a change that never finishes saving', async () => {
@@ -104,7 +117,7 @@ describe('startRealtimeSync', () => {
     vi.spyOn(queryClient, 'isMutating').mockReturnValue(1);
     fake.emit('tasks');
     vi.advanceTimersByTime(10_000);
-    expect(invalidatedKeys()).toEqual([['tasks']]);
+    expect(invalidatedKeys()).toEqual(keysFor('tasks'));
   });
 
   it('does nothing on the first SUBSCRIBED, and refreshes every registry key on the next one', async () => {

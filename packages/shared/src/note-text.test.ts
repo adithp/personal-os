@@ -382,7 +382,7 @@ describe('lineDiff (stage N4)', () => {
   });
 
   it('diffs a few thousand lines exactly', () => {
-    const old = Array.from({ length: 3000 }, (_, i) => `line ${i}`);
+    const old = Array.from({ length: 3000 }, (_, i) => `line ${String(i)}`);
     const next = [...old];
     next.splice(1500, 1);
     next.splice(100, 0, 'new line');
@@ -398,8 +398,8 @@ describe('lineDiff (stage N4)', () => {
 
   it('falls back to a coarse diff on huge inputs, still keeping the shared start and end', () => {
     const size = Math.ceil(Math.sqrt(LINE_DIFF_MAX_CELLS)) + 50;
-    const middleA = Array.from({ length: size }, (_, i) => `a${i}`);
-    const middleB = Array.from({ length: size }, (_, i) => `b${i}`);
+    const middleA = Array.from({ length: size }, (_, i) => `a${String(i)}`);
+    const middleB = Array.from({ length: size }, (_, i) => `b${String(i)}`);
     const diff = lineDiff(
       ['top', ...middleA, 'bottom'].join('\n'),
       ['top', ...middleB, 'bottom'].join('\n'),

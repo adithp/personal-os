@@ -7,7 +7,8 @@ import { useMoneyKeys } from '../shell/use-money-keys';
 import { ColorDot } from '../ui/fields';
 import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader } from '../ui/page-parts';
 import { useMoneyNav } from '../use-money-nav';
-import { KIND_NAMES, WalletDialog } from './wallet-dialog';
+import { KIND_NAMES } from './kind-names';
+import { WalletDialog } from './wallet-dialog';
 
 type Editing = Wallet | 'new' | null;
 

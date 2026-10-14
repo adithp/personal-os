@@ -82,7 +82,7 @@ export const transactionImplementations = [
       if (!current) throw notFound('Transaction');
       const { values, old } = changes(current, input, FIELDS);
       if (Object.keys(values).length === 0) return { data: toTransaction(current), undo: null };
-      const merged = { ...current, ...values } as typeof current;
+      const merged = { ...current, ...values };
       await checkShape(
         tx,
         { ...merged, kind: merged.kind as TransactionKind },

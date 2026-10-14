@@ -30,7 +30,7 @@ export function useMoneyNav() {
   return {
     today,
     thisMonth,
-    section: search.section ?? ('overview' as MoneySection),
+    section: search.section ?? 'overview',
     month,
     walletId: search.wallet ?? null,
     /** Show a section; the month stays for the sections that have one. */

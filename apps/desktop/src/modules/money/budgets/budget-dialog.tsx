@@ -3,7 +3,8 @@ import { Button, Input } from '@personal-os/ui';
 import { useState } from 'react';
 import { useBudgetActions } from '../money-actions';
 import { monthLabel, parseRupees, rupeesText } from '../money-format';
-import { Field, selectClass } from '../ui/fields';
+import { selectClass } from '../ui/field-styles';
+import { Field } from '../ui/fields';
 import { FormDialog } from '../ui/form-dialog';
 
 /**

@@ -1,6 +1,6 @@
 import { Button, IconButton } from '@personal-os/ui';
 import { IconX } from '@tabler/icons-react';
-import { useEffect, useRef, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, type SyntheticEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { trapTab } from '../../tasks/inbox/trap-tab';
 
@@ -59,7 +59,7 @@ export function FormDialog({
     trapTab(event, box.current);
   };
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: SyntheticEvent) => {
     event.preventDefault();
     if (!busy) onSubmit?.();
   };

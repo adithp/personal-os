@@ -165,7 +165,12 @@ describe('useRunRecurring', () => {
     const fake = createFakeApi();
     const { wrapper } = hookWrapper(fake);
     const list = renderHook(() => useTransactions({}), { wrapper });
-    renderHook(() => useRunRecurring(), { wrapper });
+    renderHook(
+      () => {
+        useRunRecurring();
+      },
+      { wrapper },
+    );
     await waitFor(() => {
       expect(list.result.current.data).toHaveLength(2);
     });

@@ -24,7 +24,7 @@ export interface MoneyHarness {
   db: () => TestDb['db'];
   alice: () => ActionContext;
   bob: () => ActionContext;
-  run: <T = Record<string, any>>(
+  run: <T = Record<string, unknown>>(
     ctx: ActionContext,
     name: string,
     input: unknown,

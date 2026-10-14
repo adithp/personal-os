@@ -129,7 +129,7 @@ describe('subscriptions.create, update, delete', () => {
     expect(items.map((s) => s.overdue)).toEqual([true, false, false]);
     expect(items.map((s) => s.daysUntilRenewal)).toEqual([-2, 1, 10]);
     // Paused and cancelled ones are never overdue
-    await h.run(h.alice(), 'subscriptions.update', { id: items[0]!.id, status: 'cancelled' });
+    await h.run(h.alice(), 'subscriptions.update', { id: items[0]?.id, status: 'cancelled' });
     expect((await list()).items.find((s) => s.name === 'Late')?.overdue).toBe(false);
   });
 

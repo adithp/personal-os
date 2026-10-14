@@ -86,6 +86,9 @@ function splitLines(text: string): string[] {
   return text === '' ? [] : text.split(/\r?\n/);
 }
 
+/** Element at a position the caller has already bounds-checked. */
+const at = <T>(items: ArrayLike<T>, index: number): T => items[index] as T;
+
 /**
  * A line diff from `a` (old) to `b` (new), in reading order. Lines are split on \n or \r\n; an
  * empty text has no lines. The shared start and end lines are trimmed first; the middle uses a
@@ -107,13 +110,13 @@ export function lineDiff(a: string, b: string): DiffLine[] {
   }
 
   const out: DiffLine[] = [];
-  for (let i = 0; i < start; i++) out.push({ type: 'same', text: x[i] as string });
+  for (let i = 0; i < start; i++) out.push({ type: 'same', text: at(x, i) });
 
   const n = endX - start;
   const m = endY - start;
   if (n === 0 || m === 0 || (n + 1) * (m + 1) > LINE_DIFF_MAX_CELLS) {
-    for (let i = start; i < endX; i++) out.push({ type: 'remove', text: x[i] as string });
-    for (let j = start; j < endY; j++) out.push({ type: 'add', text: y[j] as string });
+    for (let i = start; i < endX; i++) out.push({ type: 'remove', text: at(x, i) });
+    for (let j = start; j < endY; j++) out.push({ type: 'add', text: at(y, j) });
   } else {
     // table[i][j] = length of the longest common subsequence of x[start+i..] and y[start+j..]
     const width = m + 1;
@@ -122,30 +125,30 @@ export function lineDiff(a: string, b: string): DiffLine[] {
       for (let j = m - 1; j >= 0; j--) {
         table[i * width + j] =
           x[start + i] === y[start + j]
-            ? (table[(i + 1) * width + j + 1] as number) + 1
-            : Math.max(table[(i + 1) * width + j] as number, table[i * width + j + 1] as number);
+            ? at(table, (i + 1) * width + j + 1) + 1
+            : Math.max(at(table, (i + 1) * width + j), at(table, i * width + j + 1));
       }
     }
     let i = 0;
     let j = 0;
     while (i < n && j < m) {
       if (x[start + i] === y[start + j]) {
-        out.push({ type: 'same', text: x[start + i] as string });
+        out.push({ type: 'same', text: at(x, start + i) });
         i++;
         j++;
-      } else if ((table[(i + 1) * width + j] as number) >= (table[i * width + j + 1] as number)) {
-        out.push({ type: 'remove', text: x[start + i] as string });
+      } else if (at(table, (i + 1) * width + j) >= at(table, i * width + j + 1)) {
+        out.push({ type: 'remove', text: at(x, start + i) });
         i++;
       } else {
-        out.push({ type: 'add', text: y[start + j] as string });
+        out.push({ type: 'add', text: at(y, start + j) });
         j++;
       }
     }
-    for (; i < n; i++) out.push({ type: 'remove', text: x[start + i] as string });
-    for (; j < m; j++) out.push({ type: 'add', text: y[start + j] as string });
+    for (; i < n; i++) out.push({ type: 'remove', text: at(x, start + i) });
+    for (; j < m; j++) out.push({ type: 'add', text: at(y, start + j) });
   }
 
-  for (let i = endX; i < x.length; i++) out.push({ type: 'same', text: x[i] as string });
+  for (let i = endX; i < x.length; i++) out.push({ type: 'same', text: at(x, i) });
   return out;
 }
 

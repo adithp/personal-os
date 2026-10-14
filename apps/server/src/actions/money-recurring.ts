@@ -76,7 +76,7 @@ export const recurringImplementations = [
       if (!current) throw notFound('Repeating transaction');
       const { values, old } = changes(current, input, FIELDS);
       if (Object.keys(values).length === 0) return { data: toRecurring(current), undo: null };
-      const merged = { ...current, ...values } as typeof current;
+      const merged = { ...current, ...values };
       if (
         ('endsOn' in values || 'nextOn' in values) &&
         merged.endsOn &&

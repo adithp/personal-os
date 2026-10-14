@@ -3,7 +3,8 @@ import { Button, Input } from '@personal-os/ui';
 import { useState } from 'react';
 import { useGoalActions } from '../money-actions';
 import { parseRupees, rupeesText } from '../money-format';
-import { ColorPicker, Field, SWATCHES } from '../ui/fields';
+import { SWATCHES } from '../ui/field-styles';
+import { ColorPicker, Field } from '../ui/fields';
 import { FormDialog } from '../ui/form-dialog';
 
 /** Create a savings goal, or edit / delete one. */

@@ -99,7 +99,7 @@ describe('the mock note versions', () => {
     expect(fake.noteVersions.versions(note.id)).toMatchObject([{ reason: 'conflict' }]);
   });
 
-  it('counts words of the plain text and compares with the next older version', async () => {
+  it('counts words of the plain text and compares with the next older version', () => {
     const { note, fake } = setup('x');
     fake.noteVersions.seed(note.id, [
       makeVersion({ contentMd: '# Title\n\n**bold** [[Link]] word' }),

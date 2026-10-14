@@ -335,12 +335,14 @@ describe('focus and labels', () => {
 
   it('puts the focus back on the row after a restore', async () => {
     const { bar, user } = await openFirst();
+    const versionId = rowAt(1).dataset.versionId;
     await user.click(within(bar).getByRole('button', { name: 'Restore' }));
     await waitFor(() => {
       expect(screen.queryByRole('region', { name: 'Version preview' })).toBeNull();
     });
+    // A restore adds a "Before restore" version at the top, so the row moves down: find it by id
     await waitFor(() => {
-      expect(rowAt(1)).toHaveFocus();
+      expect(document.querySelector(`[data-version-id="${String(versionId)}"]`)).toHaveFocus();
     });
   });
 
@@ -351,7 +353,9 @@ describe('focus and labels', () => {
     await waitFor(() => {
       expect(screen.queryByRole('region', { name: 'Version preview' })).toBeNull();
     });
-    expect(screen.getByRole('complementary')).toBeInTheDocument();
+    expect(
+      screen.getByRole('complementary', { name: 'Links, outline and history' }),
+    ).toBeInTheDocument();
     await waitFor(() => {
       expect(rowAt(1)).toHaveFocus();
     });

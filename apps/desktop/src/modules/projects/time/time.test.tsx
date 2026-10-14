@@ -13,6 +13,7 @@ import {
   restoreEverything,
 } from '../test-utils';
 import { formatTimer } from '../format';
+import { must } from '../../../test/must';
 
 vi.mock('@tauri-apps/api/window', async (importOriginal) => ({
   ...(await importOriginal<typeof TauriWindow>()),
@@ -68,9 +69,7 @@ describe('Time tab of a project', () => {
     await user.click(screen.getByRole('radio', { name: 'Time' }));
     await user.selectOptions(await screen.findByLabelText('Task (optional)'), 'Write copy');
     await user.click(screen.getByRole('button', { name: 'Start timer' }));
-    const timer = (await screen.findAllByRole('timer', { name: 'Running timer' })).at(
-      0,
-    ) as HTMLElement;
+    const timer = must((await screen.findAllByRole('timer', { name: 'Running timer' })).at(0));
     expect(within(timer).getByText('00:00:00')).toBeInTheDocument();
     expect(callsTo(fake, 'POST', '/time-entries/start')[0]?.body).toEqual({
       projectId: project.id,
@@ -169,9 +168,7 @@ describe('Time page', () => {
         name: 'Time',
       }),
     );
-    const timer = (await screen.findAllByRole('timer', { name: 'Running timer' })).at(
-      0,
-    ) as HTMLElement;
+    const timer = must((await screen.findAllByRole('timer', { name: 'Running timer' })).at(0));
     expect(timer).toHaveTextContent('Mobile app');
   });
 

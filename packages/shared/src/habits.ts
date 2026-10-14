@@ -306,7 +306,9 @@ export interface Streaks {
 }
 
 const countOf = (counts: StreakInput['counts'], date: string): number =>
-  counts instanceof Map ? (counts.get(date) ?? 0) : ((counts as Record<string, number>)[date] ?? 0);
+  counts instanceof Map
+    ? ((counts.get(date) as number | undefined) ?? 0)
+    : ((counts as Record<string, number>)[date] ?? 0);
 
 /**
  * Current and best streak in scheduled days. Days the habit is not scheduled on are skipped (they

@@ -5,7 +5,6 @@ import {
   useEffect,
   useId,
   useRef,
-  useState,
   type ComponentProps,
   type KeyboardEvent,
   type ReactNode,
@@ -13,21 +12,6 @@ import {
 import { createPortal } from 'react-dom';
 import { ApiError } from '../../api/api-client';
 import { trapTab } from '../tasks/inbox/trap-tab';
-
-/** The current time in ms, refreshed every second while `active` (a running timer). */
-export function useTicker(active: boolean): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!active) return;
-    const timer = setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-    return () => {
-      clearInterval(timer);
-    };
-  }, [active]);
-  return now;
-}
 
 const STATUS_STYLE: Record<ProjectStatus, string> = {
   active: 'bg-module-projects text-on-tile',

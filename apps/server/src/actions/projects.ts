@@ -85,8 +85,11 @@ async function presentClients(scope: UserScope, rows: ClientRow[]): Promise<Clie
   });
 }
 
-const presentClient = async (scope: UserScope, row: ClientRow) =>
-  (await presentClients(scope, [row]))[0] as Client;
+const presentClient = async (scope: UserScope, row: ClientRow): Promise<Client> => {
+  const [client] = await presentClients(scope, [row]);
+  if (!client) throw new Error('Client could not be presented');
+  return client;
+};
 
 const clientImplementations = [
   implement(clientActions.list, async ({ scope }) => {
@@ -263,8 +266,11 @@ async function presentProjects(scope: UserScope, rows: ProjectRow[]): Promise<Pr
   });
 }
 
-const presentProject = async (scope: UserScope, row: ProjectRow) =>
-  (await presentProjects(scope, [row]))[0] as Project;
+const presentProject = async (scope: UserScope, row: ProjectRow): Promise<Project> => {
+  const [project] = await presentProjects(scope, [row]);
+  if (!project) throw new Error('Project could not be presented');
+  return project;
+};
 
 const STATUS_ORDER: Record<ProjectStatus, number> = { active: 0, on_hold: 1, done: 2, archived: 3 };
 

@@ -10,6 +10,7 @@ import {
   resetProjectsEverything,
   restoreEverything,
 } from '../test-utils';
+import { must } from '../../../test/must';
 
 vi.mock('@tauri-apps/api/window', async (importOriginal) => ({
   ...(await importOriginal<typeof TauriWindow>()),
@@ -127,9 +128,7 @@ describe('new project', () => {
   it('asks for a title', async () => {
     const { fake } = projectsSetup();
     const { user } = await openProjects(fake);
-    await user.click(
-      (await screen.findAllByRole('button', { name: 'New project' }))[0] as HTMLElement,
-    );
+    await user.click(must((await screen.findAllByRole('button', { name: 'New project' })).at(0)));
     const dialog = await screen.findByRole('dialog', { name: 'New project' });
     await user.click(within(dialog).getByRole('button', { name: 'Create project' }));
     expect(within(dialog).getByRole('alert')).toHaveTextContent('Add a title');
@@ -139,9 +138,7 @@ describe('new project', () => {
   it('closes with Escape', async () => {
     const { fake } = projectsSetup();
     const { user } = await openProjects(fake);
-    await user.click(
-      (await screen.findAllByRole('button', { name: 'New project' }))[0] as HTMLElement,
-    );
+    await user.click(must((await screen.findAllByRole('button', { name: 'New project' })).at(0)));
     await screen.findByRole('dialog', { name: 'New project' });
     await user.keyboard('{Escape}');
     await waitFor(() => {

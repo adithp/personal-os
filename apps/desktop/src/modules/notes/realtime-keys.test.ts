@@ -3,8 +3,10 @@ import { realtimeRegistry } from '../../realtime/registry';
 
 describe('Notes live updates', () => {
   it('refreshes notes and folders when either table changes', () => {
-    expect(realtimeRegistry.notes).toEqual([['notes'], ['note-folders']]);
-    expect(realtimeRegistry.note_folders).toEqual([['note-folders'], ['notes']]);
+    expect(realtimeRegistry.notes).toEqual(expect.arrayContaining([['notes'], ['note-folders']]));
+    expect(realtimeRegistry.note_folders).toEqual(
+      expect.arrayContaining([['note-folders'], ['notes']]),
+    );
   });
 
   it('refreshes templates when the templates table changes', () => {

@@ -3,7 +3,8 @@ import { Button, Input, SegmentedControl } from '@personal-os/ui';
 import { useState } from 'react';
 import { useCategoryActions } from '../money-actions';
 import { useCategories } from '../money-queries';
-import { ColorDot, ColorPicker, SWATCHES } from '../ui/fields';
+import { SWATCHES } from '../ui/field-styles';
+import { ColorDot, ColorPicker } from '../ui/fields';
 import { FormDialog } from '../ui/form-dialog';
 
 const KINDS = [

@@ -63,7 +63,9 @@ async function presentEntries(
 }
 
 async function presentEntry(scope: UserScope, row: TimeEntryRow): Promise<TimeEntry> {
-  return (await presentEntries(scope, [row]))[0] as TimeEntry;
+  const [entry] = await presentEntries(scope, [row]);
+  if (!entry) throw new Error('Time entry could not be presented');
+  return entry;
 }
 
 async function findEntry(

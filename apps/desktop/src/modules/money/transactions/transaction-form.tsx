@@ -9,10 +9,12 @@ import { useState } from 'react';
 import { useRecurringActions, useTransactionActions } from '../money-actions';
 import { parseRupees, rupeesText } from '../money-format';
 import { useCategories, useWallets } from '../money-queries';
-import { Field, selectClass } from '../ui/fields';
+import { selectClass } from '../ui/field-styles';
+import { Field } from '../ui/fields';
 import { FormDialog } from '../ui/form-dialog';
 import { useToday } from '../use-money-nav';
-import { RepeatPicker, ruleOf, weekdayOf, type RepeatChoice } from './repeat-picker';
+import { RepeatPicker } from './repeat-picker';
+import { ruleOf, weekdayOf, type RepeatChoice } from './repeat-rule';
 
 const KINDS = [
   { value: 'income', label: 'Income' },
@@ -53,7 +55,7 @@ export function TransactionForm({ transaction, walletId, onClose }: TransactionF
       wallet.id === transaction?.toWalletId,
   );
   // The first wallet is the default when the person has not chosen one
-  const fromId = from || usable[0]?.id || '';
+  const fromId = from !== '' ? from : (usable[0]?.id ?? '');
   const kindCategories = (categories.data ?? []).filter((category) => category.kind === kind);
   // A deleted category is not in the list: show and send "No category" instead of a stale id
   const shownCategory = kindCategories.some((category) => category.id === categoryId)

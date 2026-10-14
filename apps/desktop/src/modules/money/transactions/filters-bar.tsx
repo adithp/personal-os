@@ -1,14 +1,7 @@
-import type { Category, TransactionKind, Wallet } from '@personal-os/shared';
+import type { Category, Wallet } from '@personal-os/shared';
 import { Input } from '@personal-os/ui';
-import { selectClass } from '../ui/fields';
-
-export interface Filters {
-  categoryId: string;
-  kind: TransactionKind | '';
-  text: string;
-}
-
-export const NO_FILTERS: Filters = { categoryId: '', kind: '', text: '' };
+import { selectClass } from '../ui/field-styles';
+import type { Filters } from './filters';
 
 /** Wallet, category and kind filters and a text search over the notes. */
 export function FiltersBar({

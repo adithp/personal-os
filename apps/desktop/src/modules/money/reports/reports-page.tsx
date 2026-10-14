@@ -16,7 +16,7 @@ export function ReportsPage() {
   const categories = useCategories();
   useMoneyKeys({ months: true });
   const data = summary.data;
-  const empty = data !== undefined && data.incomePaise === 0 && data.expensePaise === 0;
+  const empty = data?.incomePaise === 0 && data.expensePaise === 0;
 
   return (
     <div className="flex w-full flex-col gap-4 px-2 pb-6">

@@ -15,7 +15,7 @@ interface DayPoint {
 }
 
 /** Every day of the month, with 0 for the days that have no expense. */
-export function daysOf(summary: MonthSummary): DayPoint[] {
+function daysOf(summary: MonthSummary): DayPoint[] {
   const spent = new Map(summary.byDay.map((day) => [day.date, day.expensePaise]));
   const end = monthEnd(summary.month);
   const points: DayPoint[] = [];

@@ -3,16 +3,10 @@ import { Button, Input } from '@personal-os/ui';
 import { useState } from 'react';
 import { useWalletActions } from '../money-actions';
 import { parseRupees, rupeesText } from '../money-format';
-import { ColorPicker, Field, SWATCHES, selectClass } from '../ui/fields';
+import { SWATCHES, selectClass } from '../ui/field-styles';
+import { ColorPicker, Field } from '../ui/fields';
 import { FormDialog } from '../ui/form-dialog';
-
-const KIND_NAMES: Record<WalletKind, string> = {
-  cash: 'Cash',
-  bank: 'Bank account',
-  card: 'Card',
-  upi: 'UPI',
-  other: 'Other',
-};
+import { KIND_NAMES } from './kind-names';
 
 /** Add a wallet, or edit / archive / delete one. */
 export function WalletDialog({ wallet, onClose }: { wallet?: Wallet; onClose: () => void }) {
@@ -120,5 +114,3 @@ export function WalletDialog({ wallet, onClose }: { wallet?: Wallet; onClose: ()
     </FormDialog>
   );
 }
-
-export { KIND_NAMES };

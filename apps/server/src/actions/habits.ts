@@ -9,7 +9,7 @@ import {
   type HabitStats,
   type UndoDescriptor,
 } from '@personal-os/shared';
-import { and, asc, desc, eq, inArray, isNotNull, isNull, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { HttpError } from '../lib/http-error';
 import { withUserLock } from '../lib/user-lock';
 import type { UserScope } from '../lib/user-scope';
@@ -149,10 +149,7 @@ export const habitImplementations = [
     const before = await findHabit(scope, input.id);
     const values: Partial<typeof habits.$inferInsert> = {};
     const undoInput: Record<string, unknown> = {};
-    const change = <K extends keyof HabitRow & keyof typeof habits.$inferInsert>(
-      key: K,
-      next: HabitRow[K] | undefined,
-    ) => {
+    const change = <K extends keyof HabitRow>(key: K, next: HabitRow[K] | undefined) => {
       if (next === undefined || JSON.stringify(next) === JSON.stringify(before[key])) return;
       (values as Record<string, unknown>)[key] = next;
       undoInput[key] = before[key];
@@ -231,10 +228,9 @@ export const habitImplementations = [
       const today = indiaDateOf(new Date());
       const date = input.date ?? today;
       assertLoggable(row, date, today);
-      const removed = await scope.delete(
-        habitLogs,
-        and(eq(habitLogs.habitId, input.id), eq(habitLogs.logDate, date)) as SQL,
-      );
+      const logWhere = and(eq(habitLogs.habitId, input.id), eq(habitLogs.logDate, date));
+      if (!logWhere) throw new Error('Habit log filter is empty');
+      const removed = await scope.delete(habitLogs, logWhere);
       const [previous] = removed;
       return {
         data: await habitView(scope, input.id),

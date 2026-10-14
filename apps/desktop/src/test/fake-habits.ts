@@ -210,7 +210,7 @@ export function createHabitsFake() {
         action: 'habits.update',
         input: { id, ...snapshotFields(habit, Object.keys(patch)) },
       };
-      store.set(id, { ...habit, ...patch, updatedAt: new Date().toISOString() } as StoredHabit);
+      store.set(id, { ...habit, ...patch, updatedAt: new Date().toISOString() });
       return { item: view(find(id)), undo };
     }
 
