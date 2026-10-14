@@ -7,7 +7,7 @@ import {
   type NoteSummary,
 } from '@personal-os/shared';
 import { Button, cx, IconButton, Input, Tooltip } from '@personal-os/ui';
-import { IconPlus, IconSortDescending } from '@tabler/icons-react';
+import { IconSortDescending } from '@tabler/icons-react';
 import { useMemo, useRef, useState } from 'react';
 import { ApiError } from '../../../api/api-client';
 import { useNow } from '../../dashboard/greeting';
@@ -30,6 +30,7 @@ import { focusEditor } from './focus-editor';
 import { ConfirmDialog } from './confirm-dialog';
 import { FolderPickerMenu } from '../shell/folder-menus';
 import { filterByTitle, pinnedFirst } from './format';
+import { NewNoteMenu } from './new-note-menu';
 import { NoteRow } from './note-row';
 import { EmptyState } from './empty-state';
 import { useNotesShortcuts } from './use-notes-shortcuts';
@@ -243,15 +244,12 @@ export function NoteList() {
             />
           </Tooltip>
           {trash ? null : (
-            <Tooltip label="New note">
-              <IconButton
-                aria-label="New note"
-                icon={<IconPlus size={16} stroke={1.5} aria-hidden />}
-                onClick={() => {
-                  void createNote();
-                }}
-              />
-            </Tooltip>
+            <NewNoteMenu
+              {...(nav.place !== 'all' ? { folderId: nav.place } : {})}
+              onCreated={(note) => {
+                nav.show(nav.place, note.id);
+              }}
+            />
           )}
         </div>
       </header>

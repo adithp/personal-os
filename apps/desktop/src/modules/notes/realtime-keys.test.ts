@@ -6,4 +6,8 @@ describe('Notes live updates', () => {
     expect(realtimeRegistry.notes).toEqual([['notes'], ['note-folders']]);
     expect(realtimeRegistry.note_folders).toEqual([['note-folders'], ['notes']]);
   });
+
+  it('refreshes templates when the templates table changes', () => {
+    expect(realtimeRegistry.note_templates).toEqual([['note-templates']]);
+  });
 });
