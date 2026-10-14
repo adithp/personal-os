@@ -42,7 +42,7 @@ describe('opening and closing', () => {
 
     await user.keyboard(ctrl('k'));
     expect(palette()).toBeInTheDocument();
-    expect(within(palette()).getByPlaceholderText('Type a command…')).toHaveFocus();
+    expect(within(palette()).getByPlaceholderText('Search or type a command…')).toHaveFocus();
   });
 
   it('Ctrl K again closes it', async () => {
@@ -67,7 +67,7 @@ describe('opening and closing', () => {
     const { user } = await openApp('/');
     await user.click(screen.getByRole('searchbox', { name: 'Search' }));
     expect(palette()).toBeInTheDocument();
-    expect(within(palette()).getByPlaceholderText('Type a command…')).toHaveValue('');
+    expect(within(palette()).getByPlaceholderText('Search or type a command…')).toHaveValue('');
   });
 
   it('opens from any screen, even while typing in a field', async () => {
@@ -88,19 +88,19 @@ describe('opening and closing', () => {
   it('starts empty each time it is opened', async () => {
     const { user } = await openApp();
     await user.keyboard(ctrl('k'));
-    await user.type(within(palette()).getByPlaceholderText('Type a command…'), 'tasks');
+    await user.type(within(palette()).getByPlaceholderText('Search or type a command…'), 'tasks');
     await user.keyboard('{Escape}');
     await waitFor(() => {
       expect(queryPalette()).not.toBeInTheDocument();
     });
     await user.keyboard(ctrl('k'));
-    expect(within(palette()).getByPlaceholderText('Type a command…')).toHaveValue('');
+    expect(within(palette()).getByPlaceholderText('Search or type a command…')).toHaveValue('');
   });
 });
 
 describe('the dashboard search field', () => {
   const field = () => screen.getByRole('searchbox', { name: 'Search' });
-  const input = () => within(palette()).getByPlaceholderText('Type a command…');
+  const input = () => within(palette()).getByPlaceholderText('Search or type a command…');
 
   it('opens the palette with the text you typed, and stays empty itself', async () => {
     const { user } = await openApp('/');
@@ -194,7 +194,7 @@ describe('what it lists', () => {
   it('has a hint line for the keys', async () => {
     const { user } = await openApp();
     await user.keyboard(ctrl('k'));
-    expect(within(palette()).getByText(/Enter to run/)).toBeInTheDocument();
+    expect(within(palette()).getByText(/Enter to open/)).toBeInTheDocument();
   });
 });
 
@@ -202,7 +202,7 @@ describe('searching', () => {
   async function search(text: string) {
     const { user, ...rest } = await openApp();
     await user.keyboard(ctrl('k'));
-    await user.type(within(palette()).getByPlaceholderText('Type a command…'), text);
+    await user.type(within(palette()).getByPlaceholderText('Search or type a command…'), text);
     return { user, ...rest };
   }
   const visible = () =>
@@ -229,7 +229,7 @@ describe('searching', () => {
   it('says so when nothing matches', async () => {
     await search('zzzzqqq');
     expect(visible()).toHaveLength(0);
-    expect(within(palette()).getByText('No commands found.')).toBeInTheDocument();
+    expect(await within(palette()).findByText(/Nothing found for/)).toBeInTheDocument();
   });
 
   it('is not case sensitive', async () => {
@@ -254,7 +254,10 @@ describe('running a command', () => {
   it('runs the first match with Enter', async () => {
     const { user, router } = await openApp('/');
     await user.keyboard(ctrl('k'));
-    await user.type(within(palette()).getByPlaceholderText('Type a command…'), 'settings{Enter}');
+    await user.type(
+      within(palette()).getByPlaceholderText('Search or type a command…'),
+      'settings{Enter}',
+    );
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/settings');

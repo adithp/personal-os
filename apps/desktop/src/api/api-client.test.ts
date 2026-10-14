@@ -27,6 +27,20 @@ describe('createApiClient', () => {
     });
   });
 
+  it('passes the abort signal to fetch and lets an abort through unchanged', async () => {
+    const controller = new AbortController();
+    const fetchImpl = vi.fn((_url: string, init: RequestInit) => {
+      expect(init.signal).toBe(controller.signal);
+      return Promise.reject(new DOMException('Aborted', 'AbortError'));
+    });
+    controller.abort();
+    await expect(
+      client(fetchImpl as unknown as typeof fetch).request('POST', '/search', {
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
   it('sends a JSON body with its content type', async () => {
     const fetchImpl = vi.fn(() => Promise.resolve(jsonResponse({ ok: true }, 201)));
     await client(fetchImpl as unknown as typeof fetch).request('POST', '/tasks', {
