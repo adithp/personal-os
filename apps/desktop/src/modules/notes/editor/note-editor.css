@@ -1,0 +1,162 @@
+/* The note body (docs/DESIGN.md: tokens only; peach is the Notes accent). Headings are 22, 16 and
+   13 semibold to match the page title, section title and card title sizes. */
+.note-editor {
+  min-height: 100%;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 20px;
+  caret-color: var(--text-primary);
+}
+
+.note-editor ::selection {
+  background: color-mix(in srgb, var(--module-notes) 45%, transparent);
+}
+
+.note-editor > * + * {
+  margin-top: 8px;
+}
+
+.note-editor h1,
+.note-editor h2,
+.note-editor h3 {
+  margin-top: 16px;
+  font-weight: 600;
+}
+
+.note-editor h1 {
+  font-size: 22px;
+  line-height: 28px;
+}
+
+.note-editor h2 {
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.note-editor h3 {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.note-editor ul,
+.note-editor ol {
+  padding-left: 20px;
+}
+
+.note-editor ul {
+  list-style: disc;
+}
+
+.note-editor ol {
+  list-style: decimal;
+}
+
+.note-editor li > p {
+  margin: 0;
+}
+
+.note-editor ul[data-type='taskList'] {
+  padding-left: 0;
+  list-style: none;
+}
+
+.note-editor ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.note-editor ul[data-type='taskList'] li > label {
+  flex: none;
+  padding-top: 2px;
+}
+
+.note-editor ul[data-type='taskList'] li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.note-editor ul[data-type='taskList'] input[type='checkbox'] {
+  accent-color: var(--module-notes);
+  cursor: pointer;
+}
+
+.note-editor ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.note-editor blockquote {
+  margin-left: 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--module-notes);
+  color: var(--text-secondary);
+}
+
+.note-editor code {
+  padding: 1px 4px;
+  border-radius: 8px;
+  background: var(--input-bg);
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 12px;
+}
+
+.note-editor pre {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--input-bg);
+  overflow-x: auto;
+}
+
+.note-editor pre code {
+  padding: 0;
+  background: none;
+}
+
+.note-editor a {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--module-notes);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+  cursor: text;
+}
+
+.note-editor hr {
+  border: 0;
+  border-top: 0.5px solid var(--glass-border);
+  margin: 16px 0;
+}
+
+.note-editor table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.note-editor th,
+.note-editor td {
+  padding: 4px 8px;
+  border: 0.5px solid var(--glass-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.note-editor th {
+  background: var(--input-bg);
+  font-weight: 600;
+}
+
+.note-editor td > p,
+.note-editor th > p {
+  margin: 0;
+}
+
+.note-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--text-muted);
+  pointer-events: none;
+}

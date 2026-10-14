@@ -1,0 +1,303 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+/**
+ * Autosave for one note (research memo notes.md D14). Pure: it knows nothing about the editor or
+ * the API. The caller gives a `save` function and calls `change(getMarkdown)` on every edit; the
+ * Markdown is only produced (by `getMarkdown`) when a save starts.
+ *
+ * - Saves 1 s after the last change, and at most 10 s after the first unsaved change.
+ * - Saves at once on `flush()`, when the page is hidden, and when the hook unmounts or the note changes.
+ * - One save in flight; changes made meanwhile go out in one follow-up save.
+ * - A failed save is retried after 5 s (or sooner when the next change saves).
+ * - Unsent text is kept in localStorage (`personal-os.notes-draft.<id>`) until the server accepts it.
+ */
+
+export const SAVE_DELAY_MS = 1000;
+export const SAVE_MAX_WAIT_MS = 10_000;
+export const SAVE_RETRY_MS = 5000;
+
+export type SaveStatus = 'saved' | 'saving' | 'failed';
+
+/** What `save` answers: the new revision, or a conflict (the server answered 409 note_conflict). */
+export type SaveOutcome = { revision: number } | { conflict: true; revision?: number };
+
+/** `save` throws for any other failure. `force` is "Keep mine": it skips the revision check. */
+export type SaveFn = (
+  markdown: string,
+  baseRevision: number,
+  options?: { force?: boolean },
+) => Promise<SaveOutcome>;
+
+export interface NoteDraft {
+  markdown: string;
+  baseRevision: number;
+}
+
+const draftKey = (noteId: string) => `personal-os.notes-draft.${noteId}`;
+
+export function readDraft(noteId: string): NoteDraft | null {
+  try {
+    const raw = localStorage.getItem(draftKey(noteId));
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Partial<NoteDraft>;
+    if (typeof value.markdown === 'string' && typeof value.baseRevision === 'number') {
+      return { markdown: value.markdown, baseRevision: value.baseRevision };
+    }
+  } catch {
+    // an unreadable draft is the same as none
+  }
+  return null;
+}
+
+function writeDraft(noteId: string, draft: NoteDraft) {
+  try {
+    localStorage.setItem(draftKey(noteId), JSON.stringify(draft));
+  } catch {
+    // storage full or blocked: saving to the server still works
+  }
+}
+
+export function clearDraft(noteId: string) {
+  try {
+    localStorage.removeItem(draftKey(noteId));
+  } catch {
+    // nothing to clear
+  }
+}
+
+interface AutosaveState {
+  status: SaveStatus;
+  conflict: boolean;
+}
+
+interface EngineOptions {
+  noteId: string;
+  baseRevision: number;
+  save: SaveFn;
+  onState: (state: AutosaveState) => void;
+  onTakeTheirs: () => void;
+}
+
+/** A getter returns the current Markdown, or null when there is nothing to read any more. */
+type GetMarkdown = () => string | null;
+
+function createEngine(options: EngineOptions) {
+  const { noteId, save, onState, onTakeTheirs } = options;
+  let revision = options.baseRevision;
+  let getMarkdown: GetMarkdown | null = null;
+  let changeSeq = 0;
+  let savedSeq = 0;
+  let status: SaveStatus = 'saved';
+  let conflictRevision: number | null | undefined;
+  let inConflict = false;
+  let inFlight: Promise<void> | null = null;
+  let deferred = false;
+  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+  let maxTimer: ReturnType<typeof setTimeout> | undefined;
+  let retryTimer: ReturnType<typeof setTimeout> | undefined;
+  let disposed = false;
+
+  const publish = () => {
+    if (!disposed) onState({ status, conflict: inConflict });
+  };
+  const setStatus = (next: SaveStatus) => {
+    status = next;
+    publish();
+  };
+  const clearTimers = () => {
+    clearTimeout(debounceTimer);
+    clearTimeout(maxTimer);
+    clearTimeout(retryTimer);
+    debounceTimer = maxTimer = retryTimer = undefined;
+  };
+  const dirty = () => changeSeq !== savedSeq;
+
+  /** Runs one save of the current text. Resolves when it is done. */
+  const startSave = (force = false): Promise<void> => {
+    clearTimers();
+    deferred = false;
+    const text = getMarkdown?.();
+    if (text === null || text === undefined) {
+      savedSeq = changeSeq;
+      return Promise.resolve();
+    }
+    const seq = changeSeq;
+    const base =
+      force && conflictRevision !== null && conflictRevision !== undefined
+        ? conflictRevision
+        : revision;
+    writeDraft(noteId, { markdown: text, baseRevision: base });
+    setStatus('saving');
+    const run = save(text, base, force ? { force: true } : undefined).then(
+      (outcome) => {
+        if ('conflict' in outcome) {
+          inConflict = true;
+          conflictRevision = outcome.revision;
+          setStatus('failed');
+          return;
+        }
+        revision = outcome.revision;
+        savedSeq = seq;
+        clearDraft(noteId);
+        setStatus('saved');
+        if (dirty() && deferred) void startSave();
+      },
+      () => {
+        setStatus('failed');
+        retryTimer = setTimeout(() => void trySave(), SAVE_RETRY_MS);
+      },
+    );
+    const tracked: Promise<void> = run.finally(() => {
+      if (inFlight === tracked) inFlight = null;
+    });
+    inFlight = tracked;
+    return tracked;
+  };
+
+  /** A timer fired: save now, or note that a follow-up is wanted when one is in flight. */
+  const trySave = (): Promise<void> => {
+    if (inConflict || !dirty()) return Promise.resolve();
+    if (inFlight) {
+      deferred = true;
+      return inFlight;
+    }
+    return startSave();
+  };
+
+  const flush = async (): Promise<void> => {
+    clearTimers();
+    deferred = false;
+    while (inFlight || (dirty() && !inConflict)) {
+      if (inFlight) {
+        await inFlight;
+        continue;
+      }
+      await startSave();
+      // A failed save is left to the 5 s retry
+      if (status === 'failed') return;
+    }
+  };
+
+  return {
+    change(getter: GetMarkdown) {
+      getMarkdown = getter;
+      changeSeq += 1;
+      if (inConflict) return;
+      clearTimeout(debounceTimer);
+      clearTimeout(retryTimer);
+      debounceTimer = setTimeout(() => void trySave(), SAVE_DELAY_MS);
+      maxTimer ??= setTimeout(() => void trySave(), SAVE_MAX_WAIT_MS);
+    },
+    flush,
+    /** A revision this editor caused outside autosave (a rename raises it too). Never lowers it. */
+    setRevision(next: number) {
+      revision = Math.max(revision, next);
+    },
+    /** Unsent text from an earlier session: save it, or ask when the note moved on since. */
+    resumeDraft(draft: NoteDraft) {
+      getMarkdown = () => draft.markdown;
+      changeSeq += 1;
+      if (draft.baseRevision === revision) {
+        void startSave();
+      } else {
+        clearTimers();
+        inConflict = true;
+        conflictRevision = revision;
+        setStatus('failed');
+      }
+    },
+    keepMine() {
+      if (!inConflict) return Promise.resolve();
+      inConflict = false;
+      return startSave(true);
+    },
+    takeTheirs() {
+      clearTimers();
+      clearDraft(noteId);
+      savedSeq = changeSeq;
+      inConflict = false;
+      conflictRevision = undefined;
+      setStatus('saved');
+      onTakeTheirs();
+    },
+    dispose() {
+      const done = flush();
+      disposed = true;
+      return done;
+    },
+    hidden() {
+      void flush();
+    },
+  };
+}
+
+export type AutosaveEngine = ReturnType<typeof createEngine>;
+
+export interface UseAutosaveOptions {
+  noteId: string;
+  /** The revision the editor was loaded with. */
+  baseRevision: number;
+  save: SaveFn;
+  /** "Use theirs": the caller loads the server's version into the editor. */
+  onTakeTheirs: () => void;
+}
+
+export function useAutosave(options: UseAutosaveOptions) {
+  const { noteId } = options;
+  const latest = useRef(options);
+  const engineRef = useRef<AutosaveEngine | null>(null);
+  // The state belongs to one note; a state from the note before counts as "saved"
+  const [state, setState] = useState<AutosaveState & { noteId: string }>({
+    noteId,
+    status: 'saved',
+    conflict: false,
+  });
+
+  useEffect(() => {
+    latest.current = options;
+  });
+
+  useEffect(() => {
+    const engine = createEngine({
+      noteId,
+      baseRevision: latest.current.baseRevision,
+      save: (markdown, base, saveOptions) => latest.current.save(markdown, base, saveOptions),
+      onState: (next) => {
+        setState({ ...next, noteId });
+      },
+      onTakeTheirs: () => {
+        latest.current.onTakeTheirs();
+      },
+    });
+    engineRef.current = engine;
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') engine.hidden();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      void engine.dispose();
+      engineRef.current = null;
+    };
+  }, [noteId]);
+
+  return {
+    status: state.noteId === noteId ? state.status : 'saved',
+    conflict: state.noteId === noteId && state.conflict,
+    /** Call on every edit. `getMarkdown` runs only when a save starts. */
+    change: useCallback((getMarkdown: GetMarkdown) => {
+      engineRef.current?.change(getMarkdown);
+    }, []),
+    flush: useCallback(() => engineRef.current?.flush() ?? Promise.resolve(), []),
+    setRevision: useCallback((revision: number) => {
+      engineRef.current?.setRevision(revision);
+    }, []),
+    resumeDraft: useCallback((draft: NoteDraft) => {
+      engineRef.current?.resumeDraft(draft);
+    }, []),
+    keepMine: useCallback(() => engineRef.current?.keepMine() ?? Promise.resolve(), []),
+    takeTheirs: useCallback(() => {
+      engineRef.current?.takeTheirs();
+    }, []),
+  };
+}
