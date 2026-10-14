@@ -65,6 +65,29 @@ describe('templates list', () => {
     expect(rowNames()).toEqual(['JournalDaily', 'Weekly']);
   });
 
+  it('has one Tab stop in the list and moves with the arrow keys', async () => {
+    const fake = createFakeApi();
+    await seed(fake, { name: 'A' });
+    await seed(fake, { name: 'B' });
+    const { user } = renderWithApi(<TemplatesView />, fake);
+    const a = await screen.findByRole('button', { name: 'A' });
+    const b = screen.getByRole('button', { name: 'B' });
+    expect(a).toHaveAttribute('tabindex', '0');
+    expect(b).toHaveAttribute('tabindex', '-1');
+    a.focus();
+    await user.keyboard('{ArrowDown}');
+    expect(b).toHaveFocus();
+  });
+
+  it('marks the daily template without a border and disables New template while loading', async () => {
+    const fake = createFakeApi();
+    await seed(fake, { name: 'Journal', isDailyDefault: true });
+    renderWithApi(<TemplatesView />, fake);
+    expect(screen.getByRole('button', { name: 'New template' })).toBeDisabled();
+    expect(await screen.findByText('Daily')).not.toHaveClass('border-[0.5px]');
+    expect(screen.getByRole('button', { name: 'New template' })).toBeEnabled();
+  });
+
   it('shows the error message with Try again when the list cannot load', async () => {
     const fake = createFakeApi();
     fake.failNext(500, 'server_error', 'Server is down', '/note-templates');
@@ -157,6 +180,21 @@ describe('deleting', () => {
     expect(templateCalls(fake, 'POST', /\/restore$/)).toHaveLength(1);
   });
 
+  it('moves focus to the next row after a delete, then to New template', async () => {
+    const fake = createFakeApi();
+    await seed(fake, { name: 'A' });
+    await seed(fake, { name: 'B' });
+    const { user } = renderWithApi(<TemplatesView />, fake);
+    await user.click(await screen.findByRole('button', { name: 'Delete template' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'B' })).toHaveFocus();
+    });
+    await user.click(screen.getByRole('button', { name: 'Delete template' }));
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'New template' })[0]).toHaveFocus();
+    });
+  });
+
   it('shows the server message when a delete fails', async () => {
     const fake = createFakeApi();
     await seed(fake, { name: 'Weekly' });
@@ -201,7 +239,7 @@ describe('the template text', () => {
   it('says Could not save when the save fails', async () => {
     const fake = createFakeApi();
     await seed(fake, { name: 'Weekly', contentMd: 'Hello' });
-    renderWithApi(<TemplatesView />, fake);
+    const { user } = renderWithApi(<TemplatesView />, fake);
     await screen.findByText('Hello');
     vi.useFakeTimers({ shouldAdvanceTime: true });
     fake.failNext(500, 'server_error', 'Nope');
@@ -210,7 +248,10 @@ describe('the template text', () => {
     });
     await act(() => vi.advanceTimersByTimeAsync(TEMPLATE_SAVE_DELAY_MS + 50));
     vi.useRealTimers();
-    expect(await screen.findByText('Could not save')).toBeInTheDocument();
+    const retry = await screen.findByText('Could not save. Try again');
+    expect(retry).toHaveAttribute('role', 'alert');
     expect(await screen.findByText('Nope')).toBeInTheDocument();
+    await user.click(retry);
+    expect(await screen.findByText('Saved')).toBeInTheDocument();
   });
 });

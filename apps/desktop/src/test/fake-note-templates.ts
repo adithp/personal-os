@@ -2,6 +2,7 @@ import {
   applyTemplate,
   dailyDateSchema,
   indiaDay,
+  NOTE_LIST_LIMIT_DEFAULT,
   NOTE_CONTENT_MAX,
   NOTE_TEMPLATE_NAME_MAX,
   type Note,
@@ -98,6 +99,11 @@ export function createNoteTemplatesFake(notesFake: NotesFake, initial: NoteTempl
       throw new ApiError(400, 'validation_error', 'Nothing to change');
     }
     const next: NoteTemplate = { ...current, updatedAt: new Date().toISOString() };
+    const before = {
+      name: current.name,
+      contentMd: current.contentMd,
+      isDailyDefault: current.isDailyDefault,
+    };
     if (body.name !== undefined) {
       next.name = checkName(body.name);
       if (sameName(next.name, id)) throw nameTaken();
@@ -109,7 +115,7 @@ export function createNoteTemplatesFake(notesFake: NotesFake, initial: NoteTempl
     if (typeof body.isDailyDefault === 'boolean') next.isDailyDefault = body.isDailyDefault;
     store.set(id, next);
     if (next.isDailyDefault) clearDefaultExcept(id);
-    return { item: next, undo: null };
+    return { item: next, undo: { action: 'noteTemplates.update', input: { id, ...before } } };
   };
 
   const remove = (id: string) => {
@@ -121,9 +127,14 @@ export function createNoteTemplatesFake(notesFake: NotesFake, initial: NoteTempl
   const restore = (id: string) => {
     const current = store.get(id);
     if (!current || !gone.has(id)) throw notFound();
-    if (sameName(current.name)) throw nameTaken();
+    // Like the server: a name clash gets " (2)", and the daily default is never taken from another
+    let name = current.name;
+    for (let n = 2; sameName(name); n += 1) name = `${current.name} (${String(n)})`;
+    const keepDefault = current.isDailyDefault && !live().some((t) => t.isDailyDefault);
+    const restored = { ...current, name, isDailyDefault: keepDefault };
+    store.set(id, restored);
     gone.delete(id);
-    return { item: current, undo: { action: 'noteTemplates.delete', input: { id } } };
+    return { item: restored, undo: { action: 'noteTemplates.delete', input: { id } } };
   };
 
   const titleTaken = (title: string) =>
@@ -155,7 +166,10 @@ export function createNoteTemplatesFake(notesFake: NotesFake, initial: NoteTempl
     const existing = liveNotes.find((n) => dailyOf.get(n.id) === date);
     if (existing) return { item: { ...existing, dailyDate: date }, undo: null };
 
-    const title = titleTaken(date) ? `${date} (daily)` : date;
+    let title = date;
+    for (let n = 1; titleTaken(title); n += 1) {
+      title = n === 1 ? `${date} (daily)` : `${date} (daily ${String(n)})`;
+    }
     const template = live().find((t) => t.isDailyDefault);
     const contentMd = template ? applyTemplate(template.contentMd, { title, now: new Date() }) : '';
     const created = notesFake.handle('POST', '/notes', {
@@ -174,6 +188,10 @@ export function createNoteTemplatesFake(notesFake: NotesFake, initial: NoteTempl
       const { action, input } = body as { action?: string; input?: Record<string, unknown> };
       if (action === 'noteTemplates.delete') return { ...remove(String(input?.id)), undo: null };
       if (action === 'noteTemplates.restore') return { ...restore(String(input?.id)), undo: null };
+      if (action === 'noteTemplates.update') {
+        const { id, ...changes } = input ?? {};
+        return { ...update(String(id), changes), undo: null };
+      }
     }
     if (path === '/note-templates') {
       if (method === 'GET') {
@@ -193,13 +211,23 @@ export function createNoteTemplatesFake(notesFake: NotesFake, initial: NoteTempl
       return createFromTemplate(body, options);
     }
     if (path === '/notes' && method === 'GET') {
-      const answer = notesFake.handle(method, path, options) as { items: NoteSummary[] };
-      if (options.query?.dailyOnly !== true && options.query?.dailyOnly !== 'true') return answer;
+      if (options.query?.dailyOnly !== true && options.query?.dailyOnly !== 'true') {
+        return notesFake.handle(method, path, options);
+      }
+      // Filter and order by day first, then page (limit and offset)
+      const { limit, offset, ...rest } = options.query;
+      const all = notesFake.handle(method, path, {
+        ...options,
+        query: { ...rest, dailyOnly: undefined, limit: 1000 },
+      }) as { items: NoteSummary[] };
+      const from = offset === undefined ? 0 : Number(offset);
+      const size = limit === undefined ? NOTE_LIST_LIMIT_DEFAULT : Number(limit);
       return {
-        items: answer.items
+        items: all.items
           .filter((n) => dailyOf.has(n.id))
           .map((n) => ({ ...n, dailyDate: dailyOf.get(n.id) ?? null }))
-          .sort((a, b) => (b.dailyDate ?? '').localeCompare(a.dailyDate ?? '')),
+          .sort((a, b) => (b.dailyDate ?? '').localeCompare(a.dailyDate ?? ''))
+          .slice(from, from + size),
       };
     }
     return notesFake.handle(method, path, options);

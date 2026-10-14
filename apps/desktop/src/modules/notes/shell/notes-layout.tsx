@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { useTags } from '../../tasks/tags-queries';
 import { useNoteFolders } from '../folders-queries';
+import { DailyList } from '../daily/daily-list';
 import { NoteList } from '../list/note-list';
-import { isFolderPlace, TEMPLATES_PLACE, tagIdOf } from '../notes-search';
+import { DAILY_PLACE, isFolderPlace, TEMPLATES_PLACE, tagIdOf } from '../notes-search';
 import { DEFAULT_PLACE, useNotesUi } from '../notes-ui-store';
 import { TemplatesView } from '../templates/templates-view';
 import { RightPanel } from '../right-panel/right-panel';
@@ -67,7 +68,7 @@ export function NotesLayout() {
         <TemplatesView />
       ) : (
         <>
-          <NoteList key={place} />
+          {place === DAILY_PLACE ? <DailyList /> : <NoteList key={place} />}
           <EditorSlot noteId={noteId} />
           {panelShown && noteId ? <RightPanel noteId={noteId} /> : null}
         </>

@@ -91,9 +91,18 @@ export function TemplateBody({ id, contentMd }: { id: string; contentMd: string 
       </div>
       <div className="flex items-center justify-between gap-3 text-small text-fg-muted">
         <p>{'Variables: {{title}}, {{date}}, {{time}}'}</p>
-        <p role="status">
-          {status === 'saving' ? 'Saving…' : status === 'failed' ? 'Could not save' : 'Saved'}
-        </p>
+        {status === 'failed' ? (
+          <button
+            type="button"
+            role="alert"
+            onClick={flush}
+            className="rounded-chip text-danger underline focus-ring"
+          >
+            Could not save. Try again
+          </button>
+        ) : (
+          <p>{status === 'saving' ? 'Saving…' : 'Saved'}</p>
+        )}
       </div>
     </div>
   );

@@ -2,13 +2,18 @@ import { Button, cx } from '@personal-os/ui';
 import { ApiError } from '../../../api/api-client';
 import { EmptyState } from '../list/empty-state';
 import { useNotes } from '../notes-queries';
+import { useRovingList } from '../right-panel/use-roving-list';
 import { useNotesNav } from '../shell/use-notes-nav';
+
+/** A year of days; older ones would be cut by the server's default list size. */
+const DAILY_LIST_LIMIT = 366;
 
 /** The "Daily notes" view: notes that belong to a day, newest day first. */
 export function DailyList() {
   const nav = useNotesNav();
-  const notes = useNotes({ dailyOnly: true });
+  const notes = useNotes({ dailyOnly: true, limit: DAILY_LIST_LIMIT });
   const items = notes.data ?? [];
+  const roving = useRovingList(items.length);
 
   return (
     <section
@@ -48,11 +53,12 @@ export function DailyList() {
           <EmptyState title="No daily notes yet" text="Open Today to write the first one." />
         ) : null}
         {items.length > 0 ? (
-          <ul aria-label="Daily notes by day" className="flex flex-col">
-            {items.map((note) => (
+          <ul aria-label="Daily notes by day" className="flex flex-col" {...roving.listProps}>
+            {items.map((note, index) => (
               <li key={note.id}>
                 <button
                   type="button"
+                  {...roving.itemProps(index)}
                   aria-current={nav.noteId === note.id ? 'true' : undefined}
                   onClick={() => {
                     nav.openNote(note.id);

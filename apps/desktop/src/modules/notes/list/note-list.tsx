@@ -268,7 +268,7 @@ export function NoteList() {
           </Tooltip>
           {trash ? null : (
             <NewNoteMenu
-              {...(nav.place !== 'all' ? { folderId: nav.place } : {})}
+              {...(isFolderPlace(nav.place) ? { folderId: nav.place } : {})}
               onCreated={(note) => {
                 nav.show(nav.place, note.id);
               }}

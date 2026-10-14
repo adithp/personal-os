@@ -2,7 +2,7 @@
    a tag that does not exist yet is drawn in the Notes color. */
 .note-editor .note-tag {
   padding: 0 4px;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   background-color: var(--tag-color, var(--module-notes));
   color: var(--text-on-tile);
   -webkit-box-decoration-break: clone;
