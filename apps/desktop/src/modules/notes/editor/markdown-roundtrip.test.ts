@@ -113,7 +113,7 @@ describe('what the editor cannot keep (not offered; listed in the N1 report)', (
     expect(roundTrip('![img](http://a/b.png)')).toBe('img');
   });
 
-  it('writes plain [[Note]] text with escapes until wikilinks exist (stage N2)', () => {
-    expect(roundTrip('[[Note]] #tag')).toBe('\\[\\[Note\\]\\] #tag');
+  it('keeps [[Note]] as a wikilink (stage N2; more in wikilink/wikilink-roundtrip.test.ts)', () => {
+    expect(roundTrip('[[Note]] #tag')).toBe('[[Note]] #tag');
   });
 });
