@@ -121,6 +121,7 @@ describe('startRealtimeSync', () => {
     expect(invalidatedKeys().sort()).toEqual([
       ['goals'],
       ['note-folders'],
+      ['note-templates'],
       ['notes'],
       ['tags'],
       ['task-favorites'],
