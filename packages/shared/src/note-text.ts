@@ -82,49 +82,115 @@ export interface Wikilink {
 
 const WIKILINK = /\[\[([^[\]|\n]+?)(?:\|([^[\]\n]+?))?\]\]/g;
 
+/** Longest stretch of a line searched for inline code; the rest of a longer line is plain text. */
+const CODE_SCAN_MAX = 20000;
+
+interface Fence {
+  char: string;
+  length: number;
+  /** What follows the run of fence characters. */
+  rest: string;
+}
+
+/** A fence marker at the start of a line, also after spaces and blockquote `>` marks. */
+function fenceOf(line: string): Fence | null {
+  let start = 0;
+  while (
+    start < line.length &&
+    (line[start] === ' ' || line[start] === '\t' || line[start] === '>')
+  )
+    start += 1;
+  const char = line[start];
+  if (char !== '`' && char !== '~') return null;
+  let end = start;
+  while (line[end] === char) end += 1;
+  if (end - start < 3) return null;
+  return { char, length: end - start, rest: line.slice(end, end + CODE_SCAN_MAX) };
+}
+
+/**
+ * Inline code spans of a line as [start, end) ranges: a run of N backticks up to the next run of
+ * exactly N backticks. One pass over the runs, so it stays fast on lines of backticks.
+ */
+function inlineCodeRanges(line: string): [number, number][] {
+  const runs: { start: number; length: number }[] = [];
+  for (let index = 0; index < line.length;) {
+    if (line[index] !== '`') {
+      index += 1;
+      continue;
+    }
+    const start = index;
+    while (line[index] === '`') index += 1;
+    runs.push({ start, length: index - start });
+  }
+  const ranges: [number, number][] = [];
+  for (let open = 0; open < runs.length; open += 1) {
+    const opener = runs[open];
+    if (!opener) break;
+    let close = open + 1;
+    while (close < runs.length && runs[close]?.length !== opener.length) close += 1;
+    const closer = runs[close];
+    if (!closer) continue;
+    ranges.push([opener.start, closer.start + closer.length]);
+    open = close;
+  }
+  return ranges;
+}
+
 /** Splits a document into pieces that are code (fenced blocks, inline code) or normal text. */
 function splitCode(markdown: string): { text: string; code: boolean }[] {
   const parts: { text: string; code: boolean }[] = [];
-  let inFence = false;
+  let fence: Fence | null = null;
   let buffer = '';
   const flush = (code: boolean) => {
     if (buffer) parts.push({ text: buffer, code });
     buffer = '';
   };
   const lines = markdown.split('\n');
-  lines.forEach((line, index) => {
+  for (const [index, line] of lines.entries()) {
     const withBreak = index < lines.length - 1 ? `${line}\n` : line;
-    if (/^\s*(```|~~~)/.test(line)) {
-      if (!inFence) flush(false);
+    const marker = fenceOf(line);
+    if (fence) {
       buffer += withBreak;
-      inFence = !inFence;
-      if (!inFence) flush(true);
-      return;
+      if (
+        marker?.char === fence.char &&
+        marker.length >= fence.length &&
+        marker.rest.trim() === ''
+      ) {
+        fence = null;
+        flush(true);
+      }
+      continue;
     }
-    if (inFence) {
+    // A backtick fence cannot have a backtick in its info string (then it is inline code)
+    if (marker && !(marker.char === '`' && marker.rest.includes('`'))) {
+      flush(false);
       buffer += withBreak;
-      return;
+      fence = marker;
+      continue;
     }
     // Inline code spans inside a normal line
-    const pieces = withBreak.split(/(`+[^`]*`+)/);
-    for (const piece of pieces) {
-      if (/^`+[^`]*`+$/.test(piece)) {
-        flush(false);
-        parts.push({ text: piece, code: true });
-      } else buffer += piece;
+    const scanned = line.slice(0, CODE_SCAN_MAX);
+    let at = 0;
+    for (const [from, to] of inlineCodeRanges(scanned)) {
+      buffer += withBreak.slice(at, from);
+      flush(false);
+      parts.push({ text: withBreak.slice(from, to), code: true });
+      at = to;
     }
-  });
-  flush(inFence);
+    buffer += withBreak.slice(at);
+  }
+  flush(fence !== null);
   return parts;
 }
 
-function readLink(match: RegExpExecArray): Wikilink | null {
-  const inner = unescapeMarkdown(match[1] ?? '');
+function readLink(rawTarget: string, rawLabel: string | undefined): Wikilink | null {
+  const inner = unescapeMarkdown(rawTarget);
   const hash = inner.indexOf('#');
   const target = (hash === -1 ? inner : inner.slice(0, hash)).trim();
   if (!target) return null;
   const heading = hash === -1 ? null : inner.slice(hash + 1).trim() || null;
-  const label = match[2] ? unescapeMarkdown(match[2]).trim() || null : null;
+  const label = rawLabel ? unescapeMarkdown(rawLabel).trim() || null : null;
   return { target, label, heading };
 }
 
@@ -134,7 +200,7 @@ export function parseWikilinks(markdown: string): Wikilink[] {
   for (const part of splitCode(markdown)) {
     if (part.code) continue;
     for (const match of part.text.matchAll(WIKILINK)) {
-      const link = readLink(match);
+      const link = readLink(match[1] ?? '', match[2]);
       if (link) found.push(link);
     }
   }
@@ -149,7 +215,7 @@ export function rewriteWikilinks(markdown: string, oldTitle: string, newTitle: s
       part.code
         ? part.text
         : part.text.replace(WIKILINK, (whole, rawTarget: string, rawLabel?: string) => {
-            const link = readLink([whole, rawTarget, rawLabel] as unknown as RegExpExecArray);
+            const link = readLink(rawTarget, rawLabel);
             if (link?.target.toLowerCase() !== wanted) return whole;
             const heading = link.heading ? `#${link.heading}` : '';
             return `[[${newTitle}${heading}${rawLabel ? `|${rawLabel}` : ''}]]`;

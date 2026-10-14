@@ -8,6 +8,10 @@ import type { UserScope } from '../lib/user-scope';
  * transaction. The `mentions` links of a note always equal the live notes its `[[wikilinks]]`
  * resolve to (by lower(title)); unresolved targets are not stored, so a title that appears later
  * (create, rename, restore) or disappears (trash) triggers an ILIKE scan of the notes that mention it.
+ *
+ * Known limit (notes.ts owner decides): the transaction takes no lock, so two saves at the same
+ * moment can each miss the other's new note or title (write skew) and leave a link unstored until
+ * the next save of that note. `withUserLock('notes', userId)` around the whole save would close it.
  */
 
 const BATCH = 500;
@@ -44,23 +48,44 @@ export async function resolveTitles(
 /** `revision + 1` computed by the database. */
 const nextRevision = () => sql`${notes.revision} + 1` as unknown as number;
 
-/** A LIKE pattern matching text that contains `[[` followed by the title (case-insensitive). */
-const linkPattern = (title: string) => `%[[${title.replace(/[\\%_]/g, '\\$&')}%`;
+/**
+ * A LIKE pattern for text that has `[[`, then anything (the spaces some writers put after `[[`),
+ * then the title. It is only a pre-filter; callers confirm with `targetsOf`.
+ */
+const linkPattern = (title: string) => `%[[%${title.trim().replace(/[\\%_]/g, '\\$&')}%`;
 
-/** Live notes (other than `exceptId`) whose text contains `[[title`, as { id, contentMd }. */
-async function notesMentioning(scope: UserScope, title: string, exceptId?: string) {
-  const rows = await scope.selectFields(
-    notes,
-    { id: notes.id, contentMd: notes.contentMd },
-    {
-      where: and(
-        scope.isLive(notes),
-        sql`${notes.contentMd} ilike ${linkPattern(title)}`,
-        exceptId ? sql`${notes.id} <> ${exceptId}` : undefined,
-      ),
-    },
-  );
-  return rows.map((row) => ({ id: row.id as string, contentMd: row.contentMd as string }));
+interface Snapshot {
+  id: string;
+  revision: number;
+  contentMd: string;
+}
+
+const snapshotFields = { id: notes.id, revision: notes.revision, contentMd: notes.contentMd };
+
+const toSnapshot = (row: Record<'id' | 'revision' | 'contentMd', unknown>): Snapshot => ({
+  id: row.id as string,
+  revision: row.revision as number,
+  contentMd: row.contentMd as string,
+});
+
+/**
+ * Notes (other than `exceptId`) that really link to `title` outside code. `trashed` picks the
+ * trashed notes instead of the live ones.
+ */
+async function notesMentioning(
+  scope: UserScope,
+  title: string,
+  options: { exceptId?: string; trashed?: boolean } = {},
+): Promise<Snapshot[]> {
+  const wanted = lower(title.trim());
+  const rows = await scope.selectFields(notes, snapshotFields, {
+    where: and(
+      options.trashed ? sql`${notes.deletedAt} is not null` : scope.isLive(notes),
+      sql`${notes.contentMd} ilike ${linkPattern(title)}`,
+      options.exceptId ? sql`${notes.id} <> ${options.exceptId}` : undefined,
+    ),
+  });
+  return rows.map(toSnapshot).filter((row) => targetsOf(row.contentMd).includes(wanted));
 }
 
 /** Makes the `mentions` links of a note equal the wikilinks in its text. Runs inside the save. */
@@ -91,7 +116,50 @@ export async function rebuildNoteLinks(
   if (gone.length > 0) await scope.softDelete(links, inArray(links.id, gone));
 }
 
-/** Rewrites [[old]] to [[new]] in the notes that link to this one; returns the ids of changed notes. */
+export type RewriteResult =
+  | { status: 'rewritten'; contentMd: string }
+  | { status: 'unchanged'; contentMd: string }
+  | { status: 'skipped' };
+
+/**
+ * Rewrites the links to `oldTitle` in one note, only if the note still has the revision that was
+ * read (so a save made in between is never overwritten). On a miss it reads the note again and
+ * tries once more; if that also misses, the note is skipped (its own save rebuilds its links).
+ */
+export async function rewriteNoteLinks(
+  scope: UserScope,
+  snapshot: Snapshot,
+  oldTitle: string,
+  newTitle: string,
+): Promise<RewriteResult> {
+  let current = snapshot;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const rewritten = rewriteWikilinks(current.contentMd, oldTitle, newTitle);
+    if (rewritten === current.contentMd) return { status: 'unchanged', contentMd: rewritten };
+    const updated = await scope.update(
+      notes,
+      {
+        contentMd: rewritten,
+        contentText: markdownToPlainText(rewritten),
+        revision: nextRevision(),
+      },
+      scope.where(notes, and(eq(notes.id, current.id), eq(notes.revision, current.revision))),
+    );
+    if (updated.length > 0) return { status: 'rewritten', contentMd: rewritten };
+    const [fresh] = await scope.selectFields(notes, snapshotFields, {
+      where: eq(notes.id, current.id),
+      limit: 1,
+    });
+    if (!fresh) return { status: 'skipped' };
+    current = toSnapshot(fresh);
+  }
+  return { status: 'skipped' };
+}
+
+/**
+ * Rewrites [[old]] to [[new]] in the notes that link to this one; returns the ids of changed live
+ * notes. Trashed notes are rewritten too (so a restored note is consistent) but not reported.
+ */
 export async function rewriteLinksOnRename(
   scope: UserScope,
   noteId: string,
@@ -104,50 +172,51 @@ export async function rewriteLinksOnRename(
     { sourceId: links.sourceId },
     { where: and(eq(links.targetId, noteId), eq(links.relation, 'mentions'), scope.isLive(links)) },
   );
-  const byId = new Map<string, string>();
-  const linkingIds = linking.map((row) => row.sourceId as string).filter((id) => id !== noteId);
-  for (let index = 0; index < linkingIds.length; index += BATCH) {
-    const rows = await scope.selectFields(
-      notes,
-      { id: notes.id, contentMd: notes.contentMd },
-      {
-        where: and(scope.isLive(notes), inArray(notes.id, linkingIds.slice(index, index + BATCH))),
-      },
-    );
-    for (const row of rows) byId.set(row.id as string, row.contentMd as string);
+  const linkingIds = new Set(
+    linking.map((row) => row.sourceId as string).filter((id) => id !== noteId),
+  );
+  const candidates = new Map<string, Snapshot>();
+  const ids = [...linkingIds];
+  for (let index = 0; index < ids.length; index += BATCH) {
+    const rows = await scope.selectFields(notes, snapshotFields, {
+      where: and(scope.isLive(notes), inArray(notes.id, ids.slice(index, index + BATCH))),
+    });
+    for (const row of rows) candidates.set(row.id as string, toSnapshot(row));
   }
-  for (const row of await notesMentioning(scope, oldTitle, noteId)) byId.set(row.id, row.contentMd);
+  for (const row of await notesMentioning(scope, oldTitle, { exceptId: noteId })) {
+    candidates.set(row.id, row);
+  }
 
   const changed: string[] = [];
-  for (const [id, contentMd] of byId) {
-    const rewritten = rewriteWikilinks(contentMd, oldTitle, newTitle);
-    if (rewritten === contentMd) continue;
-    await scope.update(
-      notes,
-      {
-        contentMd: rewritten,
-        contentText: markdownToPlainText(rewritten),
-        revision: nextRevision(),
-      },
-      eq(notes.id, id),
-    );
-    byId.set(id, rewritten);
-    changed.push(id);
+  const rebuild = new Map<string, string>();
+  const skipped = new Set<string>();
+  for (const [id, snapshot] of candidates) {
+    const result = await rewriteNoteLinks(scope, snapshot, oldTitle, newTitle);
+    if (result.status === 'skipped') skipped.add(id);
+    else if (result.status === 'rewritten') {
+      changed.push(id);
+      rebuild.set(id, result.contentMd);
+    } else if (linkingIds.has(id)) rebuild.set(id, result.contentMd); // its stored link is stale
   }
-  // Rebuild every candidate; also notes that already had an unresolved [[newTitle]]
-  for (const row of await notesMentioning(scope, newTitle, noteId)) byId.set(row.id, row.contentMd);
-  for (const [id, contentMd] of byId) await rebuildNoteLinks(scope, id, contentMd);
+  // Notes that already had an unresolved [[newTitle]] now resolve
+  for (const row of await notesMentioning(scope, newTitle, { exceptId: noteId })) {
+    if (!skipped.has(row.id) && !rebuild.has(row.id)) rebuild.set(row.id, row.contentMd);
+  }
+  for (const [id, contentMd] of rebuild) await rebuildNoteLinks(scope, id, contentMd);
+
+  for (const row of await notesMentioning(scope, oldTitle, { exceptId: noteId, trashed: true })) {
+    await rewriteNoteLinks(scope, row, oldTitle, newTitle);
+  }
   return changed;
 }
 
 /** Re-resolves links when a note is created, restored or trashed (a title becomes or stops being a target). */
 export async function reresolveLinksTo(scope: UserScope, title: string): Promise<void> {
-  const wanted = lower(title);
   for (const row of await notesMentioning(scope, title)) {
-    if (targetsOf(row.contentMd).includes(wanted))
-      await rebuildNoteLinks(scope, row.id, row.contentMd);
+    await rebuildNoteLinks(scope, row.id, row.contentMd);
   }
   // A restored note picks up links to notes created while it was in the trash
+  const wanted = lower(title);
   const own = (await resolveTitles(scope, [wanted])).get(wanted);
   if (own) {
     const [row] = await scope.select(notes, { where: eq(notes.id, own), limit: 1 });

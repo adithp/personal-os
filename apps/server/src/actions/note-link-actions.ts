@@ -28,7 +28,9 @@ function contextOf(contentMd: string, title: string): string {
     }
     if (inFence) continue;
     if (parseWikilinks(line).some((link) => link.target.toLowerCase() === wanted)) {
-      return excerptOf(markdownToPlainText(line), NOTE_CONTEXT_MAX);
+      // excerptOf adds the ellipsis after the cut, so leave one character for it
+      const plain = markdownToPlainText(line).replace(/\s+/g, ' ').trim();
+      return plain.length <= NOTE_CONTEXT_MAX ? plain : excerptOf(plain, NOTE_CONTEXT_MAX - 1);
     }
   }
   return '';

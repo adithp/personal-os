@@ -5,8 +5,9 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
 import { HttpError } from '../lib/http-error';
-import { createUserScope } from '../lib/user-scope';
+import { createUserScope, type UserScope } from '../lib/user-scope';
 import { createRegistry, type ActionContext } from '.';
+import { rewriteNoteLinks } from './note-links';
 
 const ALICE = '3f6b2c1e-8d4a-4b7e-9c11-2a5d6e7f8091';
 const BOB = '7a9d4e22-1c3b-4f65-8a0e-b1c2d3e4f506';
@@ -196,7 +197,7 @@ describe('rename', () => {
     expect(await targetTitles(waiting.id)).toEqual(['Fresh']);
   });
 
-  it('does not touch trashed notes or other users’ notes', async () => {
+  it('rewrites trashed notes without reporting them, so a restored note is consistent; never other users’ notes', async () => {
     const target = await create(alice(), 'Old name');
     const trashed = await create(alice(), 'Trashed', 'See [[Old name]]');
     await run(alice(), 'notes.delete', { id: trashed.id });
@@ -207,7 +208,64 @@ describe('rename', () => {
     });
     expect(result.data.updatedNoteIds).toEqual([]);
     expect((await get(bob(), theirs.id)).contentMd).toBe('See [[Old name]]');
-    expect((await get(alice(), trashed.id)).contentMd).toBe('See [[Old name]]');
+    await run(alice(), 'notes.restore', { id: trashed.id });
+    expect((await get(alice(), trashed.id)).contentMd).toBe('See [[New name]]');
+    expect(await targetTitles(trashed.id)).toEqual(['New name']);
+  });
+
+  it('finds and rewrites links written with spaces inside the brackets', async () => {
+    const target = await create(alice(), 'Old name');
+    const source = await create(alice(), 'Source', 'See [[ Old name ]] here');
+    expect(await targetTitles(source.id)).toEqual(['Old name']);
+    const result = await run<Note & { updatedNoteIds: string[] }>(alice(), 'notes.rename', {
+      id: target.id,
+      title: 'New name',
+    });
+    expect(result.data.updatedNoteIds).toEqual([source.id]);
+    expect((await get(alice(), source.id)).contentMd).toBe('See [[New name]] here');
+  });
+
+  it('leaves notes that only look similar untouched (no new revision)', async () => {
+    const target = await create(alice(), 'Old name');
+    const similar = await create(alice(), 'Similar', 'See [[Old name extra]]');
+    const unrelated = await create(alice(), 'Unrelated', 'Plain text with Old name in it');
+    await run(alice(), 'notes.rename', { id: target.id, title: 'New name' });
+    expect((await get(alice(), similar.id)).revision).toBe(1);
+    expect((await get(alice(), unrelated.id)).revision).toBe(1);
+  });
+});
+
+describe('rewriteNoteLinks with a concurrent save', () => {
+  it('re-reads a note that changed after it was read and keeps the newer text', async () => {
+    await create(alice(), 'Old name');
+    const source = await create(alice(), 'Source', 'See [[Old name]]');
+    const stale = { id: source.id, revision: source.revision, contentMd: source.contentMd };
+    await save(alice(), source.id, 'See [[Old name]] plus a newer edit');
+    const result = await rewriteNoteLinks(alice().scope, stale, 'Old name', 'New name');
+    expect(result).toEqual({
+      status: 'rewritten',
+      contentMd: 'See [[New name]] plus a newer edit',
+    });
+    expect((await get(alice(), source.id)).contentMd).toBe('See [[New name]] plus a newer edit');
+  });
+
+  it('skips the note instead of overwriting when the retry also misses', async () => {
+    await create(alice(), 'Old name');
+    const source = await create(alice(), 'Source', 'See [[Old name]]');
+    const scope = { ...alice().scope, update: () => Promise.resolve([]) } as unknown as UserScope;
+    const result = await rewriteNoteLinks(scope, source, 'Old name', 'New name');
+    expect(result).toEqual({ status: 'skipped' });
+    expect((await get(alice(), source.id)).contentMd).toBe('See [[Old name]]');
+  });
+
+  it('does not write when the fresh text no longer has the link', async () => {
+    await create(alice(), 'Old name');
+    const source = await create(alice(), 'Source', 'See [[Old name]]');
+    const stale = { id: source.id, revision: source.revision, contentMd: source.contentMd };
+    await save(alice(), source.id, 'Link removed');
+    const result = await rewriteNoteLinks(alice().scope, stale, 'Old name', 'New name');
+    expect(result).toEqual({ status: 'unchanged', contentMd: 'Link removed' });
+    expect((await get(alice(), source.id)).revision).toBe(2);
   });
 });
 
@@ -256,6 +314,22 @@ describe('notes.links', () => {
     const [back] = (await linksOf(alice(), target.id)).backlinks;
     expect(back?.context.length).toBeLessThanOrEqual(160);
     expect(back?.context.endsWith('…')).toBe(true);
+  });
+
+  it('cuts the context to exactly 160 characters including the ellipsis', async () => {
+    const target = await create(alice(), 'Target');
+    await create(alice(), 'Long', `[[Target]] ${'a'.repeat(400)}`);
+    const [back] = (await linksOf(alice(), target.id)).backlinks;
+    expect(back?.context.length).toBe(160);
+    expect(back?.context.endsWith('…')).toBe(true);
+  });
+
+  it('keeps a context of exactly 160 characters whole', async () => {
+    const target = await create(alice(), 'Target');
+    await create(alice(), 'Exact', `[[Target]]${'a'.repeat(160 - 'Target'.length)}`);
+    const [back] = (await linksOf(alice(), target.id)).backlinks;
+    expect(back?.context.length).toBe(160);
+    expect(back?.context.endsWith('…')).toBe(false);
   });
 
   it('leaves out trashed sources', async () => {

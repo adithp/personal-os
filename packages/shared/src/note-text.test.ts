@@ -99,3 +99,53 @@ describe('rewriteWikilinks', () => {
     expect(rewriteWikilinks(md, 'old', 'New')).toBe('`[[Old]]`\n```\n[[Old]]\n```\n[[New]]');
   });
 });
+
+describe('code detection for wikilinks', () => {
+  const targets = (md: string) => parseWikilinks(md).map((link) => link.target);
+
+  it('closes a fence only with the same character and at least the same length', () => {
+    expect(targets('```\n[[a]]\n~~~\n[[b]]\n```\n[[c]]')).toEqual(['c']);
+    expect(targets('````\n[[a]]\n```\n[[b]]\n````\n[[c]]')).toEqual(['c']);
+    expect(targets('~~~\n[[a]]\n```\n[[b]]\n~~~\n[[c]]')).toEqual(['c']);
+  });
+
+  it('does not close a fence on a line that has text after the marker', () => {
+    expect(targets('```\n[[a]]\n``` not a close\n[[b]]\n```\n[[c]]')).toEqual(['c']);
+  });
+
+  it('treats fences inside blockquotes as fences', () => {
+    expect(targets('> ```\n> [[a]]\n> ```\n[[b]]')).toEqual(['b']);
+  });
+
+  it('keeps an unclosed fence as code to the end', () => {
+    expect(targets('[[a]]\n```\n[[b]]')).toEqual(['a']);
+  });
+
+  it('reads a backtick line with a backtick in the info string as inline code, not a fence', () => {
+    expect(targets('```a`\n[[b]]')).toEqual(['b']);
+  });
+
+  it('matches inline code spans by the length of the backtick run', () => {
+    expect(targets('``a ` [[x]] ``[[y]]')).toEqual(['y']);
+    expect(targets('`[[x]]`` [[y]]')).toEqual(['x', 'y']);
+  });
+
+  it('rewrites only outside the code the same way', () => {
+    const md = '> ~~~\n> [[Old]]\n> ~~~\n[[Old]]';
+    expect(rewriteWikilinks(md, 'Old', 'New')).toBe('> ~~~\n> [[Old]]\n> ~~~\n[[New]]');
+  });
+
+  it('finds a link written with spaces inside the brackets', () => {
+    expect(targets('[[ Title ]]')).toEqual(['Title']);
+  });
+
+  it('stays fast on lines of backticks and on very long lines', () => {
+    const started = Date.now();
+    expect(targets('`'.repeat(100_000))).toEqual([]);
+    expect(targets('`a'.repeat(50_000))).toEqual([]);
+    expect(targets(`${'``a`'.repeat(10_000)}[[x]]`)).toBeInstanceOf(Array);
+    expect(targets(`${'x'.repeat(30_000)} [[late]]`)).toEqual(['late']);
+    expect(targets('[['.repeat(50_000))).toEqual([]);
+    expect(Date.now() - started).toBeLessThan(3000);
+  });
+});
