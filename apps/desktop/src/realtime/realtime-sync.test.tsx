@@ -120,6 +120,7 @@ describe('startRealtimeSync', () => {
     vi.advanceTimersByTime(300);
     expect(invalidatedKeys().sort()).toEqual([
       ['goals'],
+      ['money'],
       ['note-folders'],
       ['note-templates'],
       ['notes'],

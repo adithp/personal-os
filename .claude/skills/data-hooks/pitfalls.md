@@ -25,3 +25,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: Updaters must be pure; React may run them twice
 - Fix: Read the latest value through a ref and call the setters side by side
 - Prevention: guarded, quick-add-bar-fixes.test.tsx
+
+### 2026-10-14: invalidateQueries does nothing for a query that is on its first fetch
+- Symptom: Money opened, the repeat run created transactions, but the lists stayed empty until the next refetch
+- Cause: TanStack Query returns the running promise (no new fetch) when a query is fetching and has no data yet
+- Fix: useRunRecurring calls cancelQueries on the module key before invalidateQueries
+- Prevention: guarded, money-queries.test.tsx (useRunRecurring)

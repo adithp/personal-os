@@ -44,7 +44,11 @@ describe('placeholder pages', () => {
   // Dashboard, Settings, Tasks, and Notes are real screens now (see modules/)
   it.each(
     MODULE_IDS.filter(
-      (id) => id !== 'settings' && id !== 'dashboard' && id !== 'tasks' && id !== 'notes',
+      (id) => id !== 'settings' &&
+        id !== 'dashboard' &&
+        id !== 'tasks' &&
+        id !== 'notes' &&
+        id !== 'money',
     ),
   )('%s page shows its name, color and roadmap step', async (id) => {
     await renderApp(modulePath(id));

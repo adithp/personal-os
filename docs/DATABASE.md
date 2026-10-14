@@ -80,13 +80,14 @@ Written by the Projects lane (SQL in packages/db/drizzle-pending/projects/ until
 - time_entries: id, project_id (composite foreign key, cascade), task_id (composite foreign key to tasks, nullable), started_at, ended_at (null while the timer runs), note. Check `ended_at is null or ended_at >= started_at`; the partial unique index `time_entries_one_running_idx` allows one running live entry per user.
 
 ### Money
-- wallets: id, name, type (cash, bank, card, upi, other), balance_paise, currency
-- categories: id, name, kind (income, expense), icon
-- transactions: id, wallet_id, category_id, kind (income, expense, transfer), amount_paise, occurred_at, note, project_id, transfer_wallet_id, recurring_rule_id
-- recurring_rules: id, rrule, template (jsonb), next_run_at
-- budgets: id, category_id, month (date), limit_paise
-- savings_goals: id, name, target_paise, saved_paise, due_date
-- subscriptions: id, name, category, amount_paise, billing_cycle (monthly, yearly), next_renewal_at, wallet_id, remind_days_before, active
+Built in Step 6 (money lane; all plain tables, `user_id` + RLS, money in integer paise `bigint`, days are `date` India calendar days, soft delete where noted):
+- wallets: id, name, kind (cash, bank, card, upi, other), color, opening_balance_paise (may be negative), archived_at, deleted_at. The balance is not stored: opening + income - expense + transfers in - transfers out over live transactions. Unique live name per user (ignoring case)
+- categories: id, name, kind (income, expense), color, deleted_at. Unique live name per user and kind
+- transactions: id, kind (income, expense, transfer), amount_paise (> 0), occurred_on (India day), wallet_id, to_wallet_id (transfers only, different from wallet_id, checked), category_id, note, recurring_id, subscription_id, deleted_at. Composite foreign keys (id, user_id) to wallets, categories, recurring_transactions
+- recurring_transactions: id, kind, amount_paise, wallet_id, to_wallet_id, category_id, note, rule (RRULE preset text), next_on, ends_on, active, deleted_at
+- budgets: id, category_id, month (first day of the month), amount_paise (> 0); unique (user, category, month); no soft delete
+- savings_goals: id, name, target_paise, saved_paise (>= 0), target_on, color, deleted_at
+- subscriptions: id, name, amount_paise, cycle (weekly, monthly, quarterly, yearly), next_renewal_on, status (active, paused, cancelled), wallet_id, category_id, color, note, deleted_at
 
 ### People
 - people: id, name, email, notes

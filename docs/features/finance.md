@@ -17,3 +17,6 @@ Answers "How much did I spend this month?" and "Where am I spending the most mon
 
 ## Done when
 All my spending is tracked here and the monthly report is accurate.
+
+## Built (Step 6, money lane, without AI)
+Transactions (income, expense, transfer), categories with colors, repeating transactions generated on demand, budgets per category per month, savings goals, monthly report with charts. Not built: CSV statement import and AI categorization (after Step 3). The overall picture, decisions, actions, routes and screens are in [money.md](money.md).
