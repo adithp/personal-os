@@ -96,7 +96,7 @@ describe('header and tabs', () => {
     expect(screen.queryByRole('link', { name: 'C' })).not.toBeInTheDocument();
   });
 
-  it('switches the list with the tabs and asks the API for that status', async () => {
+  it('switches the list with the tabs without asking the API again', async () => {
     const fake = goalsOf(
       makeGoal({ title: 'A' }),
       makeGoal({ title: 'Done one', status: 'achieved', closedAt: '2025-10-12T18:40:00.000Z' }),
@@ -109,7 +109,7 @@ describe('header and tabs', () => {
     expect(screen.queryByRole('link', { name: 'A' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('radio', { name: 'Dropped' }));
     expect(await screen.findByRole('link', { name: 'Gone one' })).toBeInTheDocument();
-    expect(fake.calls.some((c) => c.path === '/goals' && c.query?.status === 'dropped')).toBe(true);
+    expect(fake.calls.filter((c) => c.method === 'GET' && c.path === '/goals')).toHaveLength(1);
   });
 });
 
@@ -185,7 +185,7 @@ describe('Mark as achieved', () => {
     );
     expect(card.getByText('All tasks done')).toBeInTheDocument();
     // The button is not inside the link
-    const button = card.getByRole('button', { name: 'Mark as achieved' });
+    const button = card.getByRole('button', { name: 'Mark as achieved: Ship it' });
     expect(button.closest('a')).toBeNull();
     await user.click(button);
     expect(
@@ -212,14 +212,16 @@ describe('Mark as achieved', () => {
       ),
     );
     await screen.findByRole('link', { name: 'Later' });
-    expect(screen.queryByRole('button', { name: 'Mark as achieved' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Mark as achieved/ })).not.toBeInTheDocument();
   });
 
   it('shows again when the number of tasks changed after "Not yet"', async () => {
     const { goal, tasks } = goalWithTasks('Grown', 3, 3);
     useGoalPrompts.getState().dismiss(goal.id, 2);
     await open(createFakeApi(tasks, [], [], [goal]));
-    expect(await screen.findByRole('button', { name: 'Mark as achieved' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: 'Mark as achieved: Grown' }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -427,4 +429,45 @@ describe('themes', () => {
       expect(screen.getByRole('radiogroup', { name: 'Goal status' })).toBeInTheDocument();
     },
   );
+});
+
+describe('review fixes', () => {
+  it('asks the server for the goals once and filters the tabs on the client', async () => {
+    const fake = goalsOf(makeGoal({ title: 'Learn Rust' }));
+    await open(fake);
+    await screen.findByRole('link', { name: 'Learn Rust' });
+    const requests = fake.calls.filter((c) => c.method === 'GET' && c.path === '/goals');
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.query?.status).toBeUndefined();
+  });
+
+  it('does not flash the empty line before the goals arrive', async () => {
+    const fake = goalsOf(makeGoal({ title: 'Learn Rust' }));
+    fake.slow(100);
+    await open(fake);
+    expect(screen.queryByText('No active goals')).not.toBeInTheDocument();
+    expect(screen.queryByText('No goals yet')).not.toBeInTheDocument();
+    await screen.findByRole('link', { name: 'Learn Rust' });
+  });
+
+  it('gives the card link a title and names the Mark as achieved button after the goal', async () => {
+    const { goal, tasks } = goalWithTasks('Ship it', 1, 1);
+    await open(createFakeApi(tasks, [], [], [goal]));
+    expect(await screen.findByRole('link', { name: 'Ship it' })).toHaveAttribute(
+      'title',
+      'Ship it',
+    );
+    expect(screen.getByRole('button', { name: 'Mark as achieved: Ship it' })).toBeInTheDocument();
+  });
+
+  it('closes the New goal dialog on a backdrop click only while the title box is empty', async () => {
+    const { user } = await open();
+    await user.click(firstNewGoal());
+    fireEvent.mouseDown(screen.getByRole('dialog', { name: 'New goal' }).parentElement as Element);
+    expect(screen.queryByRole('dialog', { name: 'New goal' })).not.toBeInTheDocument();
+    await user.click(firstNewGoal());
+    await user.type(screen.getByRole('textbox', { name: 'Title' }), 'Learn');
+    fireEvent.mouseDown(screen.getByRole('dialog', { name: 'New goal' }).parentElement as Element);
+    expect(screen.getByRole('dialog', { name: 'New goal' })).toBeInTheDocument();
+  });
 });

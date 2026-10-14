@@ -93,6 +93,14 @@ describe('ProgressBar', () => {
     expect(bar).toHaveAttribute('aria-valuenow', '100');
     expect(bar.firstElementChild).toHaveStyle({ width: '100%' });
   });
+
+  it('exposes valueText as aria-valuetext and keeps a visible track on glass', () => {
+    render(<ProgressBar tone="glass" value={37} label="Tasks done" valueText="3 of 8 tasks" />);
+    const bar = screen.getByRole('progressbar', { name: 'Tasks done' });
+    expect(bar).toHaveAttribute('aria-valuetext', '3 of 8 tasks');
+    expect(bar).toHaveClass('bg-progress-track');
+    expect(bar.firstElementChild).toHaveClass('bg-module-tasks');
+  });
 });
 
 describe('Button and IconButton', () => {

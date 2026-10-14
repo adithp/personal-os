@@ -36,15 +36,14 @@ export function GoalsListPage() {
   const [tabKey, setTabKey] = useState<string | null>(null);
   const gridRoot = useRef<HTMLUListElement>(null);
 
-  const shown = useGoals(tab);
   const all = useGoals();
   const { create, setStatus } = useGoalActions();
 
-  const goals = shown.data ?? [];
+  const goals = (all.data ?? []).filter((goal) => goal.status === tab);
   const keys = goals.map(goalKey);
   const tabbableKey = tabKey !== null && keys.includes(tabKey) ? tabKey : (keys[0] ?? null);
   const activeCount = all.data?.filter((goal) => goal.status === 'active').length ?? 0;
-  const neverHadGoal = all.data?.length === 0;
+  const neverHadGoal = all.isSuccess && all.data.length === 0;
 
   useTaskShortcuts({
     rootRef: gridRoot,
@@ -85,7 +84,7 @@ export function GoalsListPage() {
         <div>
           <h1 className="text-page font-semibold text-fg">Goals</h1>
           <p className="min-h-[15px] text-small text-fg-muted">
-            {all.data && !neverHadGoal ? `${String(activeCount)} active` : ' '}
+            {all.isSuccess && !neverHadGoal ? `${String(activeCount)} active` : ' '}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -104,15 +103,15 @@ export function GoalsListPage() {
         </div>
       </header>
 
-      {shown.isError ? (
+      {all.isError ? (
         <GlassCard role="alert" className="flex items-center justify-between gap-4">
           <p className="text-body text-fg">
-            {shown.error instanceof ApiError ? shown.error.message : 'Could not load your goals.'}
+            {all.error instanceof ApiError ? all.error.message : 'Could not load your goals.'}
           </p>
           <Button
             variant="secondary"
             onClick={() => {
-              void shown.refetch();
+              void all.refetch();
             }}
           >
             Try again
@@ -120,13 +119,13 @@ export function GoalsListPage() {
         </GlassCard>
       ) : null}
 
-      {shown.isPending ? (
+      {all.isPending ? (
         <p role="status" className="px-1 text-body text-fg-muted">
           Loading goals…
         </p>
       ) : null}
 
-      {shown.isSuccess && goals.length === 0 ? (
+      {all.isSuccess && goals.length === 0 ? (
         neverHadGoal ? (
           <GlassCard className="mx-auto flex w-full max-w-md flex-col items-center gap-3 py-8 text-center">
             <span className="flex size-10 items-center justify-center rounded-full bg-input text-fg-muted">

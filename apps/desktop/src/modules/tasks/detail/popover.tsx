@@ -13,6 +13,8 @@ export interface PopoverProps {
   disabled?: boolean;
   /** The id of text that describes the button (for example why it is off). */
   describedBy?: string;
+  /** 'end' lines the popup up with the right edge of the button (for buttons at the right edge). */
+  align?: 'start' | 'end';
   /** The popup content; call `close` to close it and return focus to the button. */
   children: (close: () => void) => ReactNode;
 }
@@ -30,6 +32,7 @@ export function Popover({
   triggerClassName,
   disabled,
   describedBy,
+  align = 'start',
   children,
 }: PopoverProps) {
   const [open, setOpen] = useState(false);
@@ -105,7 +108,10 @@ export function Popover({
           role="menu"
           aria-label={popupLabel}
           tabIndex={-1}
-          className="absolute top-full left-0 z-30 mt-1 flex min-w-[200px] flex-col gap-1 rounded-card glass-strong p-1.5"
+          className={cx(
+            'absolute top-full z-30 mt-1 flex min-w-[200px] flex-col gap-1 rounded-card glass-strong p-1.5',
+            align === 'end' ? 'right-0' : 'left-0',
+          )}
         >
           {/* close only touches the button ref when called from an event */}
           {/* eslint-disable-next-line react-hooks/refs */}

@@ -8,6 +8,8 @@ import { itemKeyOf, type GroupId } from './goal-task-keys';
 
 export interface GoalTasksCardProps {
   goal: Goal;
+  /** The goal's tasks are still loading. */
+  loading?: boolean;
   open: Task[];
   done: Task[];
   archived: Task[];
@@ -17,7 +19,8 @@ export interface GoalTasksCardProps {
   tabbableKey: string | null;
   expanded: Record<GroupId, boolean>;
   onToggleGroup: (id: GroupId) => void;
-  onCreate: (title: string) => void;
+  /** `onCreated` runs once the task was created; a failed create keeps the typed title. */
+  onCreate: (title: string, onCreated: () => void) => void;
   onRemove: (task: Task) => void;
 }
 
@@ -61,7 +64,7 @@ function Group({
         />
         {`${label} (${String(tasks.length)})`}
       </button>
-      {expanded ? <Rows tasks={tasks} {...rest} /> : null}
+      {expanded ? <Rows tasks={tasks} label={label} {...rest} /> : null}
     </div>
   );
 }
@@ -100,7 +103,7 @@ function Rows({
                     event.stopPropagation();
                     onRemove(task);
                   }}
-                  className="rounded-[6px] p-1 text-fg-muted opacity-0 focus-ring transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-fg focus-visible:opacity-100 motion-reduce:transition-none"
+                  className="rounded-chip p-1 text-fg-muted opacity-0 focus-ring transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-fg focus-visible:opacity-100 motion-reduce:transition-none"
                 >
                   <IconLinkOff size={16} stroke={1.5} aria-hidden />
                 </button>
@@ -116,6 +119,7 @@ function Rows({
 /** The goal's tasks: an add box, the open ones, then collapsed Done and Archived groups. */
 export function GoalTasksCard({
   goal,
+  loading,
   open,
   done,
   archived,
@@ -154,12 +158,18 @@ export function GoalTasksCard({
             const next = title.trim();
             if (next === '') return;
             event.preventDefault();
-            onCreate(next);
-            setTitle('');
+            onCreate(next, () => {
+              setTitle('');
+            });
           }}
           className="min-w-0 flex-1 bg-transparent text-body text-fg outline-none placeholder:text-fg-muted"
         />
       </label>
+      {loading ? (
+        <p role="status" className="px-1 text-body text-fg-secondary">
+          Loading tasks…
+        </p>
+      ) : null}
       <div ref={listRoot} className="flex flex-col">
         {open.length > 0 ? <Rows tasks={open} label="Open tasks" {...shared} /> : null}
         <Group

@@ -69,13 +69,15 @@ export function GoalShortcutsHelp({ onClose }: { onClose: () => void }) {
         ref={box}
         role="dialog"
         aria-modal="true"
-        aria-label="Keyboard shortcuts"
+        aria-labelledby="goal-help-heading"
         tabIndex={-1}
         onKeyDown={onKeyDown}
         className="flex w-[340px] max-w-[90vw] flex-col gap-3 rounded-card glass-strong p-4 outline-none"
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-section font-semibold text-fg">Keyboard shortcuts</h2>
+          <h2 id="goal-help-heading" className="text-section font-semibold text-fg">
+            Keyboard shortcuts
+          </h2>
           <IconButton aria-label="Close" icon={<IconX size={16} aria-hidden />} onClick={onClose} />
         </div>
         <Group label="Goals" shortcuts={GOALS} />

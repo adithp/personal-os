@@ -1,6 +1,8 @@
 import type { Goal, Task } from '@personal-os/shared';
+import { cx } from '@personal-os/ui';
 import { IconCheck, IconLink, IconSearch } from '@tabler/icons-react';
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { ApiError } from '../../../../api/api-client';
 import { useOpenTasks } from '../../tasks-queries';
 import { useGoalActions } from '../goals-queries';
 
@@ -12,8 +14,8 @@ const linkMessage = (task: Task, goal: Goal) =>
 
 /**
  * "Add tasks": a popover with a search box and the open tasks. Choosing one links it to the goal
- * and keeps the popover open; choosing a linked one takes it out again. Escape or a click outside
- * closes it.
+ * and keeps the popover open; clicking a linked one takes it out again (Enter in the box only links).
+ * Escape, Tab or a click outside closes it.
  */
 export function AddTasksPopover({ goal }: { goal: Goal }) {
   const [open, setOpen] = useState(false);
@@ -71,8 +73,11 @@ export function AddTasksPopover({ goal }: { goal: Goal }) {
       return;
     }
     if (event.key === 'Tab') {
+      // Tab closes the popover and lands on the trigger (the key press itself is swallowed)
+      event.preventDefault();
       setOpen(false);
       setQuery('');
+      button.current?.focus();
       return;
     }
     const options = [...(list.current?.querySelectorAll<HTMLElement>(OPTION) ?? [])];
@@ -89,7 +94,7 @@ export function AddTasksPopover({ goal }: { goal: Goal }) {
       const first = shown[0];
       if (first) {
         event.preventDefault();
-        choose(first);
+        if (first.goal?.id !== goal.id) choose(first);
       }
     }
   };
@@ -152,8 +157,13 @@ export function AddTasksPopover({ goal }: { goal: Goal }) {
                   }}
                   className="flex min-h-7 items-center gap-2 rounded-chip px-2 py-1 text-left text-body text-fg focus-ring hover:bg-input focus-visible:bg-input"
                 >
-                  <span className="flex size-4 shrink-0 items-center justify-center text-module-tasks">
-                    {linked ? <IconCheck size={14} stroke={2} aria-hidden /> : null}
+                  <span
+                    className={cx(
+                      'flex size-4 shrink-0 items-center justify-center rounded-chip',
+                      linked && 'bg-module-tasks text-on-tile',
+                    )}
+                  >
+                    {linked ? <IconCheck size={12} stroke={2} aria-hidden /> : null}
                   </span>
                   <span className="min-w-0 flex-1 truncate">{task.title}</span>
                   {task.goal && !linked ? (
@@ -166,10 +176,27 @@ export function AddTasksPopover({ goal }: { goal: Goal }) {
             })}
           </div>
           {tasks.isPending ? (
-            <p className="px-2 py-1.5 text-small text-fg-muted">Loading tasks…</p>
+            <p role="status" className="px-2 py-1.5 text-small text-fg-secondary">
+              Loading tasks…
+            </p>
           ) : null}
           {tasks.isError ? (
-            <p className="px-2 py-1.5 text-small text-fg-muted">Could not load your tasks.</p>
+            <div role="alert" className="flex items-center gap-2 px-2 py-1.5">
+              <p className="min-w-0 flex-1 text-small text-fg-secondary">
+                {tasks.error instanceof ApiError
+                  ? tasks.error.message
+                  : 'Could not load your tasks.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  void tasks.refetch();
+                }}
+                className="shrink-0 rounded-chip px-2 py-1 text-small font-medium text-fg focus-ring hover:bg-input"
+              >
+                Try again
+              </button>
+            </div>
           ) : null}
           {!tasks.isPending && !tasks.isError && shown.length === 0 ? (
             <p className="px-2 py-1.5 text-small text-fg-muted">
