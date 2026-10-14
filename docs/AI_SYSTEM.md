@@ -59,7 +59,7 @@ Undo: a write returns an undo (an action plus its input). tasks.create undoes wi
 - favorites: list, create, update, move, delete, restore
 - goals: list, get, create, update, setStatus, delete, restore, setTaskGoal
 - habits: list, log, stats
-- notes: search, get, create, update, append, summarize, link
+- notes (N1 built): list, get, create, update (needs the revision you saw), rename, delete (destructive, to the trash), restore, purge and emptyTrash (destructive, cannot be undone); noteFolders: list, create, update, delete (destructive, only empty folders), restore. Undo: create undoes with delete, update and rename with themselves carrying the old values, delete and restore undo each other. Still to come: search, append, summarize, link
 - graph: related
 - calendar: list, create, update, delete
 - gmail: search, read, draft, send, reply, forward, archive, star, label, delete

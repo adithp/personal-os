@@ -154,6 +154,14 @@ describe('POST /notes and GET /notes', () => {
     expect(limited.json<{ items: unknown[] }>().items).toHaveLength(1);
   });
 
+  it('restores a trashed note through POST /notes/:id/restore', async () => {
+    const written = await addNote('Back');
+    await call('DELETE', `/notes/${written.item.id}`);
+    const res = await call('POST', `/notes/${written.item.id}/restore`);
+    expect(res.statusCode).toBe(200);
+    expect(res.json<{ item: NoteItem }>().item.deletedAt).toBeNull();
+  });
+
   it('sorts from the query string', async () => {
     await addNote('b');
     await addNote('a');

@@ -228,6 +228,7 @@ Fit and scrolling:
 - Ctrl 1 to Ctrl 9: Dashboard, Tasks, Habits, Notes, Graph, Calendar, Mail, Drive, Projects.
 - Ctrl 0: Money. Ctrl J: open AI assistant. Ctrl , : Settings.
 - Tasks page, plain keys: N, Space, Enter, Delete, Esc, arrows, ?. Inbox also: T date, L tag, 1 to 4 priority.
+- Notes page, plain keys (never Ctrl; not while typing in the editor or a field, a menu, a dialog or the palette): N new note, Up and Down, Enter (opens the note and puts the cursor in the editor), Esc in the editor (back to the list row), Delete (to the trash, with Undo), ?.
 
 ### Command palette
 - Opens with Ctrl K, or by clicking the dashboard search bar. Esc, or Ctrl K again, closes it. It is only available on signed-in screens.
@@ -249,3 +250,7 @@ Fit and scrolling:
 ## 11. Motion
 - Duration 150–250 ms, ease-out. The dock slide takes 200 ms. Hover lifts and transitions are switched off for people who prefer reduced motion.
 - Tiles lift 2 px on hover. Dock magnification follows the cursor without delay.
+
+### Notes (stage N1)
+- Three columns inside the page, like Tasks: an inner side panel (224 px, collapsible to 56 px: All notes, a Folders tree up to 3 levels with a + button, Trash; Today, Tags and Templates show "Soon"), a 272 px glass note list (place name and count, "Filter notes" field, New note button, sort menu; rows with a pin, the title in 13 medium, and one muted 11 px line with the date and the start of the text), and the editor in a glass card. There is no app-level sidebar (Tasks and Notes have inner side panels). Peach is the Notes accent (checkbox, quote bar, link underline, selection).
+- The editor: a top bar with the save status (11 px muted: "Saving…", "Saved", "Not saved, retrying" in the danger color), a borderless 22 px semibold title field, the body (headings 22, 16 and 13 px semibold, lists, checklists, quotes, code, tables, links), and a muted footer "N words · Edited 2 min ago". A quiet bar above the body says "This note was changed on another device." with Keep mine and Use theirs. Trash rows have Restore and Delete forever (with a confirm) and the list header has Empty trash.

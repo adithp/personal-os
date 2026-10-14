@@ -49,6 +49,12 @@ export function noteRoutes(app: FastifyInstance, options: ActionRouteOptions): v
     return { item: data, undo: undo ?? null };
   });
 
+  app.post('/notes/:id/restore', async (request) => {
+    const { id } = idParams.parse(request.params);
+    const { data, undo } = await run(request, 'notes.restore', { id });
+    return { item: data, undo: undo ?? null };
+  });
+
   app.delete('/notes/:id/forever', async (request) => {
     const { id } = idParams.parse(request.params);
     const { data } = await run(request, 'notes.purge', { id });
@@ -71,6 +77,12 @@ export function noteRoutes(app: FastifyInstance, options: ActionRouteOptions): v
       ...bodyOf(request.body),
       id,
     });
+    return { item: data, undo: undo ?? null };
+  });
+
+  app.post('/note-folders/:id/restore', async (request) => {
+    const { id } = idParams.parse(request.params);
+    const { data, undo } = await run(request, 'noteFolders.restore', { id });
     return { item: data, undo: undo ?? null };
   });
 

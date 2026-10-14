@@ -80,6 +80,18 @@ Goal details: `title` 1 to 200 characters, `description` up to 20,000 (or null),
 | POST | /links | Create a link |
 | GET | /graph?focus=&depth=&types= | Nodes and edges for the knowledge graph |
 | POST | /search | Global search (q 1 to 100 characters, control characters become spaces; types: task, tag; limit 1 to 20, default 5, per group; text with no letters or digits answers groups []; an aborted request on the client is an AbortError, not an ApiError). Body { q, types?, limit? } (a POST so the search text stays out of access logs); answer { item: { q, groups } }. Tasks and tags now; mode semantic, Gmail and Drive later |
+| GET | /notes?folderId=&trash=&sort=updated or title or created&limit=&offset= | Notes without their text (id, title, folderId, pinned, 140-character excerpt, dates); folderId none means no folder; pinned first |
+| GET | /notes/:id | One note with `contentMd` and `revision` (a trashed note too) |
+| POST | /notes | Create (title optional: Untitled, Untitled 2, ...); 201 |
+| PATCH | /notes/:id | Body `baseRevision` plus contentMd, folderId or pinned; `force: true` is Keep mine; 409 `note_conflict` when the revision is old (the 409 has no note in its body: fetch GET /notes/:id) |
+| POST | /notes/:id/rename | Body `title` (unique among live notes ignoring case, no [ ] \| #; 409 `note_title_taken`) |
+| DELETE | /notes/:id | Move to the trash |
+| POST | /notes/:id/restore | Back from the trash (a taken title gets " (2)") |
+| DELETE | /notes/:id/forever | Delete a trashed note for good (a live note: 400); answers `{ item: { id } }` |
+| DELETE | /notes/trash | Delete every trashed note; answers `{ item: { deleted } }` |
+| GET, POST | /note-folders | List with `noteCount` / create (`name`, `parentId`); 400 `folder_too_deep` (3 levels), 409 `folder_name_taken` |
+| PATCH, DELETE | /note-folders/:id | Rename or move (400 into itself or its own subfolders) / delete an empty folder (409 `folder_not_empty`) |
+| POST | /note-folders/:id/restore | Bring a deleted folder back (top level if its parent is gone) |
 | GET | /notes/:id/versions | Note history |
 | POST | /notes/:id/restore/:versionId | Restore a version |
 | GET | /calendar/events?from=&to= | Events in a range |

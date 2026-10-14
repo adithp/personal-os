@@ -46,8 +46,8 @@ Each module table uses the same id as its entity row.
 - habit_logs: id, habit_id, date, completed, value, note
 
 ### Notes
-- notes: id, title, content_md, folder_id, properties (jsonb), aliases (text[]), is_daily, daily_date, pinned, favorite, archived_at
-- note_folders: id, name, parent_id
+- notes (stage N1, migration 0012): id (the id of its entities row, type `note`; composite foreign key with cascade), user_id, title, content_md (Markdown, the source of truth, up to 200,000 characters), content_text (plain text made by the server on every save, for search and list excerpts), folder_id (composite foreign key to note_folders), pinned, revision (starts at 1, goes up on every content or title change, used to detect edits from another device), created_at, updated_at, deleted_at. A live title is unique per user ignoring case (index notes_user_title_idx). Triggers (migration 0013): updated_at, and the search vector (title weight A, content_text weight B, simple configuration). Later stages add daily_date (N3). properties, aliases, favorite and archived_at are not built
+- note_folders (N1): id, user_id, name, parent_id (composite self foreign key), deleted_at. A live name is unique inside its parent ignoring case (two partial indexes, one for top-level folders); the server limits the depth to 3. A plain table, not an entity
 - note_versions: id, note_id, content_md, created_at
 - note_templates: id, name, content_md
 - Wikilinks and backlinks are links with relation = mentions, rebuilt on every save.
