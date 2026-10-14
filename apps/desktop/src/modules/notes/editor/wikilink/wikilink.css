@@ -1,0 +1,25 @@
+/* Wikilinks in the note body (docs/DESIGN.md: tokens only). Peach underline when the note exists,
+   dashed muted underline when it does not. */
+.note-editor .wikilink {
+  color: var(--text-primary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 2px;
+}
+
+.note-editor .wikilink-resolved {
+  text-decoration-color: var(--module-notes);
+}
+
+.note-editor .wikilink-unresolved {
+  color: var(--text-secondary);
+  text-decoration-style: dashed;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--text-muted);
+}
+
+.note-editor .wikilink.ProseMirror-selectednode {
+  border-radius: 4px;
+  outline: 2px solid color-mix(in srgb, var(--module-notes) 60%, transparent);
+}
