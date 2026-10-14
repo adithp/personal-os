@@ -113,6 +113,41 @@ describe('reading: one user can never read another user’s rows', () => {
   });
 });
 
+describe('selectFields: chosen columns and computed values stay inside the user', () => {
+  it('returns only the user’s own rows, with the chosen columns and computed values', async () => {
+    const { a1 } = await seed();
+    const rows = await alice.selectFields(
+      entities,
+      { id: entities.id, shout: sql<string>`upper(${entities.title})` },
+      { orderBy: entities.title },
+    );
+    expect(rows).toEqual([
+      { id: a1.id, shout: 'ALICE ONE' },
+      { id: expect.any(String) as string, shout: 'ALICE TWO' },
+    ]);
+  });
+
+  it('never returns another user’s rows, however the extra condition is written', async () => {
+    const { a1 } = await seed();
+    const fields = { id: entities.id, userId: entities.userId };
+    expect(await bob.selectFields(entities, fields, { where: eq(entities.id, a1.id) })).toEqual([]);
+    const widened = await bob.selectFields(entities, fields, {
+      where: or(eq(entities.userId, ALICE), sql`true`),
+    });
+    expect(widened.map((r) => r.userId)).toEqual([BOB, BOB]);
+  });
+
+  it('supports ordering, limit and offset', async () => {
+    await seed();
+    const page = await alice.selectFields(
+      entities,
+      { title: entities.title },
+      { orderBy: entities.title, limit: 1, offset: 1 },
+    );
+    expect(page).toEqual([{ title: 'Alice two' }]);
+  });
+});
+
 describe('creating: rows always belong to the signed-in user', () => {
   it('stamps the user on new rows and returns them', async () => {
     const [row] = await alice.insert(entities, { type: 'task', title: 'Mine' });

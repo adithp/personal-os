@@ -27,6 +27,9 @@ export type SoftDeletableTable = UserOwnedTable & { deletedAt: AnyPgColumn };
 /** The columns an update may never change: the owner and the row's identity. */
 type Protected = 'id' | 'userId';
 
+/** What selectFields returns per row: columns, or SQL values with an alias. */
+export type SelectedFields = Record<string, AnyPgColumn | SQL | SQL.Aliased>;
+
 export interface SelectOptions {
   /** Extra condition. It can only narrow the user's rows, never widen them. */
   where?: SQL;
@@ -46,6 +49,12 @@ export interface UserScope {
     table: T,
     options?: SelectOptions,
   ) => Promise<T['$inferSelect'][]>;
+  /** Chosen columns or computed SQL values (for example a search rank) of the user's rows. */
+  selectFields: <F extends SelectedFields>(
+    table: UserOwnedTable,
+    fields: F,
+    options?: SelectOptions,
+  ) => Promise<Record<keyof F, unknown>[]>;
   /** Creates rows for this user (a userId in the input is ignored) and returns them. */
   insert: <T extends UserOwnedTable>(
     table: T,
@@ -97,6 +106,22 @@ export function createUserScope(db: Db, userId: string): UserScope {
       if (options.limit !== undefined) query = query.limit(options.limit);
       if (options.offset !== undefined) query = query.offset(options.offset);
       return await query;
+    },
+
+    selectFields: async (table, fields, options = {}) => {
+      let query = db
+        .select(fields)
+        .from(plain(table))
+        .where(where(table, options.where))
+        .$dynamic();
+      if (options.orderBy !== undefined) {
+        query = query.orderBy(
+          ...(Array.isArray(options.orderBy) ? options.orderBy : [options.orderBy]),
+        );
+      }
+      if (options.limit !== undefined) query = query.limit(options.limit);
+      if (options.offset !== undefined) query = query.offset(options.offset);
+      return (await query) as Record<keyof typeof fields, unknown>[];
     },
 
     insert: async (table, rows) => {

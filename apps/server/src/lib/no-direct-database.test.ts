@@ -48,7 +48,7 @@ describe('database access rule', () => {
     const helper = files.find((file) => file.name === 'lib/user-scope.ts')?.text ?? '';
     expect(helper).toContain('eq(table.userId, id)');
     expect(helper).toMatch(/\.\.\.row, userId: id/);
-    for (const method of ['select', 'insert', 'update', 'delete', 'softDelete']) {
+    for (const method of ['select', 'selectFields', 'insert', 'update', 'delete', 'softDelete']) {
       expect(helper).toContain(`${method}:`);
     }
   });
