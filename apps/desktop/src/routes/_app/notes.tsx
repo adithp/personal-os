@@ -1,6 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { ModulePlaceholder } from '../../shell/module-placeholder';
+import { validateNotesSearch } from '../../modules/notes/notes-search';
+import { NotesLayout } from '../../modules/notes/shell/notes-layout';
 
+// The Notes page: side panel, note list and editor. `note` and `folder` live in the URL.
 export const Route = createFileRoute('/_app/notes')({
-  component: () => <ModulePlaceholder module="notes" />,
+  validateSearch: validateNotesSearch,
+  component: NotesLayout,
 });
