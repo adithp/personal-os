@@ -612,7 +612,7 @@ describe('task search vector', () => {
   });
 
   it('uses the GIN index', async () => {
-    for (let i = 0; i < 300; i++) await task(`Task number ${i}`);
+    for (let i = 0; i < 300; i++) await task(`Task number ${String(i)}`);
     await t.pg.query('analyze entities');
     await t.pg.query('set enable_seqscan = off');
     const plan = await rows(
