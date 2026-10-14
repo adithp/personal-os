@@ -38,6 +38,7 @@ jobs:
           BEFORE: ${{ github.event.before }}
           BASE_REF: ${{ github.base_ref }}
           SHA: ${{ github.sha }}
+          REF: ${{ github.ref }}
         run: |
           if [ "$EVENT" = "pull_request" ]; then
             RANGE="origin/$BASE_REF..HEAD"
@@ -45,8 +46,12 @@ jobs:
             RANGE="$BEFORE..$SHA"
           fi
           START="${RANGE%%..*}"
+          # A push to main is a merge of work whose commits were already checked one by one on the
+          # branch, so a long range is checked as a whole (docs changed somewhere in it)
+          MODE=""
+          if [ "$EVENT" = "push" ] && [ "$REF" = "refs/heads/main" ]; then MODE="--aggregate"; fi
           if git cat-file -e "$START^{commit}" 2>/dev/null; then
-            node scripts/docs-check.mjs --range "$RANGE"
+            node scripts/docs-check.mjs --range "$RANGE" $MODE
           else
             echo "No earlier commit to compare with (new branch or rewritten history): skipped."
           fi

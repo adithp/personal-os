@@ -95,7 +95,7 @@ AWS is current: see section 0.
 ## 7b. Git hooks and the docs check
 - The repo has a commit-msg hook (.githooks/commit-msg) that runs `pnpm docs:check`: a commit that changes code listed in docs/doc-map.json must also change its docs, or carry a line `[docs-ok] <reason>` in the message.
 - `pnpm install` turns the hook on by itself (the root `prepare` script runs scripts/install-hooks.mjs, which sets `git config core.hooksPath .githooks`). Run `pnpm hooks:install` to do it by hand. The script does nothing and never fails when there is no .git folder, so Docker builds and the AWS server are not affected.
-- CI (.github/workflows/ci.yml) runs the same check over the pushed commits as a backstop.
+- CI (.github/workflows/ci.yml) runs the same check over the pushed commits as a backstop. On branches and pull requests it checks every commit; on a push to `main` (a merge of work that was already checked) it checks the whole range at once (`--aggregate`: the docs changed somewhere in it), because a long range can hold commits whose docs came in a nearby commit.
 
 ## 8. Desktop app
 - Built locally with Tauri (pnpm build:desktop) and installed on my computer.
