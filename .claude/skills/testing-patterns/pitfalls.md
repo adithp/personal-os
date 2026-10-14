@@ -103,3 +103,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: The test mocked the hook with a made-up shape; editor.setEditable(x) emits an update event by default
 - Fix: Type hook mocks with the real return types; call setEditable(x, false)
 - Prevention: guarded, notes editor tests
+
+### 2026-10-14: TipTap input rules and floating menus in jsdom
+- Symptom: typed `[[x]]` stayed text; a findBy on the `[[` menu timed out under fake timers
+- Cause: nodeInputRule replaces only capture group 1; insertContent does not run input rules; findBy does not advance fake timers
+- Fix: use InputRule with a handler that replaces the whole range; type through view.someProp('handleTextInput'); use vi.waitFor
+- Prevention: a typeChar helper in the wikilink tests

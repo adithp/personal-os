@@ -76,3 +76,4 @@ Every time something cost a retry or a fix, we record it here so it never happen
 | 2026-10-14 | db-change | New tables need explicit privileges (Supabase stops auto-granting on 30 Oct 2026) | documented | db-change pitfalls; docs/design/research/realtime.md |
 | 2026-10-14 | ui-design-system | A fixed overlay inside a glass panel needs a portal | guarded | apps/desktop/src/modules/notes/list/confirm-dialog.tsx |
 | 2026-10-14 | testing-patterns | Mock hooks with their real return shape; TipTap setEditable emits update | guarded | apps/desktop/src/modules/notes/editor/note-editor-pane.test.tsx |
+| 2026-10-14 | testing-patterns | TipTap input rules and floating menus in jsdom | guarded | apps/desktop/src/modules/notes/editor/wikilink/wikilink-menu.test.ts |
