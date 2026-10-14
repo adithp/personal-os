@@ -132,3 +132,5 @@ When a discussion is done, save the ready prompt to `docs/prompts/next.md` (over
 When I paste a report, check: did it follow the plan? Are there hidden decisions it made alone (list them so I can approve)? Is anything untested (the real Tauri window, real Supabase, Windows-specific)? Then give me the test checklist and the ready reply message.
 
 - **Working method (decision 68):** batches are built as parallel lanes, tested once at the end (see .claude/skills/orchestrate-lanes). First lane batch in progress: Habits, Money (no AI), Projects; the Notes/Tasks leftovers are merged and wait for the final check.
+- **Batch 3 (decision 68) built:** Notes N1 to N4, tasks/notes leftovers (notes in search, tag unmerge), Habits, Money (no AI), Projects; migrations 0006 to 0018 to apply (I run `pnpm db:migrate`); report in docs/reports/batch-3-notes-and-lanes.md; waiting for my check, nothing ticked in ROADMAP.
+
