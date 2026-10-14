@@ -18,6 +18,7 @@ const dockerignore = read('.dockerignore');
 const backup = read('infra/scripts/backup.sh');
 const duckdns = read('infra/scripts/duckdns-update.sh');
 const autoDeploy = read('infra/scripts/auto-deploy.sh');
+const setupAutoDeploy = read('infra/scripts/setup-auto-deploy.sh');
 const cron = read('infra/scripts/cron.example');
 const envExample = read('.env.example');
 
@@ -197,6 +198,7 @@ describe.each([
   ['backup.sh', backup],
   ['duckdns-update.sh', duckdns],
   ['auto-deploy.sh', autoDeploy],
+  ['setup-auto-deploy.sh', setupAutoDeploy],
 ])('%s', (_name, script) => {
   it('is a bash script that stops on errors, with Unix line endings', () => {
     expect(script.startsWith('#!/usr/bin/env bash\n')).toBe(true);
@@ -356,5 +358,14 @@ describe('auto-deploy.sh', () => {
 
   it('is scheduled in the cron example', () => {
     expect(cron).toContain('auto-deploy.sh');
+  });
+});
+
+describe('setup-auto-deploy.sh', () => {
+  it('only prepares things: dry run, cron line once, no deploy and no migration', () => {
+    expect(setupAutoDeploy).toContain('DRY_RUN=1');
+    expect(setupAutoDeploy).toContain('grep -qF "$CRON_MARK"');
+    expect(setupAutoDeploy).not.toMatch(/docker compose/);
+    expect(setupAutoDeploy).not.toMatch(/^\s*(pnpm|npx|drizzle-kit)/m);
   });
 });
