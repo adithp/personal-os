@@ -155,9 +155,9 @@ describe('noteTemplates.update', () => {
     await expect(run(alice(), 'noteTemplates.update', { id: a.id })).rejects.toBeInstanceOf(
       ZodError,
     );
-    await expect(run(alice(), 'noteTemplates.update', { id: 'nope', name: 'x' })).rejects.toBeInstanceOf(
-      ZodError,
-    );
+    await expect(
+      run(alice(), 'noteTemplates.update', { id: 'nope', name: 'x' }),
+    ).rejects.toBeInstanceOf(ZodError);
   });
 
   it('answers 404 for a missing, deleted or foreign template', async () => {

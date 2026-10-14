@@ -16,7 +16,14 @@ describe('N3 note schemas', () => {
   it('accepts real days only', () => {
     expect(dailyDateSchema.safeParse('2026-10-14').success).toBe(true);
     expect(dailyDateSchema.safeParse('2028-02-29').success).toBe(true);
-    for (const bad of ['2026-02-30', '2026-13-01', '26-10-14', '2026-1-1', '', '2026-10-14T00:00']) {
+    for (const bad of [
+      '2026-02-30',
+      '2026-13-01',
+      '26-10-14',
+      '2026-1-1',
+      '',
+      '2026-10-14T00:00',
+    ]) {
       expect(dailyDateSchema.safeParse(bad).success, bad).toBe(false);
     }
     expect(openDailyInput.parse({})).toEqual({});
@@ -30,11 +37,13 @@ describe('N3 note schemas', () => {
     });
     expect(createNoteTemplateInput.safeParse({ name: '' }).success).toBe(false);
     expect(createNoteTemplateInput.safeParse({ name: 'x'.repeat(81) }).success).toBe(false);
-    expect(createNoteTemplateInput.safeParse({ name: 'a', contentMd: 'x'.repeat(200_001) }).success).toBe(
-      false,
-    );
+    expect(
+      createNoteTemplateInput.safeParse({ name: 'a', contentMd: 'x'.repeat(200_001) }).success,
+    ).toBe(false);
     expect(updateNoteTemplateInput.safeParse({ id: uuid }).success).toBe(false);
-    expect(updateNoteTemplateInput.safeParse({ id: uuid, isDailyDefault: true }).success).toBe(true);
+    expect(updateNoteTemplateInput.safeParse({ id: uuid, isDailyDefault: true }).success).toBe(
+      true,
+    );
   });
 
   it('keeps the older shapes valid', () => {

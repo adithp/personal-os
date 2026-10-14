@@ -78,16 +78,21 @@ describe('login is required', () => {
     ['POST', `/note-templates/${MISSING}/restore`],
     ['DELETE', `/note-templates/${MISSING}`],
     ['POST', '/notes/daily'],
-  ])('%s %s answers 401 with no token, a stranger token, and an expired token', async (method, url) => {
-    const body = method === 'GET' ? undefined : {};
-    expect((await call(method as 'GET', url, {}, body)).statusCode).toBe(401);
-    const stranger = { authorization: `Bearer ${await keys.signWithUnknownKey({ sub: USER_ID })}` };
-    expect((await call(method as 'GET', url, stranger, body)).statusCode).toBe(401);
-    const expired = {
-      authorization: `Bearer ${await keys.sign({ sub: USER_ID, expiresIn: -60 })}`,
-    };
-    expect((await call(method as 'GET', url, expired, body)).statusCode).toBe(401);
-  });
+  ])(
+    '%s %s answers 401 with no token, a stranger token, and an expired token',
+    async (method, url) => {
+      const body = method === 'GET' ? undefined : {};
+      expect((await call(method as 'GET', url, {}, body)).statusCode).toBe(401);
+      const stranger = {
+        authorization: `Bearer ${await keys.signWithUnknownKey({ sub: USER_ID })}`,
+      };
+      expect((await call(method as 'GET', url, stranger, body)).statusCode).toBe(401);
+      const expired = {
+        authorization: `Bearer ${await keys.sign({ sub: USER_ID, expiresIn: -60 })}`,
+      };
+      expect((await call(method as 'GET', url, expired, body)).statusCode).toBe(401);
+    },
+  );
 });
 
 describe('/note-templates', () => {
@@ -112,7 +117,9 @@ describe('/note-templates', () => {
 
   it('answers 400 for bad input and a bad id', async () => {
     expect((await call('POST', '/note-templates', alice, { name: '' })).statusCode).toBe(400);
-    expect((await call('PATCH', '/note-templates/nope', alice, { name: 'x' })).statusCode).toBe(400);
+    expect((await call('PATCH', '/note-templates/nope', alice, { name: 'x' })).statusCode).toBe(
+      400,
+    );
     const a = await add('A');
     expect((await call('PATCH', `/note-templates/${a.item.id}`, alice, {})).statusCode).toBe(400);
   });
@@ -126,14 +133,14 @@ describe('/note-templates', () => {
 
   it('answers 404 for another user and keeps the data', async () => {
     const a = await add('A');
-    expect((await call('PATCH', `/note-templates/${a.item.id}`, bob, { name: 'X' })).statusCode).toBe(
-      404,
-    );
+    expect(
+      (await call('PATCH', `/note-templates/${a.item.id}`, bob, { name: 'X' })).statusCode,
+    ).toBe(404);
     expect((await call('DELETE', `/note-templates/${a.item.id}`, bob)).statusCode).toBe(404);
     expect((await call('POST', `/note-templates/${a.item.id}/restore`, bob)).statusCode).toBe(404);
-    expect((await call('PATCH', `/note-templates/${MISSING}`, alice, { name: 'X' })).statusCode).toBe(
-      404,
-    );
+    expect(
+      (await call('PATCH', `/note-templates/${MISSING}`, alice, { name: 'X' })).statusCode,
+    ).toBe(404);
     expect(
       (await call('GET', '/note-templates', bob)).json<{ items: Item[] }>().items,
     ).toHaveLength(0);

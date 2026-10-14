@@ -183,9 +183,9 @@ describe('parseTags', () => {
   });
 
   it('ignores URL fragments, wikilink headings and markdown link targets', () => {
-    expect(parseTags('see https://x.com/page#section and [[Note#Heading]] and [a](http://b/#c)')).toEqual(
-      [],
-    );
+    expect(
+      parseTags('see https://x.com/page#section and [[Note#Heading]] and [a](http://b/#c)'),
+    ).toEqual([]);
     expect(parseTags('https://x.com/#top #ok')).toEqual(['ok']);
   });
 
@@ -279,7 +279,8 @@ describe('applyTemplate', () => {
   });
 
   it('uses the India day just after midnight and just before it', () => {
-    const t = (iso: string) => applyTemplate('{{date}} {{time}}', { title: 'x', now: new Date(iso) });
+    const t = (iso: string) =>
+      applyTemplate('{{date}} {{time}}', { title: 'x', now: new Date(iso) });
     expect(t('2026-10-13T18:29:59Z')).toBe('2026-10-13 23:59');
     expect(t('2026-10-13T18:30:00Z')).toBe('2026-10-14 00:00');
     expect(t('2026-12-31T18:40:00Z')).toBe('2027-01-01 00:10');

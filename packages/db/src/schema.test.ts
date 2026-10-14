@@ -797,7 +797,10 @@ describe('note_templates', () => {
     await template(ALICE, 'Meeting');
     expect(await dbError(template(ALICE, 'meeting'))).toContain('note_templates_user_name_idx');
     await template(BOB, 'Meeting');
-    await t.db.update(noteTemplates).set({ deletedAt: new Date() }).where(eq(noteTemplates.userId, ALICE));
+    await t.db
+      .update(noteTemplates)
+      .set({ deletedAt: new Date() })
+      .where(eq(noteTemplates.userId, ALICE));
     await template(ALICE, 'MEETING');
   });
 
@@ -819,7 +822,10 @@ describe('note_templates', () => {
 
   it('lets a deleted template keep its flag without blocking a new default', async () => {
     await template(ALICE, 'Old', { isDailyDefault: true });
-    await t.db.update(noteTemplates).set({ deletedAt: new Date() }).where(eq(noteTemplates.name, 'Old'));
+    await t.db
+      .update(noteTemplates)
+      .set({ deletedAt: new Date() })
+      .where(eq(noteTemplates.name, 'Old'));
     await template(ALICE, 'New', { isDailyDefault: true });
   });
 
