@@ -10,4 +10,9 @@ export const noteKeys = {
   lists: [...NOTES_KEY, 'list'] as const,
   list: (filters: ListNotesInput) => [...NOTES_KEY, 'list', filters] as const,
   detail: (id: string) => [...NOTES_KEY, 'detail', id] as const,
+  // Under NOTES_KEY, so every write's refresh (and Realtime on `notes`) refreshes them too
+  titles: [...NOTES_KEY, 'titles'] as const,
+  /** Links of every note (invalidate after a save) or of one. */
+  allLinks: [...NOTES_KEY, 'links'] as const,
+  links: (id: string) => [...NOTES_KEY, 'links', id] as const,
 };

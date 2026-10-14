@@ -1,10 +1,14 @@
 import {
   FOLDER_DEPTH_MAX,
   NOTE_EXCERPT_MAX,
+  NOTE_CONTEXT_MAX,
   NOTE_LIST_LIMIT_DEFAULT,
   noteTitleSchema,
+  parseWikilinks,
+  rewriteWikilinks,
   type Note,
   type NoteFolder,
+  type NoteLinks,
   type UndoDescriptor,
 } from '@personal-os/shared';
 import { ApiError, type RequestOptions } from '../api/api-client';
@@ -216,7 +220,7 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
   const renameNote = (id: string, body: Record<string, unknown>) => {
     const current = findLive(id);
     const title = checkTitle(body.title);
-    if (title === current.title) return { item: current, undo: null, updatedNoteIds: [] };
+    if (title === current.title) return { item: { ...current, updatedNoteIds: [] }, undo: null };
     if (taken(title, id)) throw takenError();
     const next = {
       ...current,
@@ -225,11 +229,55 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
       updatedAt: new Date().toISOString(),
     };
     noteStore.set(id, next);
+    // Like the server: [[Old]] links in other live notes are rewritten
+    const updatedNoteIds: string[] = [];
+    for (const other of liveNotes()) {
+      if (other.id === id) continue;
+      const contentMd = rewriteWikilinks(other.contentMd, current.title, title);
+      if (contentMd === other.contentMd) continue;
+      noteStore.set(other.id, { ...other, contentMd, revision: other.revision + 1 });
+      updatedNoteIds.push(other.id);
+    }
     return {
-      item: next,
+      item: { ...next, updatedNoteIds },
       undo: { action: 'notes.rename', input: { id, title: current.title } },
-      updatedNoteIds: [],
     };
+  };
+
+  /** Titles for the `[[` menu. */
+  const titles = () => liveNotes().map(({ id, title }) => ({ id, title }));
+
+  /** Backlinks (with the line around the first link) and outgoing links, from the [[links]] in the text. */
+  const linksOf = (id: string): NoteLinks => {
+    const note = findLive(id);
+    const byTitle = new Map(liveNotes().map((n) => [n.title.toLowerCase(), n]));
+    const backlinks = liveNotes()
+      .filter(
+        (other) =>
+          other.id !== id &&
+          parseWikilinks(other.contentMd).some(
+            (link) => link.target.toLowerCase() === note.title.toLowerCase(),
+          ),
+      )
+      .map((other) => {
+        const line =
+          other.contentMd
+            .split('\n')
+            .find((text) => text.toLowerCase().includes(`[[${note.title.toLowerCase()}`)) ?? '';
+        return {
+          noteId: other.id,
+          title: other.title,
+          context: line.trim().slice(0, NOTE_CONTEXT_MAX),
+        };
+      });
+    const seen = new Set<string>();
+    const outgoing = parseWikilinks(note.contentMd).flatMap((link) => {
+      const key = link.target.toLowerCase();
+      if (seen.has(key) || key === note.title.toLowerCase()) return [];
+      seen.add(key);
+      return [{ target: link.target, noteId: byTitle.get(key)?.id ?? null }];
+    });
+    return { backlinks, outgoing };
   };
 
   const deleteNote = (id: string) => {
@@ -392,9 +440,11 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
       for (const note of trashed) noteStore.delete(note.id);
       return { item: { count: trashed.length }, undo: null };
     }
-    const noteRoute = /^\/notes\/([^/]+)(?:\/(rename|restore|forever))?$/.exec(path);
+    if (path === '/notes/titles' && method === 'GET') return { items: titles() };
+    const noteRoute = /^\/notes\/([^/]+)(?:\/(rename|restore|forever|links))?$/.exec(path);
     if (noteRoute) {
       const [, id = '', verb] = noteRoute;
+      if (method === 'GET' && verb === 'links') return { item: linksOf(id) };
       if (method === 'GET' && !verb) return { item: findLive(id) };
       if (method === 'PATCH' && !verb) return updateNote(id, body);
       if (method === 'POST' && verb === 'rename') return renameNote(id, body);

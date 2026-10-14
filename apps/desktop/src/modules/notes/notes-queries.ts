@@ -23,10 +23,9 @@ import { NOTE_FOLDERS_KEY, noteKeys, NOTES_KEY } from './query-keys';
 type Snapshot = [readonly unknown[], unknown][];
 
 interface WriteResult {
-  item: Note;
+  /** Rename only: `item.updatedNoteIds` lists the notes whose links were rewritten. */
+  item: Note & { updatedNoteIds?: string[] };
   undo: UndoDescriptor | null;
-  /** Rename only: the notes whose links were rewritten. */
-  updatedNoteIds?: string[];
 }
 
 const messageOf = (error: unknown) =>
@@ -178,9 +177,9 @@ export function useRenameNote() {
       });
       return { ...result, id };
     },
-    onSuccess: async ({ item, undo, updatedNoteIds, id }) => {
+    onSuccess: async ({ item, undo, id }) => {
       client.setQueryData(noteKeys.detail(id), item);
-      const others = (updatedNoteIds ?? []).filter((other) => other !== id).length;
+      const others = (item.updatedNoteIds ?? []).filter((other) => other !== id).length;
       offerUndo(
         others > 0
           ? `Renamed. Updated links in ${String(others)} ${others === 1 ? 'note' : 'notes'}.`

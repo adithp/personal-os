@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { useNoteFolders } from '../folders-queries';
 import { NoteList } from '../list/note-list';
 import { DEFAULT_PLACE, useNotesUi } from '../notes-ui-store';
+import { RightPanel } from '../right-panel/right-panel';
+import { useNarrowWindow } from '../right-panel/use-narrow-window';
 import { EditorSlot } from './editor-slot';
 import { NotesSidePanel } from './side-panel';
 import { useNotesNav } from './use-notes-nav';
@@ -15,6 +17,10 @@ export function NotesLayout() {
   const setPlace = useNotesUi((state) => state.setPlace);
   const folders = useNoteFolders();
   const { place, noteId, showPlace } = nav;
+  const rightPanelOpen = useNotesUi((state) => state.rightPanelOpen);
+  const narrow = useNarrowWindow();
+  // The panel needs an open note; below 1240 px it makes the side panel show icons only
+  const panelShown = rightPanelOpen && noteId !== null;
 
   // Opening Notes with no link returns to the last place
   useEffect(() => {
@@ -43,9 +49,10 @@ export function NotesLayout() {
 
   return (
     <div className="flex h-full min-h-0 gap-3 px-4 pt-4">
-      <NotesSidePanel />
+      <NotesSidePanel forceCollapsed={panelShown && narrow} />
       <NoteList key={place} />
       <EditorSlot noteId={noteId} />
+      {panelShown && noteId ? <RightPanel key={noteId} noteId={noteId} /> : null}
     </div>
   );
 }
