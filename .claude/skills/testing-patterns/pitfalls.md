@@ -97,3 +97,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: Vitest converts module formats; real Node cannot import the named exports of a CommonJS package from an ES module
 - Fix: load rrule with createRequire in recurrence.ts
 - Prevention: guarded, apps/server/src/startup-imports.test.ts imports every action and route in real Node with tsx; also start the server once before reporting a feature done
+
+### 2026-10-14: Mock hooks with their real return shape; TipTap setEditable emits update
+- Symptom: The editor pane passed its tests but read the wrong shape from useRenameNote (a bare note instead of { item }); opening a note sent a PATCH
+- Cause: The test mocked the hook with a made-up shape; editor.setEditable(x) emits an update event by default
+- Fix: Type hook mocks with the real return types; call setEditable(x, false)
+- Prevention: guarded, notes editor tests

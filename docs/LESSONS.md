@@ -74,3 +74,5 @@ Every time something cost a retry or a fix, we record it here so it never happen
 | 2026-10-13 | testing-patterns | Vitest passed but the real server crashed on a CommonJS named import (rrule) | guarded | apps/server/src/startup-imports.test.ts |
 | 2026-10-14 | new-action | Move links must not delete links to deleted goals; limits need the lock helper | guarded | apps/server/src/actions/goals.test.ts |
 | 2026-10-14 | db-change | New tables need explicit privileges (Supabase stops auto-granting on 30 Oct 2026) | documented | db-change pitfalls; docs/design/research/realtime.md |
+| 2026-10-14 | ui-design-system | A fixed overlay inside a glass panel needs a portal | guarded | apps/desktop/src/modules/notes/list/confirm-dialog.tsx |
+| 2026-10-14 | testing-patterns | Mock hooks with their real return shape; TipTap setEditable emits update | guarded | apps/desktop/src/modules/notes/editor/note-editor-pane.test.tsx |

@@ -49,3 +49,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: The React Compiler lint treats values from a useSortable-style hook as refs
 - Fix: Wrap useSortable in a hook that returns an explicit interface and pass it as an optional prop (drag?: ...) to the view component
 - Prevention: documented, ui-design-system pitfalls
+
+### 2026-10-14: A fixed overlay inside a glass panel needs a portal
+- Symptom: A confirm dialog covered only its own card instead of the page
+- Cause: .glass sets backdrop-filter, which makes the panel the containing block for position: fixed children; jsdom has no CSS so tests passed
+- Fix: Render dialogs and help overlays with createPortal(document.body)
+- Prevention: guarded, test that the dialog parent is document.body
