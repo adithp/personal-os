@@ -7,6 +7,7 @@ import {
   links,
   noteFolders,
   noteTemplates,
+  noteVersions,
   notes,
   taskFavorites,
   tasks,
@@ -88,6 +89,7 @@ describe('the generated migrations', () => {
       '0013_notes_triggers.sql',
       '0014_note_templates_and_daily.sql',
       '0015_note_templates_triggers.sql',
+      '0016_note_versions.sql',
     ]);
     const all = migrationFiles().flatMap(migrationStatements).join('\n').toUpperCase();
     for (const dangerous of [
@@ -112,6 +114,7 @@ describe('the generated migrations', () => {
       'links',
       'note_folders',
       'note_templates',
+      'note_versions',
       'notes',
       'tags',
       'task_favorites',
@@ -252,6 +255,7 @@ describe('Row Level Security is on, with an own-rows policy', () => {
       'links',
       'note_folders',
       'note_templates',
+      'note_versions',
       'notes',
       'tags',
       'task_favorites',
@@ -778,6 +782,94 @@ describe('notes and note folders', () => {
     // A trashed daily note frees the day
     await t.db.update(notes).set({ deletedAt: new Date() }).where(eq(notes.id, first.id));
     await daily(ALICE, '2026-10-14 (daily)', '2026-10-14');
+  });
+});
+
+describe('note_versions', () => {
+  async function noteWithId(userId: string, title: string) {
+    const [e] = await t.db.insert(entities).values({ userId, type: 'note', title }).returning();
+    if (!e) throw new Error('insert failed');
+    await t.db.insert(notes).values({ id: e.id, userId, title });
+    return e.id;
+  }
+  const version = (userId: string, noteId: string, extra = {}) =>
+    t.db
+      .insert(noteVersions)
+      .values({ userId, noteId, title: 'T', contentMd: 'old text', reason: 'auto', ...extra })
+      .returning();
+
+  it('stores a version, with no updated_at or deleted_at column', async () => {
+    const noteId = await noteWithId(ALICE, 'Plan');
+    const [row] = await version(ALICE, noteId);
+    expect(row).toMatchObject({ noteId, title: 'T', contentMd: 'old text', reason: 'auto' });
+    const columns = await rows(
+      "select column_name from information_schema.columns where table_name = 'note_versions' order by column_name",
+    );
+    expect(columns.map((c) => c.column_name)).toEqual([
+      'content_md',
+      'created_at',
+      'id',
+      'note_id',
+      'reason',
+      'title',
+      'user_id',
+    ]);
+  });
+
+  it('accepts the three reasons and refuses any other', async () => {
+    const noteId = await noteWithId(ALICE, 'Plan');
+    await version(ALICE, noteId, { reason: 'before_restore' });
+    await version(ALICE, noteId, { reason: 'conflict' });
+    expect(await dbError(version(ALICE, noteId, { reason: 'manual' }))).toContain(
+      'note_versions_reason_check',
+    );
+  });
+
+  it('refuses a note of another user', async () => {
+    const bobsNote = await noteWithId(BOB, 'Theirs');
+    expect(await dbError(version(ALICE, bobsNote))).toContain('note_versions_note_fk');
+  });
+
+  it('is removed with the note when it is purged, and with the user', async () => {
+    const first = await noteWithId(ALICE, 'One');
+    const second = await noteWithId(ALICE, 'Two');
+    await version(ALICE, first);
+    await version(ALICE, first);
+    await version(ALICE, second);
+    await t.db.delete(notes).where(eq(notes.id, first));
+    expect((await t.db.select().from(noteVersions)).map((r) => r.noteId)).toEqual([second]);
+    await t.db.execute(sql`delete from auth.users where id = ${ALICE}`);
+    expect(await t.db.select().from(noteVersions)).toHaveLength(0);
+  });
+
+  it('has the (note_id, created_at desc) index', async () => {
+    const [index] = await rows(
+      "select indexdef from pg_indexes where indexname = 'note_versions_note_created_idx'",
+    );
+    expect(String(index?.indexdef)).toMatch(/\(note_id, created_at DESC/);
+  });
+
+  it('lets a user see and write only their own versions', async () => {
+    const mine = await noteWithId(ALICE, 'Mine');
+    const theirs = await noteWithId(BOB, 'Theirs');
+    await version(ALICE, mine, { contentMd: 'mine' });
+    await version(BOB, theirs, { contentMd: 'theirs' });
+    expect(
+      (await asRole(t.db, ALICE, (tx) => tx.select().from(noteVersions))).map((r) => r.contentMd),
+    ).toEqual(['mine']);
+    expect(
+      await dbError(
+        asRole(t.db, ALICE, (tx) =>
+          tx
+            .insert(noteVersions)
+            .values({ userId: BOB, noteId: theirs, title: 'T', contentMd: 'x', reason: 'auto' }),
+        ),
+      ),
+    ).not.toBe('');
+  });
+
+  it('is not published to Realtime', () => {
+    expect(REALTIME_TABLES).not.toContain('note_versions');
   });
 });
 

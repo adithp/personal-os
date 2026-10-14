@@ -8,6 +8,7 @@ import { favoriteRoutes } from './favorites';
 import { goalRoutes } from './goals';
 import { noteDailyRoutes } from './note-daily';
 import { noteTemplateRoutes } from './note-templates';
+import { noteVersionRoutes } from './note-versions';
 import { noteRoutes } from './notes';
 import { searchRoutes } from './search';
 import { tagRoutes } from './tags';
@@ -50,6 +51,8 @@ export const v1Routes: FastifyPluginAsync<V1Options> = async (app, { verifier, d
       searchRoutes(protectedApp, { db, registry });
       // Before noteRoutes so /notes/daily is never read as a note id
       noteDailyRoutes(protectedApp, { db, registry });
+      // Before noteRoutes so the /notes/:id/... patterns never swallow the version routes
+      noteVersionRoutes(protectedApp, { db, registry });
       noteRoutes(protectedApp, { db, registry });
       noteTemplateRoutes(protectedApp, { db, registry });
       undoRoutes(protectedApp, { db, registry });

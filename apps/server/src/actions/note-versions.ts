@@ -1,7 +1,8 @@
 import type { NoteRow } from '@personal-os/db';
+import type { NoteVersionReason } from '@personal-os/shared';
 import type { UserScope } from '../lib/user-scope';
 
-export type NoteVersionReason = 'auto' | 'before_restore' | 'conflict';
+export type { NoteVersionReason };
 
 /**
  * Version hook that notes.ts already calls with the note as it was BEFORE a content save (memo

@@ -4,12 +4,15 @@ import {
   countWords,
   excerptOf,
   indiaDay,
+  LINE_DIFF_MAX_CELLS,
+  lineDiff,
   markdownToPlainText,
   parseTags,
   parseWikilinks,
   rewriteTag,
   rewriteWikilinks,
   unescapeMarkdown,
+  wordsDelta,
 } from './note-text';
 
 describe('unescapeMarkdown', () => {
@@ -316,5 +319,104 @@ describe('indiaDay', () => {
   it('is the India calendar day of an instant', () => {
     expect(indiaDay(new Date('2026-10-13T18:29:59Z'))).toBe('2026-10-13');
     expect(indiaDay(new Date('2026-10-13T18:30:00Z'))).toBe('2026-10-14');
+  });
+});
+
+describe('lineDiff (stage N4)', () => {
+  const same = (text: string) => ({ type: 'same', text });
+  const add = (text: string) => ({ type: 'add', text });
+  const remove = (text: string) => ({ type: 'remove', text });
+
+  /** Rebuilds the old and the new text from a diff. */
+  const sides = (diff: ReturnType<typeof lineDiff>) => ({
+    old: diff.filter((d) => d.type !== 'add').map((d) => d.text),
+    new: diff.filter((d) => d.type !== 'remove').map((d) => d.text),
+  });
+
+  it('is empty for two empty texts', () => {
+    expect(lineDiff('', '')).toEqual([]);
+  });
+
+  it('adds every line when the old text is empty, removes every line when the new one is', () => {
+    expect(lineDiff('', 'a\nb')).toEqual([add('a'), add('b')]);
+    expect(lineDiff('a\nb', '')).toEqual([remove('a'), remove('b')]);
+  });
+
+  it('marks identical texts as all unchanged', () => {
+    expect(lineDiff('a\nb\nc', 'a\nb\nc')).toEqual([same('a'), same('b'), same('c')]);
+  });
+
+  it('marks fully different texts as removed then added', () => {
+    expect(lineDiff('a\nb', 'x\ny\nz')).toEqual([
+      remove('a'),
+      remove('b'),
+      add('x'),
+      add('y'),
+      add('z'),
+    ]);
+  });
+
+  it('finds an added, a removed and a changed line in the middle', () => {
+    expect(lineDiff('a\nb\nc', 'a\nb\nx\nc')).toEqual([same('a'), same('b'), add('x'), same('c')]);
+    expect(lineDiff('a\nb\nc', 'a\nc')).toEqual([same('a'), remove('b'), same('c')]);
+    expect(lineDiff('a\nb\nc', 'a\nB\nc')).toEqual([same('a'), remove('b'), add('B'), same('c')]);
+  });
+
+  it('keeps unchanged lines between changes (a real LCS, not just a trim)', () => {
+    const diff = lineDiff('1\n2\n3\n4\n5', '2\n3\nx\n5\n6');
+    expect(diff.filter((d) => d.type === 'same').map((d) => d.text)).toEqual(['2', '3', '5']);
+    expect(sides(diff)).toEqual({ old: ['1', '2', '3', '4', '5'], new: ['2', '3', 'x', '5', '6'] });
+  });
+
+  it('treats a blank line as a line, and \\r\\n like \\n', () => {
+    expect(lineDiff('a\n\nb', 'a\nb')).toEqual([same('a'), remove(''), same('b')]);
+    expect(lineDiff('a\r\nb', 'a\nb')).toEqual([same('a'), same('b')]);
+  });
+
+  it('handles repeated lines', () => {
+    const diff = lineDiff('a\na\na', 'a\na');
+    expect(diff.filter((d) => d.type === 'same')).toHaveLength(2);
+    expect(diff.filter((d) => d.type === 'remove')).toHaveLength(1);
+  });
+
+  it('diffs a few thousand lines exactly', () => {
+    const old = Array.from({ length: 3000 }, (_, i) => `line ${i}`);
+    const next = [...old];
+    next.splice(1500, 1);
+    next.splice(100, 0, 'new line');
+    next[2000] = 'changed';
+    const diff = lineDiff(old.join('\n'), next.join('\n'));
+    expect(sides(diff)).toEqual({ old, new: next });
+    expect(diff.filter((d) => d.type === 'add').map((d) => d.text)).toEqual([
+      'new line',
+      'changed',
+    ]);
+    expect(diff.filter((d) => d.type === 'remove')).toHaveLength(2);
+  });
+
+  it('falls back to a coarse diff on huge inputs, still keeping the shared start and end', () => {
+    const size = Math.ceil(Math.sqrt(LINE_DIFF_MAX_CELLS)) + 50;
+    const middleA = Array.from({ length: size }, (_, i) => `a${i}`);
+    const middleB = Array.from({ length: size }, (_, i) => `b${i}`);
+    const diff = lineDiff(
+      ['top', ...middleA, 'bottom'].join('\n'),
+      ['top', ...middleB, 'bottom'].join('\n'),
+    );
+    expect(diff[0]).toEqual(same('top'));
+    expect(diff[diff.length - 1]).toEqual(same('bottom'));
+    expect(diff.filter((d) => d.type === 'remove')).toHaveLength(size);
+    expect(diff.filter((d) => d.type === 'add')).toHaveLength(size);
+    // Removed lines come before added lines
+    expect(diff[1]?.type).toBe('remove');
+    expect(diff[size + 1]?.type).toBe('add');
+  });
+});
+
+describe('wordsDelta', () => {
+  it('is the new word count minus the old one', () => {
+    expect(wordsDelta('', 'one two three')).toBe(3);
+    expect(wordsDelta('one two three', 'one')).toBe(-2);
+    expect(wordsDelta('same words', 'same words')).toBe(0);
+    expect(wordsDelta('', '')).toBe(0);
   });
 });

@@ -71,6 +71,89 @@ export function excerptOf(plainText: string, max = 140): string {
   return `${(space > max * 0.6 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }
 
+// ---- version history (stage N4, memo notes.md D13) ----
+
+/** One line of a line diff: unchanged, only in the new text (add), or only in the old text (remove). */
+export interface DiffLine {
+  type: 'same' | 'add' | 'remove';
+  text: string;
+}
+
+/** Above this many table cells ((old lines + 1) times (new lines + 1)) lineDiff uses the coarse diff. */
+export const LINE_DIFF_MAX_CELLS = 4_000_000;
+
+function splitLines(text: string): string[] {
+  return text === '' ? [] : text.split(/\r?\n/);
+}
+
+/**
+ * A line diff from `a` (old) to `b` (new), in reading order. Lines are split on \n or \r\n; an
+ * empty text has no lines. The shared start and end lines are trimmed first; the middle uses a
+ * longest common subsequence on lines. When the middle is too big (more than LINE_DIFF_MAX_CELLS
+ * table cells) it falls back to a coarse diff: the whole old middle is removed, then the whole new
+ * middle is added.
+ */
+export function lineDiff(a: string, b: string): DiffLine[] {
+  const x = splitLines(a);
+  const y = splitLines(b);
+
+  let start = 0;
+  while (start < x.length && start < y.length && x[start] === y[start]) start++;
+  let endX = x.length;
+  let endY = y.length;
+  while (endX > start && endY > start && x[endX - 1] === y[endY - 1]) {
+    endX--;
+    endY--;
+  }
+
+  const out: DiffLine[] = [];
+  for (let i = 0; i < start; i++) out.push({ type: 'same', text: x[i] as string });
+
+  const n = endX - start;
+  const m = endY - start;
+  if (n === 0 || m === 0 || (n + 1) * (m + 1) > LINE_DIFF_MAX_CELLS) {
+    for (let i = start; i < endX; i++) out.push({ type: 'remove', text: x[i] as string });
+    for (let j = start; j < endY; j++) out.push({ type: 'add', text: y[j] as string });
+  } else {
+    // table[i][j] = length of the longest common subsequence of x[start+i..] and y[start+j..]
+    const width = m + 1;
+    const table = new Uint32Array((n + 1) * width);
+    for (let i = n - 1; i >= 0; i--) {
+      for (let j = m - 1; j >= 0; j--) {
+        table[i * width + j] =
+          x[start + i] === y[start + j]
+            ? (table[(i + 1) * width + j + 1] as number) + 1
+            : Math.max(table[(i + 1) * width + j] as number, table[i * width + j + 1] as number);
+      }
+    }
+    let i = 0;
+    let j = 0;
+    while (i < n && j < m) {
+      if (x[start + i] === y[start + j]) {
+        out.push({ type: 'same', text: x[start + i] as string });
+        i++;
+        j++;
+      } else if ((table[(i + 1) * width + j] as number) >= (table[i * width + j + 1] as number)) {
+        out.push({ type: 'remove', text: x[start + i] as string });
+        i++;
+      } else {
+        out.push({ type: 'add', text: y[start + j] as string });
+        j++;
+      }
+    }
+    for (; i < n; i++) out.push({ type: 'remove', text: x[start + i] as string });
+    for (; j < m; j++) out.push({ type: 'add', text: y[start + j] as string });
+  }
+
+  for (let i = endX; i < x.length; i++) out.push({ type: 'same', text: x[i] as string });
+  return out;
+}
+
+/** Words added (positive) or removed (negative): countWords(next) minus countWords(previous). */
+export function wordsDelta(previous: string, next: string): number {
+  return countWords(next) - countWords(previous);
+}
+
 // ---- wikilinks (stage N2, memo notes.md D6, D8, D9) ----
 
 export interface Wikilink {

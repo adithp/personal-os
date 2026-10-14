@@ -6,6 +6,7 @@ import { noteLinkImplementations } from './note-link-actions';
 import { noteFolderImplementations } from './note-folders';
 import { noteDailyImplementations } from './note-daily';
 import { noteTemplateImplementations } from './note-templates';
+import { noteVersionImplementations } from './note-version-actions';
 import { noteImplementations } from './notes';
 import { recurrenceImplementations } from './recurrence';
 import { searchImplementations } from './search';
@@ -36,6 +37,7 @@ export function createRegistry(observers: readonly ActionObserver[] = []): Actio
       ...noteLinkImplementations,
       ...noteTemplateImplementations,
       ...noteDailyImplementations,
+      ...noteVersionImplementations,
     ],
     observers,
   );

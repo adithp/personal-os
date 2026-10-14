@@ -1,12 +1,15 @@
 import { sql } from 'drizzle-orm';
+import { authUsers } from 'drizzle-orm/supabase';
 import {
   boolean,
+  check,
   date,
   foreignKey,
   index,
   integer,
   pgTable,
   text,
+  timestamp,
   unique,
   uniqueIndex,
   uuid,
@@ -116,6 +119,42 @@ export const noteTemplates = pgTable(
   ],
 ).enableRLS();
 
+/**
+ * A saved version of a note (memo D3, D13), stage N4: the title and text as they were at a moment.
+ * Rows are only added and deleted (the newest 50 per note are kept), never changed or soft-deleted,
+ * so there are no updated_at and deleted_at columns. They go with the note when it is purged.
+ * Not shown live, so the table is not in REALTIME_TABLES.
+ */
+export const noteVersions = pgTable(
+  'note_versions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => authUsers.id, { onDelete: 'cascade' }),
+    noteId: uuid('note_id').notNull(),
+    title: text('title').notNull(),
+    contentMd: text('content_md').notNull(),
+    /** `auto` (start of an editing session), `before_restore`, or `conflict` (their text, before "Keep mine"). */
+    reason: text('reason').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      name: 'note_versions_note_fk',
+      columns: [table.noteId, table.userId],
+      foreignColumns: [notes.id, notes.userId],
+    }).onDelete('cascade'),
+    check(
+      'note_versions_reason_check',
+      sql`${table.reason} in ('auto', 'before_restore', 'conflict')`,
+    ),
+    index('note_versions_note_created_idx').on(table.noteId, table.createdAt.desc()),
+    ownRowsPolicy('note_versions', table.userId),
+  ],
+).enableRLS();
+
 export type NoteRow = typeof notes.$inferSelect;
+export type NoteVersionRow = typeof noteVersions.$inferSelect;
 export type NoteTemplateRow = typeof noteTemplates.$inferSelect;
 export type NoteFolderRow = typeof noteFolders.$inferSelect;

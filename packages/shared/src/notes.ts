@@ -346,6 +346,66 @@ export const noteDailyActions = {
   }),
 } as const;
 
+// ---- stage N4: version history (memo notes.md D13, D18) ----
+
+/** At most this many versions are kept per note; older ones are deleted when a new one is added. */
+export const NOTE_VERSIONS_KEEP = 50;
+/** A content save stores an `auto` version only when the newest version is older than this (or none exists). */
+export const NOTE_SNAPSHOT_GAP_MINUTES = 10;
+
+export const NOTE_VERSION_REASONS = ['auto', 'before_restore', 'conflict'] as const;
+export type NoteVersionReason = (typeof NOTE_VERSION_REASONS)[number];
+
+/**
+ * A version in the History list (no text). `words` = words in that version's text; `wordsDelta` =
+ * words of that version minus words of the next older version (the oldest has the delta against an
+ * empty text, so it equals its `words`). The History tab shows it as "+120 / −8 words".
+ */
+export const noteVersionSummarySchema = z.object({
+  id,
+  createdAt: isoTime,
+  reason: z.enum(NOTE_VERSION_REASONS),
+  words: z.number().int().min(0),
+  wordsDelta: z.number().int(),
+});
+export type NoteVersionSummary = z.infer<typeof noteVersionSummarySchema>;
+
+/** One version with its text (the note's title and Markdown as they were when it was stored). */
+export const noteVersionSchema = noteVersionSummarySchema.extend({
+  title: z.string(),
+  contentMd: z.string(),
+});
+export type NoteVersion = z.infer<typeof noteVersionSchema>;
+
+export const noteVersionInput = z.object({ id, versionId: id });
+
+export const noteVersionActions = {
+  versions: defineAction({
+    name: 'notes.versions',
+    description:
+      'List the saved versions of a note, newest first (id, time, reason, word counts; no text).',
+    permission: 'read',
+    input: noteIdInput,
+    // Output: NoteVersionSummary[] (404 not_found when the note does not exist; works for trashed notes)
+  }),
+  getVersion: defineAction({
+    name: 'notes.getVersion',
+    description: 'Get one saved version of a note with its title and Markdown text.',
+    permission: 'read',
+    input: noteVersionInput,
+    // Output: NoteVersion (404 not_found when the note or the version does not exist)
+  }),
+  restoreVersion: defineAction({
+    name: 'notes.restoreVersion',
+    description:
+      'Put an older version of the text back. The current text is first saved as a version; the title is not changed.',
+    permission: 'write',
+    input: noteVersionInput,
+    // Output: Note (the updated note, revision +1). Undo: notes.restoreVersion of the new
+    // before_restore version. 404 not_found when the note (live only) or the version is missing.
+  }),
+} as const;
+
 export const noteLinkActions = {
   titles: defineAction({
     name: 'notes.titles',
