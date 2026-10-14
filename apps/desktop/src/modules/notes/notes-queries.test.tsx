@@ -143,6 +143,22 @@ describe('useRenameNote', () => {
     expect(useToasts.getState().toasts[0]?.action?.label).toBe('Undo');
   });
 
+  it('says how many other notes had their links updated', async () => {
+    const note = makeNote({ title: 'Before' });
+    const one = makeNote({ title: 'One', contentMd: 'see [[before]]' });
+    const two = makeNote({ title: 'Two', contentMd: '[[Before|x]] and [[Before#h]]' });
+    const fake = createFakeApi([], [], [], [], [note, one, two]);
+    const { result } = renderHook(() => useRenameNote(), { wrapper: setup(fake).wrapper });
+    let renamed: Awaited<ReturnType<typeof result.current.mutateAsync>> | undefined;
+    await act(async () => {
+      renamed = await result.current.mutateAsync({ id: note.id, title: 'After' });
+    });
+    expect(renamed?.item.updatedNoteIds).toEqual([one.id, two.id]);
+    expect(useToasts.getState().toasts[0]).toMatchObject({
+      message: 'Renamed. Updated links in 2 notes.',
+    });
+  });
+
   it('refuses a title that exists (ignoring case) and leaves the message to the title field', async () => {
     const one = makeNote({ title: 'Plan' });
     const two = makeNote({ title: 'Other' });

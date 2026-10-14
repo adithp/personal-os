@@ -101,8 +101,9 @@ function PlaceRow({
 }
 
 /** The slim, collapsible navigation inside the Notes page. */
-export function NotesSidePanel() {
-  const collapsed = useNotesUi((state) => state.sidePanelCollapsed);
+export function NotesSidePanel({ forceCollapsed = false }: { forceCollapsed?: boolean }) {
+  // Icons only while the right panel crowds a narrow window (the saved choice is not changed)
+  const collapsed = useNotesUi((state) => state.sidePanelCollapsed) || forceCollapsed;
   const toggle = useNotesUi((state) => state.toggleSidePanel);
   const nav = useNotesNav();
   const folders = useNoteFolders();
