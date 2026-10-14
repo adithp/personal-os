@@ -1,14 +1,18 @@
-import type { Note } from '@personal-os/shared';
+import type { Note, NoteTitle } from '@personal-os/shared';
 import { Button } from '@personal-os/ui';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../../api/api-client';
-import { useNote, useRenameNote, useUpdateNote } from '../notes-queries';
+import { useNoteTitles } from '../links-queries';
+import { useCreateNote, useNote, useRenameNote, useUpdateNote } from '../notes-queries';
+import { RightPanelToggle, registerHeadingJump } from '../right-panel';
+import { useNotesNav } from '../shell/use-notes-nav';
 import { editedLabel } from './edited-label';
 import { createNoteExtensions } from './extensions';
 import './note-editor.css';
 import { serializeNote } from './serialize';
 import { readDraft, useAutosave, type SaveFn, type SaveStatus } from './use-autosave';
+import { refreshWikilinks } from './wikilink/wikilink';
 import { onWindowCloseFlush } from './window-close';
 
 const STATUS_TEXT: Record<SaveStatus, string> = {
@@ -58,6 +62,31 @@ export function NoteEditorPane({ noteId }: { noteId: string }) {
   return <NoteEditor key={noteId} note={query.data} refetch={query.refetch} />;
 }
 
+/** The wikilink options for one editor, plus the setters that keep them current. */
+function createLinkBridge() {
+  let ids = new Map<string, string>();
+  let titles: NoteTitle[] = [];
+  let open: (title: string) => void = () => undefined;
+  const idOf = (title: string) => ids.get(title.trim().toLowerCase());
+  return {
+    options: {
+      resolve: (title: string) => idOf(title) ?? null,
+      getTitles: () => titles,
+      onOpen: (title: string) => {
+        open(title);
+      },
+    },
+    idOf,
+    setTitles(next: NoteTitle[]) {
+      titles = next;
+      ids = new Map(next.map((item) => [item.title.toLowerCase(), item.id]));
+    },
+    setOpen(next: (title: string) => void) {
+      open = next;
+    },
+  };
+}
+
 interface NoteEditorProps {
   note: Note;
   refetch: () => Promise<{ data?: Note }>;
@@ -71,6 +100,14 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
   const editorRef = useRef<ReturnType<typeof useEditor>>(null);
   // The text this editor last loaded, sent or took from the server (see the revision effect)
   const knownContent = useRef(note.contentMd);
+  // The highest revision this editor has seen or caused: only a higher one is news from elsewhere
+  const seenRevision = useRef(note.revision);
+  const nav = useNotesNav();
+  const createNote = useCreateNote();
+  const titles = useNoteTitles().data;
+  // The wikilink callbacks are created once; they read the latest values through this bridge
+  const [bridge] = useState(createLinkBridge);
+  const [extensions] = useState(() => createNoteExtensions(bridge.options));
 
   const save: SaveFn = async (markdown, baseRevision, options) => {
     knownContent.current = markdown;
@@ -81,6 +118,7 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
         contentMd: markdown,
         ...(options?.force ? { force: true } : {}),
       });
+      seenRevision.current = Math.max(seenRevision.current, saved.revision);
       setEditedAt(saved.updatedAt);
       return { revision: saved.revision };
     } catch (error) {
@@ -101,6 +139,7 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
       const theirs = (await refetch()).data;
       if (!theirs) return false;
       knownContent.current = theirs.contentMd;
+      seenRevision.current = Math.max(seenRevision.current, theirs.revision);
       editorRef.current?.commands.setContent(theirs.contentMd, {
         contentType: 'markdown',
         emitUpdate: false,
@@ -111,18 +150,10 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
     },
   });
 
-  // Something else raised the revision without changing the text (a rename, or its undo from the
-  // toast): follow it, so the next save is not a false conflict. A changed text is a real edit from
-  // another device, so that stays a conflict for the server to report.
-  const { setRevision } = autosave;
-  useEffect(() => {
-    if (note.contentMd === knownContent.current) setRevision(note.revision);
-  }, [note.revision, note.contentMd, setRevision]);
-
   const readOnly = note.deletedAt !== null || autosave.gone;
 
   const editor = useEditor({
-    extensions: createNoteExtensions(),
+    extensions,
     content: note.contentMd,
     contentType: 'markdown',
     editable: note.deletedAt === null,
@@ -141,6 +172,73 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
     // false: do not report it as an edit (that would save an unchanged note)
     editor.setEditable(!readOnly, false);
   }, [editor, readOnly]);
+
+  // Links: the latest titles for the callbacks, and a new look at every link when they change
+  useEffect(() => {
+    bridge.setTitles(titles ?? []);
+    if (!editor.isDestroyed) refreshWikilinks(editor);
+  }, [bridge, editor, titles]);
+  const { folderId } = note;
+  const { openNote } = nav;
+  useEffect(() => {
+    bridge.setOpen((title) => {
+      const id = bridge.idOf(title);
+      if (id) {
+        openNote(id);
+        return;
+      }
+      // A link to a note that does not exist yet creates it next to this one
+      createNote.mutateAsync({ title, folderId }).then(
+        (created) => {
+          openNote(created.id);
+        },
+        () => undefined, // the hook already showed the message
+      );
+    });
+  });
+
+  // The Outline tab asks for the i-th heading (H1 to H3, in document order, empty ones skipped)
+  useEffect(
+    () =>
+      registerHeadingJump((index) => {
+        let seen = 0;
+        let target = -1;
+        editor.state.doc.descendants((node, pos) => {
+          if (target >= 0) return false;
+          if (node.type.name === 'heading' && node.textContent.trim() !== '') {
+            if (seen === index) target = pos;
+            seen += 1;
+          }
+          return true;
+        });
+        if (target < 0) return;
+        editor
+          .chain()
+          .focus()
+          .setTextSelection(target + 1)
+          .scrollIntoView()
+          .run();
+      }),
+    [editor],
+  );
+
+  // A new revision from elsewhere (another device, a rename, an undo). Same text: just follow the
+  // revision. New text and nothing unsaved: load it quietly. New text over unsaved edits: ask.
+  const { setRevision, hasPending, markConflict } = autosave;
+  useEffect(() => {
+    if (note.revision <= seenRevision.current) return;
+    seenRevision.current = note.revision;
+    if (note.contentMd === knownContent.current) {
+      setRevision(note.revision);
+    } else if (hasPending()) {
+      markConflict(note.revision);
+    } else {
+      knownContent.current = note.contentMd;
+      // emitUpdate false: loading the server's text is not an edit to save
+      editor.commands.setContent(note.contentMd, { contentType: 'markdown', emitUpdate: false });
+      setRevision(note.revision);
+    }
+  }, [editor, note.revision, note.contentMd, setRevision, hasPending, markConflict]);
 
   // Unsent text from an earlier session
   useEffect(() => {
@@ -172,7 +270,7 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-10 shrink-0 items-center justify-end px-6">
+      <div className="flex h-10 shrink-0 items-center justify-end gap-2 px-6">
         {autosave.gone ? (
           <span className="text-small text-danger" role="alert">
             {GONE_TEXT}
@@ -185,6 +283,7 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
           // Saving and Saved are only for the eyes; a screen reader hears only the failure
           <span className="text-small text-fg-muted">{STATUS_TEXT[autosave.status]}</span>
         )}
+        <RightPanelToggle />
       </div>
       {autosave.conflict ? (
         <div
@@ -223,6 +322,7 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
             autosave.pause();
             try {
               const { item: renamed } = await rename.mutateAsync({ id: note.id, title });
+              seenRevision.current = Math.max(seenRevision.current, renamed.revision);
               setEditedAt(renamed.updatedAt);
             } finally {
               autosave.resume();
@@ -233,7 +333,8 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
         <EditorContent editor={editor} className="pb-6" />
       </div>
       <p className="shrink-0 px-6 py-2 text-small text-fg-muted">
-        {words === 1 ? '1 word' : `${String(words)} words`} · {editedLabel(editedAt, now)}
+        {words === 1 ? '1 word' : `${String(words)} words`} ·{' '}
+        {editedLabel(note.updatedAt > editedAt ? note.updatedAt : editedAt, now)}
       </p>
     </div>
   );

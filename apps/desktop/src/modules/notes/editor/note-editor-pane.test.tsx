@@ -3,13 +3,17 @@ import type { Editor } from '@tiptap/core';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../../api/api-client';
+import { jumpToHeading } from '../right-panel';
 import { NoteEditorPane } from './note-editor-pane';
 
 const mocks = vi.hoisted(() => ({
   note: undefined as Note | undefined,
+  titles: [] as { id: string; title: string }[],
   update: vi.fn(),
   rename: vi.fn(),
+  create: vi.fn(),
   refetch: vi.fn(),
+  openNote: vi.fn(),
 }));
 
 vi.mock('../notes-queries', () => ({
@@ -21,6 +25,13 @@ vi.mock('../notes-queries', () => ({
   }),
   useUpdateNote: () => ({ mutateAsync: mocks.update }),
   useRenameNote: () => ({ mutateAsync: mocks.rename }),
+  useCreateNote: () => ({ mutateAsync: mocks.create }),
+}));
+vi.mock('../links-queries', () => ({
+  useNoteTitles: () => ({ data: mocks.titles, isPending: false, isError: false }),
+}));
+vi.mock('../shell/use-notes-nav', () => ({
+  useNotesNav: () => ({ noteId: null, place: 'all', openNote: mocks.openNote }),
 }));
 
 vi.mock('@tauri-apps/api/window', () => ({ getCurrentWindow: vi.fn() }));
@@ -71,6 +82,9 @@ beforeEach(() => {
   mocks.update.mockReset();
   mocks.rename.mockReset();
   mocks.refetch.mockReset();
+  mocks.create.mockReset();
+  mocks.openNote.mockReset();
+  mocks.titles = [];
   mocks.update.mockImplementation((input: UpdateNoteInput) =>
     Promise.resolve(makeNote({ revision: input.baseRevision + 1, contentMd: input.contentMd })),
   );
@@ -178,13 +192,53 @@ describe('NoteEditorPane', () => {
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ baseRevision: 4 }));
   });
 
-  it('does not follow a revision that came with another text: that stays a conflict', async () => {
+  it('loads text changed elsewhere quietly when nothing is unsaved, and saves on the new revision', async () => {
     const { rerender } = render(<NoteEditorPane noteId="n1" />);
     mocks.note = makeNote({ revision: 6, contentMd: 'Changed on the phone' });
     rerender(<NoteEditorPane noteId="n1" />);
+    expect(screen.getByText('Changed on the phone')).toBeInTheDocument();
+    expect(screen.queryByText('This note was changed on another device.')).toBeNull();
+    await tick(3000);
+    expect(mocks.update).not.toHaveBeenCalled();
     typeText('!');
     await tick(1000);
-    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ baseRevision: 3 }));
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ baseRevision: 6, contentMd: 'Changed on the phone!' }),
+    );
+  });
+
+  it('shows the conflict bar when text changed elsewhere meets unsaved edits, and Keep mine wins', async () => {
+    const { rerender } = render(<NoteEditorPane noteId="n1" />);
+    typeText('!');
+    mocks.note = makeNote({ revision: 6, contentMd: 'Changed on the phone' });
+    rerender(<NoteEditorPane noteId="n1" />);
+    expect(screen.getByText('This note was changed on another device.')).toBeInTheDocument();
+    expect(screen.queryByText('Changed on the phone')).toBeNull();
+    await tick(5000);
+    expect(mocks.update).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep mine' }));
+    await tick(0);
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ force: true, baseRevision: 6, contentMd: 'Hello world!' }),
+    );
+  });
+
+  it('is not disturbed when a rename rewrote links in other notes', async () => {
+    mocks.rename.mockResolvedValue({
+      item: { ...makeNote({ title: 'New name', revision: 4 }), updatedNoteIds: ['n2', 'n3'] },
+    });
+    render(<NoteEditorPane noteId="n1" />);
+    typeText('!');
+    const title = screen.getByRole('textbox', { name: 'Title' });
+    fireEvent.change(title, { target: { value: 'New name' } });
+    fireEvent.keyDown(title, { key: 'Enter' });
+    await tick(0);
+    expect(screen.queryByText('This note was changed on another device.')).toBeNull();
+    expect(screen.getByText('Hello world!')).toBeInTheDocument();
+    await tick(1000);
+    expect(mocks.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ contentMd: 'Hello world!', baseRevision: 3 }),
+    );
   });
 
   it('holds the autosave timers while a rename request is pending', async () => {
@@ -297,6 +351,97 @@ describe('NoteEditorPane', () => {
     render(<NoteEditorPane noteId="n1" />);
     expect(screen.getByText('This note was changed on another device.')).toBeInTheDocument();
     expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  describe('wikilinks', () => {
+    const insertLink = (target: string) => {
+      act(() => {
+        editorOf()
+          .chain()
+          .focus('end')
+          .insertContent({ type: 'wikiLink', attrs: { target, label: null } })
+          .run();
+      });
+    };
+    const linkEl = () => {
+      const el = document.querySelector<HTMLElement>('[data-type="wikiLink"]');
+      if (!el) throw new Error('no link');
+      return el;
+    };
+
+    it('opens the note a link points to, ignoring case', () => {
+      mocks.titles = [{ id: 'n-plan-b', title: 'Plan B' }];
+      render(<NoteEditorPane noteId="n1" />);
+      insertLink('plan b');
+      fireEvent.click(linkEl());
+      expect(mocks.openNote).toHaveBeenCalledWith('n-plan-b');
+      expect(mocks.create).not.toHaveBeenCalled();
+    });
+
+    it('creates the note in the same folder and opens it when the link has no note yet', async () => {
+      mocks.note = makeNote({ folderId: 'f1' });
+      mocks.create.mockResolvedValue(makeNote({ id: 'new-id', title: 'Ideas' }));
+      render(<NoteEditorPane noteId="n1" />);
+      insertLink('Ideas#Top');
+      fireEvent.click(linkEl());
+      await tick(0);
+      expect(mocks.create).toHaveBeenCalledWith({ title: 'Ideas', folderId: 'f1' });
+      expect(mocks.openNote).toHaveBeenCalledWith('new-id');
+    });
+
+    it('draws a link as found or not yet created, and redraws when the titles change', () => {
+      const { rerender } = render(<NoteEditorPane noteId="n1" />);
+      insertLink('Plan B');
+      expect(linkEl()).toHaveClass('wikilink-unresolved');
+      mocks.titles = [{ id: 'n-plan-b', title: 'Plan B' }];
+      rerender(<NoteEditorPane noteId="n1" />);
+      expect(linkEl()).toHaveClass('wikilink-resolved');
+    });
+
+    it('offers the latest titles in the [[ menu', async () => {
+      mocks.titles = [{ id: 'n-plan-b', title: 'Plan B' }];
+      render(<NoteEditorPane noteId="n1" />);
+      act(() => {
+        editorOf().chain().focus('end').insertContent(' [[Pla').run();
+      });
+      await vi.waitFor(() => {
+        expect(screen.getByRole('option', { name: 'Plan B' })).toBeInTheDocument();
+      });
+    });
+  });
+
+  it('has a button in the top bar that shows or hides the right panel', () => {
+    render(<NoteEditorPane noteId="n1" />);
+    const toggle = screen.getByRole('button', { name: 'Show links and outline' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(toggle);
+    expect(screen.getByRole('button', { name: 'Hide links and outline' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Hide links and outline' }));
+  });
+
+  it('moves the cursor to the i-th heading when the Outline asks, skipping nothing but empty ones', () => {
+    mocks.note = makeNote({ contentMd: '# One\n\ntext\n\n## Two\n\nmore\n\n### Three\n\nend' });
+    const { unmount } = render(<NoteEditorPane noteId="n1" />);
+    const editor = editorOf();
+    act(() => {
+      jumpToHeading(1);
+    });
+    expect(editor.state.selection.$from.parent.textContent).toBe('Two');
+    act(() => {
+      jumpToHeading(2);
+    });
+    expect(editor.state.selection.$from.parent.textContent).toBe('Three');
+    act(() => {
+      jumpToHeading(9);
+    });
+    expect(editor.state.selection.$from.parent.textContent).toBe('Three');
+    unmount();
+    expect(() => {
+      jumpToHeading(0);
+    }).not.toThrow();
   });
 
   it('uses no hard-coded colors', () => {

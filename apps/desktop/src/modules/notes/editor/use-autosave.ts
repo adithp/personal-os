@@ -233,6 +233,16 @@ function createEngine(options: EngineOptions) {
       if (dirty() && !inConflict && !gone && !inFlight) armTimers();
     },
     flush,
+    /** True while there is text not yet accepted by the server (unsaved, in flight or in conflict). */
+    hasPending: () => dirty() || inFlight !== null || inConflict,
+    /** The server's note changed under unsaved edits: ask Keep mine or Use theirs. */
+    markConflict(theirRevision: number) {
+      if (inConflict || gone) return;
+      clearTimers();
+      inConflict = true;
+      conflictRevision = theirRevision;
+      setStatus('failed');
+    },
     /** A revision this editor caused outside autosave (a rename raises it too). Never lowers it. */
     setRevision(next: number) {
       revision = Math.max(revision, next);
@@ -343,6 +353,10 @@ export function useAutosave(options: UseAutosaveOptions) {
     flush: useCallback(() => engineRef.current?.flush() ?? Promise.resolve(), []),
     setRevision: useCallback((revision: number) => {
       engineRef.current?.setRevision(revision);
+    }, []),
+    hasPending: useCallback(() => engineRef.current?.hasPending() ?? false, []),
+    markConflict: useCallback((theirRevision: number) => {
+      engineRef.current?.markConflict(theirRevision);
     }, []),
     resumeDraft: useCallback((draft: NoteDraft) => {
       engineRef.current?.resumeDraft(draft);
