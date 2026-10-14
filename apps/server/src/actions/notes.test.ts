@@ -7,6 +7,7 @@ import { ZodError } from 'zod';
 import { HttpError } from '../lib/http-error';
 import { createUserScope } from '../lib/user-scope';
 import { createRegistry, type ActionContext } from '.';
+import { purgeIds } from './notes';
 
 const ALICE = '3f6b2c1e-8d4a-4b7e-9c11-2a5d6e7f8091';
 const BOB = '7a9d4e22-1c3b-4f65-8a0e-b1c2d3e4f506';
@@ -373,6 +374,49 @@ describe('notes.update', () => {
   });
 });
 
+describe('notes.update without content and with folders', () => {
+  it('a pin or a move with an old baseRevision is not a conflict and keeps the revision', async () => {
+    const folder = await folderOf(ALICE, 'F');
+    const note = await noteOf(alice(), 'A');
+    await run(alice(), 'notes.update', { id: note.id, baseRevision: 1, contentMd: 'x' });
+    const pinned = await run<Note>(alice(), 'notes.update', {
+      id: note.id,
+      baseRevision: 1,
+      pinned: true,
+      folderId: folder.id,
+    });
+    expect(pinned.data).toMatchObject({ pinned: true, folderId: folder.id, revision: 2 });
+    expect(
+      await failure(
+        registry.run(alice(), 'notes.update', { id: note.id, baseRevision: 1, contentMd: 'y' }),
+      ),
+    ).toEqual({ status: 409, code: 'note_conflict' });
+  });
+
+  it('a move that is queued first wins over a folder delete at the same moment', async () => {
+    const folder = await folderOf(ALICE, 'F');
+    const note = await noteOf(alice(), 'A');
+    const [move, del] = await Promise.allSettled([
+      registry.run(alice(), 'notes.update', { id: note.id, baseRevision: 1, folderId: folder.id }),
+      registry.run(alice(), 'noteFolders.delete', { id: folder.id }),
+    ]);
+    expect(move.status).toBe('fulfilled');
+    expect(del).toMatchObject({ status: 'rejected', reason: { code: 'folder_not_empty' } });
+    expect((await getNote(alice(), note.id)).folderId).toBe(folder.id);
+  });
+
+  it('a note create queued after a folder delete is a 404 and leaves no note', async () => {
+    const folder = await folderOf(ALICE, 'F');
+    const [del, create] = await Promise.allSettled([
+      registry.run(alice(), 'noteFolders.delete', { id: folder.id }),
+      registry.run(alice(), 'notes.create', { title: 'N', folderId: folder.id }),
+    ]);
+    expect(del.status).toBe('fulfilled');
+    expect(create).toMatchObject({ status: 'rejected', reason: { statusCode: 404 } });
+    expect(await t.db.select().from(notes)).toHaveLength(0);
+  });
+});
+
 describe('notes.rename', () => {
   it('renames the note and its entity, raises the revision, undo renames back', async () => {
     const note = await noteOf(alice(), 'Old');
@@ -497,6 +541,15 @@ describe('notes.purge and notes.emptyTrash', () => {
     expect(await failure(registry.run(alice(), 'notes.purge', { id: a.id }))).toMatchObject({
       status: 404,
     });
+  });
+
+  it('a restored note is not purged (the delete checks the trash flag itself)', async () => {
+    const a = await noteOf(alice(), 'A');
+    await run(alice(), 'notes.delete', { id: a.id });
+    await run(alice(), 'notes.restore', { id: a.id });
+    await purgeIds(createUserScope(t.db, ALICE), [a.id]);
+    expect((await getNote(alice(), a.id)).title).toBe('A');
+    expect(await t.db.select().from(entities).where(eq(entities.id, a.id))).toHaveLength(1);
   });
 
   it('purge needs confirmation', async () => {

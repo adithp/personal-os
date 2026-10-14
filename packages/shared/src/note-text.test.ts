@@ -51,3 +51,12 @@ describe('excerptOf', () => {
     expect(out.length).toBeLessThanOrEqual(51);
   });
 });
+
+describe('markdownToPlainText on hostile input', () => {
+  it('reads a 200,000 character line of markers quickly and keeps only the first part', () => {
+    const line = '[*_` '.repeat(40_000);
+    const out = markdownToPlainText(line);
+    expect(out.length).toBeLessThanOrEqual(4000);
+    expect(out.startsWith('[')).toBe(true);
+  });
+});

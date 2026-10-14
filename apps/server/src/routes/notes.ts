@@ -40,7 +40,8 @@ export function noteRoutes(app: FastifyInstance, options: ActionRouteOptions): v
   app.post('/notes/:id/rename', async (request) => {
     const { id } = idParams.parse(request.params);
     const { data, undo } = await run(request, 'notes.rename', { ...bodyOf(request.body), id });
-    return { item: data, undo: undo ?? null };
+    // The action has no place for the ids of notes whose links were rewritten (link stage later)
+    return { item: data, undo: undo ?? null, updatedNoteIds: [] as string[] };
   });
 
   app.delete('/notes/:id', async (request) => {

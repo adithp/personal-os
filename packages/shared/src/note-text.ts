@@ -13,6 +13,9 @@ export function unescapeMarkdown(text: string): string {
     .replace(/&amp;/g, '&');
 }
 
+/** Longest line read; the rest of a longer line is dropped so the patterns below stay fast. */
+const LINE_MAX = 4000;
+
 /**
  * Plain text of a Markdown document: no markers, links shown by their text, wikilinks shown by
  * their label (or title), code kept as text, one line per block, blank lines dropped.
@@ -20,7 +23,8 @@ export function unescapeMarkdown(text: string): string {
 export function markdownToPlainText(markdown: string): string {
   const lines: string[] = [];
   let inFence = false;
-  for (const raw of markdown.split(/\r?\n/)) {
+  for (const full of markdown.split(/\r?\n/)) {
+    const raw = full.length > LINE_MAX ? full.slice(0, LINE_MAX) : full;
     if (/^\s*(```|~~~)/.test(raw)) {
       inFence = !inFence;
       continue;

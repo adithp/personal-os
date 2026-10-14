@@ -7,8 +7,10 @@ import {
 } from '@personal-os/shared';
 import { and, asc, eq } from 'drizzle-orm';
 import { HttpError } from '../lib/http-error';
+import { withUserLock } from '../lib/user-lock';
 import type { UserScope } from '../lib/user-scope';
 import { implement } from './registry';
+import { isUniqueViolation } from './tags';
 
 /**
  * Note folders (docs/design/research/notes.md D3, D15). A tree of at most FOLDER_DEPTH_MAX levels.
@@ -114,15 +116,6 @@ function nameTakenIn(
   );
 }
 
-/** The unique index backs the checks above if two requests race. */
-function isUniqueViolation(error: unknown): boolean {
-  const code = (value: unknown) =>
-    typeof value === 'object' && value !== null && 'code' in value ? value.code : undefined;
-  const cause =
-    typeof error === 'object' && error !== null && 'cause' in error ? error.cause : null;
-  return code(error) === '23505' || code(cause) === '23505';
-}
-
 async function guardNameRace<T>(work: () => Promise<T>): Promise<T> {
   try {
     return await work();
@@ -221,37 +214,40 @@ export const noteFolderImplementations = [
     ),
   ),
 
+  // Same queue as notes.create and notes.update, so a note cannot land in a folder being deleted
   implement(noteFolderActions.delete, ({ scope }, { id }) =>
-    scope.transaction(async (tx) => {
-      const folders = await liveFolders(tx);
-      const current = folders.get(id);
-      if (!current) throw notFound();
-      const noteCount = await noteCountOf(tx, id);
-      if (noteCount > 0) {
-        throw new HttpError(
-          409,
-          'folder_not_empty',
-          `Move or delete the ${plural(noteCount, 'note', 'notes')} in this folder first.`,
+    withUserLock('notes', scope.userId, () =>
+      scope.transaction(async (tx) => {
+        const folders = await liveFolders(tx);
+        const current = folders.get(id);
+        if (!current) throw notFound();
+        const noteCount = await noteCountOf(tx, id);
+        if (noteCount > 0) {
+          throw new HttpError(
+            409,
+            'folder_not_empty',
+            `Move or delete the ${plural(noteCount, 'note', 'notes')} in this folder first.`,
+          );
+        }
+        const childCount = childrenOf(folders, id).length;
+        if (childCount > 0) {
+          throw new HttpError(
+            409,
+            'folder_not_empty',
+            `Move or delete the ${plural(childCount, 'folder', 'folders')} in this folder first.`,
+          );
+        }
+        const [deleted] = await tx.softDelete(
+          noteFolders,
+          and(eq(noteFolders.id, id), tx.isLive(noteFolders)) ?? eq(noteFolders.id, id),
         );
-      }
-      const childCount = childrenOf(folders, id).length;
-      if (childCount > 0) {
-        throw new HttpError(
-          409,
-          'folder_not_empty',
-          `Move or delete the ${plural(childCount, 'folder', 'folders')} in this folder first.`,
-        );
-      }
-      const [deleted] = await tx.softDelete(
-        noteFolders,
-        and(eq(noteFolders.id, id), tx.isLive(noteFolders)) ?? eq(noteFolders.id, id),
-      );
-      if (!deleted) throw notFound();
-      return {
-        data: toNoteFolder(deleted, 0),
-        undo: { action: 'noteFolders.restore', input: { id } },
-      };
-    }),
+        if (!deleted) throw notFound();
+        return {
+          data: toNoteFolder(deleted, 0),
+          undo: { action: 'noteFolders.restore', input: { id } },
+        };
+      }),
+    ),
   ),
 
   implement(noteFolderActions.restore, ({ scope }, { id }) =>

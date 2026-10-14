@@ -231,6 +231,7 @@ describe('POST /notes/:id/rename', () => {
     await addNote('Taken');
     const renamed = await call('POST', `/notes/${item.id}/rename`, alice, { title: 'New' });
     expect(renamed.statusCode).toBe(200);
+    expect(renamed.json<{ updatedNoteIds: string[] }>().updatedNoteIds).toEqual([]);
     const body = renamed.json<Written>();
     expect(body.item).toMatchObject({ title: 'New', revision: 2 });
     const taken = await call('POST', `/notes/${item.id}/rename`, alice, { title: 'taken' });

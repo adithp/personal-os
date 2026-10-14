@@ -122,6 +122,18 @@ async function titleGuard<T>(work: () => Promise<T>): Promise<T> {
   }
 }
 
+/** `revision + 1` computed by the database, so two writes never get the same number. */
+const nextRevision = () => sql`${notes.revision} + 1` as unknown as number;
+
+/** Takes the notes queue of the user when a note is put into a folder (see noteFolders.delete). */
+function withFolderLock<T>(
+  scope: UserScope,
+  folderId: string | null | undefined,
+  work: () => Promise<T>,
+): Promise<T> {
+  return folderId ? withUserLock('notes', scope.userId, work) : work();
+}
+
 function chunk<T>(items: readonly T[], size: number): T[][] {
   const parts: T[][] = [];
   for (let index = 0; index < items.length; index += size)
@@ -130,11 +142,11 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
 }
 
 /** Hard-deletes the entities (and so the notes, links and tags) of these trashed notes. */
-async function purgeIds(scope: UserScope, ids: readonly string[]): Promise<void> {
+export async function purgeIds(scope: UserScope, ids: readonly string[]): Promise<void> {
   for (const batch of chunk(ids, BATCH)) {
     await scope.delete(
       entities,
-      sql`${eq(entities.type, 'note')} and ${inArray(entities.id, batch)}`,
+      sql`${eq(entities.type, 'note')} and ${inArray(entities.id, batch)} and ${isNotNull(entities.deletedAt)}`,
     );
   }
 }
@@ -227,56 +239,60 @@ export const noteImplementations = [
   ),
 
   implement(noteActions.update, ({ scope }, input) =>
-    scope.transaction(async (tx) => {
-      const before = await findNote(tx, input.id);
-      const mismatch = before.revision !== input.baseRevision;
-      if (mismatch && !input.force) throw conflict();
+    // A move into a folder takes the same queue as noteFolders.delete, so the folder cannot be
+    // deleted between the check and the write
+    withFolderLock(scope, input.folderId, () =>
+      scope.transaction(async (tx) => {
+        const before = await findNote(tx, input.id);
+        // Only a content change is checked against baseRevision; a pin or a move never conflicts
+        const checkRevision = input.contentMd !== undefined && !input.force;
+        if (checkRevision && before.revision !== input.baseRevision) throw conflict();
 
-      const values: Partial<typeof notes.$inferInsert> = {};
-      const undoInput: Record<string, unknown> = {};
-      const contentChanged = input.contentMd !== undefined && input.contentMd !== before.contentMd;
-      if (input.contentMd !== undefined && contentChanged) {
-        values.contentMd = input.contentMd;
-        values.contentText = markdownToPlainText(input.contentMd);
-        values.revision = before.revision + 1;
-        undoInput.contentMd = before.contentMd;
-      }
-      if (input.folderId !== undefined && input.folderId !== before.folderId) {
-        if (input.folderId) await assertFolder(tx, input.folderId);
-        values.folderId = input.folderId;
-        undoInput.folderId = before.folderId;
-      }
-      if (input.pinned !== undefined && input.pinned !== before.pinned) {
-        values.pinned = input.pinned;
-        undoInput.pinned = before.pinned;
-      }
-      if (Object.keys(values).length === 0) return { data: toNote(before), undo: null };
+        const values: Partial<typeof notes.$inferInsert> = {};
+        const undoInput: Record<string, unknown> = {};
+        const contentChanged =
+          input.contentMd !== undefined && input.contentMd !== before.contentMd;
+        if (input.contentMd !== undefined && contentChanged) {
+          values.contentMd = input.contentMd;
+          values.contentText = markdownToPlainText(input.contentMd);
+          values.revision = nextRevision();
+          undoInput.contentMd = before.contentMd;
+        }
+        if (input.folderId !== undefined && input.folderId !== before.folderId) {
+          if (input.folderId) await assertFolder(tx, input.folderId);
+          values.folderId = input.folderId;
+          undoInput.folderId = before.folderId;
+        }
+        if (input.pinned !== undefined && input.pinned !== before.pinned) {
+          values.pinned = input.pinned;
+          undoInput.pinned = before.pinned;
+        }
+        if (Object.keys(values).length === 0) return { data: toNote(before), undo: null };
 
-      if (contentChanged) await maybeSnapshot(tx, before, input.force ? 'conflict' : 'auto');
-      // Only writes while the revision is still the one read (a save from another device in between
-      // finds no row and is a conflict). With force, any revision.
-      const [updated] = await tx.update(
-        notes,
-        values,
-        and(
-          eq(notes.id, input.id),
-          scope.isLive(notes),
-          input.force ? undefined : eq(notes.revision, input.baseRevision),
-        ) ?? eq(notes.id, input.id),
-      );
-      if (!updated) throw conflict();
-      if (contentChanged) {
-        await rebuildNoteLinks(tx, input.id, updated.contentMd);
-        await rebuildNoteTags(tx, input.id, updated.contentMd);
-      }
-      return {
-        data: toNote(updated),
-        undo: {
-          action: 'notes.update',
-          input: { id: input.id, baseRevision: updated.revision, ...undoInput },
-        } satisfies UndoDescriptor,
-      };
-    }),
+        if (contentChanged) await maybeSnapshot(tx, before, input.force ? 'conflict' : 'auto');
+        // A content save only writes while the revision is still the one read (a save from another
+        // device in between finds no row and is a conflict). With force, or without content, any revision.
+        const [updated] = await tx.update(
+          notes,
+          values,
+          checkRevision
+            ? sql`${eq(notes.id, input.id)} and ${scope.isLive(notes)} and ${eq(notes.revision, input.baseRevision)}`
+            : sql`${eq(notes.id, input.id)} and ${scope.isLive(notes)}`,
+        );
+        if (!updated) throw conflict();
+        if (contentChanged) {
+          await rebuildNoteLinks(tx, input.id, updated.contentMd);
+          await rebuildNoteTags(tx, input.id, updated.contentMd);
+        }
+        return {
+          data: toNote(updated),
+          undo: {
+            action: 'notes.update',
+            input: { id: input.id, baseRevision: updated.revision, ...undoInput },
+          } satisfies UndoDescriptor,
+        };
+      }),
+    ),
   ),
 
   implement(noteActions.rename, ({ scope }, { id, title }) =>
@@ -287,7 +303,7 @@ export const noteImplementations = [
         if (await isTitleTaken(tx, title, id)) throw titleTaken();
         const [updated] = await tx.update(
           notes,
-          { title, revision: before.revision + 1 },
+          { title, revision: nextRevision() },
           eq(notes.id, id),
         );
         if (!updated) throw notFound();
@@ -345,7 +361,7 @@ export const noteImplementations = [
             deletedAt: null,
             title,
             folderId,
-            ...(title === current.title ? {} : { revision: current.revision + 1 }),
+            ...(title === current.title ? {} : { revision: nextRevision() }),
           },
           eq(notes.id, id),
         );
@@ -360,23 +376,27 @@ export const noteImplementations = [
     ),
   ),
 
-  implement(noteActions.purge, async ({ scope }, { id }) => {
-    const current = await findNote(scope, id, true);
-    if (!current.deletedAt) {
-      throw new HttpError(400, 'validation_error', 'Move the note to the trash first.');
-    }
-    await purgeIds(scope, [id]);
-    return { data: { id }, undo: null };
-  }),
+  implement(noteActions.purge, ({ scope }, { id }) =>
+    scope.transaction(async (tx) => {
+      const current = await findNote(tx, id, true);
+      if (!current.deletedAt) {
+        throw new HttpError(400, 'validation_error', 'Move the note to the trash first.');
+      }
+      await purgeIds(tx, [id]);
+      return { data: { id }, undo: null };
+    }),
+  ),
 
-  implement(noteActions.emptyTrash, async ({ scope }) => {
-    const rows = await scope.selectFields(
-      notes,
-      { id: notes.id },
-      { where: isNotNull(notes.deletedAt) },
-    );
-    const ids = rows.map((row) => row.id as string);
-    await scope.transaction((tx) => purgeIds(tx, ids));
-    return { data: { deleted: ids.length }, undo: null };
-  }),
+  implement(noteActions.emptyTrash, ({ scope }) =>
+    scope.transaction(async (tx) => {
+      const rows = await tx.selectFields(
+        notes,
+        { id: notes.id },
+        { where: isNotNull(notes.deletedAt) },
+      );
+      const ids = rows.map((row) => row.id as string);
+      await purgeIds(tx, ids);
+      return { data: { deleted: ids.length }, undo: null };
+    }),
+  ),
 ];
