@@ -19,6 +19,8 @@ CORS: the allowed origins come from CORS_ORIGINS (comma-separated); the default 
 | 404 | unknown_action | POST /undo with an action name that does not exist |
 | 409 | conflict | A tag rename onto an existing name, or restoring a tag whose name exists again |
 | 409 | favorites_limit | More than 12 favorites |
+| 409 | tag_in_notes | Deleting a tag that a live note still has in its text; the message gives the count |
+| 409 | template_name_taken | A template name that another live template has (ignoring case) |
 | 409 | goal_full | A goal already has 500 tasks |
 | 409 | confirmation_required | An external or destructive action without confirmation (the app's buttons confirm, so it never hits this) |
 | 409 | blocked | Completing a blocked task (complete, update to done, move into Done); the message lists the blockers |
@@ -94,8 +96,8 @@ Goal details: `title` 1 to 200 characters, `description` up to 20,000 (or null),
 | GET, POST | /note-folders | List with `noteCount` / create (`name`, `parentId`); 400 `folder_too_deep` (3 levels), 409 `folder_name_taken` |
 | PATCH, DELETE | /note-folders/:id | Rename or move (400 into itself or its own subfolders) / delete an empty folder (409 `folder_not_empty`) |
 | POST | /note-folders/:id/restore | Bring a deleted folder back (top level if its parent is gone) |
-| POST | /notes/daily | Stage N3 contract (answers 501 until built). Body `{ date? }` (YYYY-MM-DD, an India day, default today): returns `{ item, undo }` with that day's note, created if missing (title `YYYY-MM-DD`, or `YYYY-MM-DD (daily)` when a normal note has that title; text from the daily-default template; undo `notes.delete` only when created). Declared before `/notes/:id` |
-| GET, POST | /note-templates | Stage N3 contract (501 until built). List (`id`, `name`, `contentMd`, `isDailyDefault`, dates; by name) / create (`name` 1 to 80, unique among live templates ignoring case, 409 `template_name_taken`; `contentMd` up to 200000; `isDailyDefault` clears the flag on the others); 201 |
+| POST | /notes/daily | Stage N3. The title is `YYYY-MM-DD`, or `YYYY-MM-DD (daily)` when a normal note has that title, then `YYYY-MM-DD (daily 2)` and so on. Body `{ date? }` (YYYY-MM-DD, an India day, default today): returns `{ item, undo }` with that day's note, created if missing (title `YYYY-MM-DD`, or `YYYY-MM-DD (daily)` when a normal note has that title; text from the daily-default template; undo `notes.delete` only when created). Declared before `/notes/:id` |
+| GET, POST | /note-templates | Stage N3. List (`id`, `name`, `contentMd`, `isDailyDefault`, dates; by name) / create (`name` 1 to 80, unique among live templates ignoring case, 409 `template_name_taken`; `contentMd` up to 200000; `isDailyDefault` clears the flag on the others); 201 |
 | PATCH, DELETE | /note-templates/:id | Change name, text or `isDailyDefault` / delete (undo restores) |
 | POST | /note-templates/:id/restore | Bring a deleted template back |
 | GET | /notes/:id/versions | Note history |
