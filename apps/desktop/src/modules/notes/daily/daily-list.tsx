@@ -77,6 +77,11 @@ export function DailyList() {
             ))}
           </ul>
         ) : null}
+        {items.length >= DAILY_LIST_LIMIT ? (
+          <p className="px-2 pt-2 text-small text-fg-muted">
+            Showing the latest {String(DAILY_LIST_LIMIT)} days. Search finds older ones.
+          </p>
+        ) : null}
       </div>
     </section>
   );

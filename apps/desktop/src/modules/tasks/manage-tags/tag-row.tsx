@@ -11,8 +11,8 @@ import { deleteQuestion, mergeQuestion, usageLabel } from './tag-wording';
 type Mode =
   | { kind: 'idle' }
   | { kind: 'rename'; error: string | null }
-  | { kind: 'merge'; target: Tag }
-  | { kind: 'delete' };
+  | { kind: 'merge'; target: Tag; error?: string }
+  | { kind: 'delete'; error?: string };
 
 export interface TagRowProps {
   tag: Tag;
@@ -55,10 +55,34 @@ export function TagRow({ tag, all, active, onActivate, onGone }: TagRowProps) {
     setMode({ kind: 'rename', error: null });
   };
 
+  /** The server refuses with a reason (tag_in_notes, tag_not_note_safe): keep the question open and show it. */
+  const failedWith = (caught: unknown): string | undefined =>
+    caught instanceof ApiError ? caught.message : undefined;
+
+  const confirmDelete = async () => {
+    onGone();
+    try {
+      await remove.mutateAsync(tag.id);
+      setMode({ kind: 'idle' });
+    } catch (caught) {
+      // The hook shows the toast; the reason also stays under the question
+      setMode({ kind: 'delete', error: failedWith(caught) });
+    }
+  };
+
+  const confirmMerge = async (target: Tag) => {
+    onGone();
+    try {
+      await merge.mutateAsync({ sourceId: tag.id, targetId: target.id });
+      setMode({ kind: 'idle' });
+    } catch (caught) {
+      setMode({ kind: 'merge', target, error: failedWith(caught) });
+    }
+  };
+
   const startDelete = () => {
     if (taskCount === 0 && favoriteCount === 0) {
-      onGone();
-      remove.mutate(tag.id);
+      void confirmDelete();
     } else {
       setMode({ kind: 'delete' });
     }
@@ -116,7 +140,13 @@ export function TagRow({ tag, all, active, onActivate, onGone }: TagRowProps) {
     }
   };
 
-  const question = (text: string, confirm: string, danger: boolean, onConfirm: () => void) => (
+  const question = (
+    text: string,
+    confirm: string,
+    danger: boolean,
+    onConfirm: () => void,
+    error?: string,
+  ) => (
     <div
       role="group"
       aria-label={`${tag.name} question`}
@@ -124,6 +154,11 @@ export function TagRow({ tag, all, active, onActivate, onGone }: TagRowProps) {
       className="flex flex-1 flex-col gap-2 py-1"
     >
       <p className="text-body text-fg">{text}</p>
+      {error ? (
+        <p role="alert" className="text-small text-danger">
+          {error}
+        </p>
+      ) : null}
       <div className="flex gap-2">
         <Button
           variant="secondary"
@@ -229,17 +264,20 @@ export function TagRow({ tag, all, active, onActivate, onGone }: TagRowProps) {
           'Merge',
           false,
           () => {
-            onGone();
-            merge.mutate({ sourceId: tag.id, targetId: mode.target.id });
-            setMode({ kind: 'idle' });
+            void confirmMerge(mode.target);
           },
+          mode.error,
         )
       ) : mode.kind === 'delete' ? (
-        question(deleteQuestion(tag.name, taskCount, favoriteCount), 'Delete tag', true, () => {
-          onGone();
-          remove.mutate(tag.id);
-          setMode({ kind: 'idle' });
-        })
+        question(
+          deleteQuestion(tag.name, taskCount, favoriteCount),
+          'Delete tag',
+          true,
+          () => {
+            void confirmDelete();
+          },
+          mode.error,
+        )
       ) : (
         <>
           <span className="min-w-0 flex-1 truncate py-[7px] text-body text-fg">{tag.name}</span>

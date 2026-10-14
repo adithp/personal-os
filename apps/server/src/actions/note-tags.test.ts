@@ -198,11 +198,29 @@ describe('tag rename and merge rewrite the note text', () => {
     expect((await tagList(alice())).map((tag) => tag.name)).toEqual(['dst']);
     expect((await tagList(alice()))[0]?.noteCount).toBe(3);
 
-    // unmerge brings the source tag back (the text stays on the target, as for tasks)
+    // unmerge brings the source tag back and writes #src back into the notes the merge changed
     expect(merged.undo?.action).toBe('tags.unmerge');
     await run(alice(), 'tags.unmerge', merged.undo?.input);
     expect((await tagList(alice())).map((tag) => tag.name).sort()).toEqual(['dst', 'src']);
-    expect((await get(alice(), one.id)).contentMd).toBe('x #dst');
+    expect((await get(alice(), one.id)).contentMd).toBe('x #src');
+    // a #dst the note already had before the merge stays #dst
+    expect((await get(alice(), both.id)).contentMd).toBe('#src and #dst');
+    expect(await storedTags(both.id)).toEqual(['dst', 'src']);
+    expect(await storedTags(one.id)).toEqual(['src']);
+  });
+
+  it('unmerge leaves a note edited after the merge as it is', async () => {
+    const edited = await create(alice(), 'Edited', 'x #src');
+    const untouched = await create(alice(), 'Untouched', 'y #src');
+    await create(alice(), 'Dst', '#dst');
+    const merged = await run<Tag>(alice(), 'tags.merge', {
+      sourceId: await tagId(alice(), 'src'),
+      targetId: await tagId(alice(), 'dst'),
+    });
+    await save(alice(), edited.id, 'new first line\nx #dst');
+    await run(alice(), 'tags.unmerge', merged.undo?.input);
+    expect((await get(alice(), edited.id)).contentMd).toBe('new first line\nx #dst');
+    expect((await get(alice(), untouched.id)).contentMd).toBe('y #src');
   });
 });
 

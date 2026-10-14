@@ -176,7 +176,8 @@ export function CommandPalette() {
       type: hit.type,
       id: hit.id,
       title: hit.title,
-      ...(hit.type === 'tag' ? { color: hit.color } : { archived: hit.archived }),
+      ...(hit.type === 'tag' ? { color: hit.color } : {}),
+      ...(hit.type === 'task' ? { archived: hit.archived } : {}),
     });
   };
 

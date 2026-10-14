@@ -6,7 +6,7 @@ import { ManageTagsDialog } from './manage-tags-dialog';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useToasts } from '../../../store/toast-store';
-import { createFakeApi, makeTag, makeTask, type FakeApi } from '../../../test/fake-api';
+import { createFakeApi, makeNote, makeTag, makeTask, type FakeApi } from '../../../test/fake-api';
 import { openMyTasks, resetEverything, restoreEverything, findToast } from '../my-tasks/test-utils';
 import { openLoaded } from '../detail/test-utils';
 import { useManageTags } from './manage-tags-store';
@@ -192,6 +192,32 @@ describe('Manage tags dialog', () => {
         .find((task) => task.title === 'C')
         ?.tags.map((t) => t.id),
     ).toEqual([home.id]);
+  });
+
+  it('shows the server reason when a tag used in notes is deleted', async () => {
+    const work = makeTag({ name: 'work' });
+    const fake = createFakeApi([], [work], [], [], [makeNote({ title: 'N', contentMd: 'a #work' })]);
+    const { user } = await openDialog(fake);
+    await user.click(await screen.findByRole('button', { name: 'Delete work' }));
+    const group = await screen.findByRole('group', { name: 'work question' });
+    await waitFor(() => {
+      expect(within(group).getByRole('alert')).toHaveTextContent('Remove #work from 1 note first.');
+    });
+    expect(fake.tags().map((tag) => tag.name)).toContain('work');
+  });
+
+  it('shows the server reason when a tag used in notes gets a name notes cannot read', async () => {
+    const work = makeTag({ name: 'work' });
+    const fake = createFakeApi([], [work], [], [], [makeNote({ title: 'N', contentMd: 'a #work' })]);
+    const { user } = await openDialog(fake);
+    await user.click(await screen.findByRole('button', { name: 'Rename work' }));
+    const box = screen.getByRole('textbox', { name: 'Rename work' });
+    await user.clear(box);
+    await user.type(box, 'a.b{Enter}');
+    // The reason shows under the box and in a toast
+    const alerts = await screen.findAllByRole('alert');
+    expect(alerts.length).toBeGreaterThan(0);
+    for (const alert of alerts) expect(alert).toHaveTextContent('can only have letters');
   });
 
   it('deletes an unused tag at once and Undo brings it back', async () => {

@@ -1,6 +1,8 @@
 import { entityTags, taskFavorites, tags, tasks, type TagRow } from '@personal-os/db';
 import {
   MAX_FAVORITES,
+  MAX_UNDO_NOTES,
+  MAX_UNDO_NOTE_SPOTS,
   MAX_UNDO_TASK_IDS,
   removeTagFromView,
   replaceTagInView,
@@ -14,7 +16,12 @@ import { HttpError } from '../lib/http-error';
 import { withUserLock } from '../lib/user-lock';
 import type { UserScope } from '../lib/user-scope';
 import { liveTagIds, viewWithLiveTags, withFavoritesLock } from './favorites';
-import { assertNoteSafeTagName, liveNoteCount, rewriteNotesTag } from './note-tags';
+import {
+  assertNoteSafeTagName,
+  liveNoteCount,
+  restoreNotesTag,
+  rewriteNotesTag,
+} from './note-tags';
 import { implement } from './registry';
 import { TAG_NAME_INDEX, isUniqueViolation, toTag } from './tags';
 
@@ -35,8 +42,8 @@ import { TAG_NAME_INDEX, isUniqueViolation, toTag } from './tags';
  * Statements that list task ids work in batches of BATCH ids (Postgres allows 65,535 parameters
  * per statement). Only links of TASKS are moved or removed directly. Notes (N3): delete is refused
  * with 409 tag_in_notes while live notes contain the tag; merge rewrites `#source` to `#target` in
- * the note text (note-tags.ts), and unmerge does not undo that text change (it cannot know which
- * notes had the tag before).
+ * the note text (note-tags.ts); the merge undo carries each rewritten note with its new revision and
+ * the places of `#target`, and unmerge writes `#source` back there for notes not edited since.
  */
 
 const BATCH = 1000;
@@ -247,7 +254,7 @@ export const tagManagementImplementations = [
   }),
 
   implement(tagManagementActions.merge, async ({ scope }, { sourceId, targetId }) => {
-    const { target, taskIds, touched } = await inNotesQueue(scope, () =>
+    const { target, taskIds, touched, rewrittenNotes } = await inNotesQueue(scope, () =>
       scope.transaction(async (tx) => {
         const sourceTag = await findLiveTag(tx, sourceId);
         const targetTag = await findLiveTag(tx, targetId);
@@ -258,8 +265,8 @@ export const tagManagementImplementations = [
         await relinkTasks(tx, targetId, ids);
         await tx.delete(entityTags, taskLinks(tx, sourceId));
         await tx.softDelete(tags, eq(tags.id, sourceId));
-        // Notes with #source now say #target (unmerge brings the tag back, not the old text)
-        await rewriteNotesTag(tx, sourceId, sourceTag.name, targetTag.name);
+        // Notes with #source now say #target (unmerge writes #source back at those places)
+        const rewrittenNotes = await rewriteNotesTag(tx, sourceId, sourceTag.name, targetTag.name);
         const touchedFavorites: TouchedFavorite[] = [];
         const live = await tx.select(taskFavorites, { where: tx.isLive(taskFavorites) });
         const liveViews = new Map(live.map((row) => [row.id, row.view]));
@@ -282,33 +289,55 @@ export const tagManagementImplementations = [
           }
           touchedFavorites.push({ id: favorite.id, view: favorite.view, removed: clash });
         }
-        return { target: targetTag, taskIds: ids, touched: touchedFavorites };
+        return { target: targetTag, taskIds: ids, touched: touchedFavorites, rewrittenNotes };
       }),
     );
+    const tooBig =
+      taskIds.length > MAX_UNDO_TASK_IDS ||
+      rewrittenNotes.length > MAX_UNDO_NOTES ||
+      rewrittenNotes.some((note) => note.spots.length > MAX_UNDO_NOTE_SPOTS);
     return {
       data: toTag(target),
-      undo:
-        taskIds.length > MAX_UNDO_TASK_IDS
-          ? null
-          : { action: 'tags.unmerge', input: { sourceId, targetId, taskIds, favorites: touched } },
+      undo: tooBig
+        ? null
+        : {
+            action: 'tags.unmerge',
+            input: {
+              sourceId,
+              targetId,
+              taskIds,
+              favorites: touched,
+              ...(rewrittenNotes.length > 0 ? { notes: rewrittenNotes } : {}),
+            },
+          },
     };
   }),
 
   // The tasks keep the target tag: from the input alone we cannot know which of them had it before
   // the merge, so taking it away could remove a tag the user set on purpose.
-  implement(tagManagementActions.unmerge, async ({ scope }, { sourceId, taskIds, favorites }) => {
-    const tag = await asConflict(
-      scope,
-      sourceId,
-      withFavoritesLock(scope.userId, () =>
-        scope.transaction(async (tx) => {
-          const revived = await reviveTag(tx, sourceId);
-          await relinkTasks(tx, sourceId, taskIds);
-          await restoreFavorites(tx, favorites);
-          return revived;
-        }),
-      ),
-    );
-    return { data: toTag(tag), undo: null };
-  }),
+  implement(
+    tagManagementActions.unmerge,
+    async ({ scope }, { sourceId, targetId, taskIds, favorites, notes }) => {
+      const tag = await asConflict(
+        scope,
+        sourceId,
+        inNotesQueue(scope, () =>
+          scope.transaction(async (tx) => {
+            const revived = await reviveTag(tx, sourceId);
+            await relinkTasks(tx, sourceId, taskIds);
+            await restoreFavorites(tx, favorites);
+            if (notes && notes.length > 0) {
+              const [target] = await tx.select(tags, {
+                where: and(eq(tags.id, targetId), tx.isLive(tags)),
+                limit: 1,
+              });
+              if (target) await restoreNotesTag(tx, notes, target.name, revived.name);
+            }
+            return revived;
+          }),
+        ),
+      );
+      return { data: toTag(tag), undo: null };
+    },
+  ),
 ];

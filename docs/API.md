@@ -69,7 +69,7 @@ Streaks are counted in scheduled days (India calendar days): days a habit is not
 | POST | /tags | Create a tag: 201 when created; 200 with the existing tag when the name exists (ignoring case). `undo` is null |
 | PATCH | /tags/:id | Rename or recolor a tag |
 | DELETE | /tags/:id | Delete a tag: removed from every task (the tasks stay) and from favorites; returns the tag and an undo |
-| POST | /tags/:id/merge | Body `{ targetId }`: move this tag's tasks and favorites to the target tag and delete this one; returns the target tag and an undo |
+| POST | /tags/:id/merge | Body `{ targetId }`: move this tag's tasks and favorites to the target tag, rewrite `#source` to `#target` in note text, and delete this one; returns the target tag and an undo (tags.unmerge, carrying the rewritten notes with their revision and the places of `#target`; unmerge writes `#source` back only in notes not edited since) |
 | GET | /goals | Goals with progress: `{ items }`, optional `?status=active|achieved|dropped` |
 | GET | /goals/:id | One goal with progress |
 | POST | /goals | Create (title, description, targetAt); 201 |
@@ -96,7 +96,7 @@ Goal details: `title` 1 to 200 characters, `description` up to 20,000 (or null),
 | GET | /links?entityId= | Links for an entity (backlinks, project items) |
 | POST | /links | Create a link |
 | GET | /graph?focus=&depth=&types= | Nodes and edges for the knowledge graph |
-| POST | /search | Global search (q 1 to 100 characters, control characters become spaces; types: task, tag; limit 1 to 20, default 5, per group; text with no letters or digits answers groups []; an aborted request on the client is an AbortError, not an ApiError). Body { q, types?, limit? } (a POST so the search text stays out of access logs); answer { item: { q, groups } }. Tasks and tags now; mode semantic, Gmail and Drive later |
+| POST | /search | Global search (q 1 to 100 characters, control characters become spaces; types: task, note, tag; limit 1 to 20, default 5, per group; text with no letters or digits answers groups []; an aborted request on the client is an AbortError, not an ApiError). Body { q, types?, limit? } (a POST so the search text stays out of access logs); answer { item: { q, groups } }. Tasks, notes and tags now; mode semantic, Gmail and Drive later |
 | GET | /notes?folderId=&tagId=&dailyOnly=&trash=&sort=updated or title or created&limit=&offset= | Notes without their text (id, title, folderId, pinned, 140-character excerpt, dates; N3 adds optional `tagNames` and `dailyDate`); folderId none means no folder; `tagId` and `dailyOnly` are N3 filters; pinned first |
 | GET | /notes/titles | `{ items: [{ id, title }] }` of every live note (link suggestions) |
 | GET | /notes/:id/links | `{ item: { backlinks: [{ noteId, title, context }], outgoing: [{ target, noteId \| null }] } }` |

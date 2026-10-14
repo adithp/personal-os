@@ -1,6 +1,13 @@
 import { entityTags, notes, tags } from '@personal-os/db';
 import { HttpError } from '../lib/http-error';
-import { isNoteTagName, markdownToPlainText, parseTags, rewriteTag } from '@personal-os/shared';
+import {
+  isNoteTagName,
+  markdownToPlainText,
+  parseTags,
+  restoreTagSpots,
+  rewriteTagWithSpots,
+  type RewrittenNote,
+} from '@personal-os/shared';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { UserScope } from '../lib/user-scope';
 import { TAG_NAME_INDEX, findOrCreateTag, isUniqueViolation } from './tags';
@@ -148,35 +155,66 @@ export async function tagNamesByNote(
 /**
  * Rewrites `#oldName` to `#newName` in the text of every note (trashed ones too, so a restored note
  * is consistent) that carries the tag, then rebuilds their tag links. Call it after the tag has its
- * new name (rename) or after the source tag is deleted (merge). Returns how many notes changed.
+ * new name (rename) or after the source tag is deleted (merge). Returns the changed notes with
+ * their new revision and the places of the new tag (merge puts them in the unmerge undo).
  */
 export async function rewriteNotesTag(
   scope: UserScope,
   tagId: string,
   oldName: string,
   newName: string,
-): Promise<number> {
+): Promise<RewrittenNote[]> {
   const ids = await noteIdsWithTag(scope, tagId, false);
-  let changed = 0;
+  const changed: RewrittenNote[] = [];
   for (let index = 0; index < ids.length; index += BATCH) {
     const rows = await scope.select(notes, {
       where: inArray(notes.id, ids.slice(index, index + BATCH)),
     });
     for (const row of rows) {
-      const rewritten = rewriteTag(row.contentMd, oldName, newName);
-      if (rewritten === row.contentMd) continue;
-      await scope.update(
+      const { text, spots } = rewriteTagWithSpots(row.contentMd, oldName, newName);
+      if (text === row.contentMd) continue;
+      const [updated] = await scope.update(
         notes,
-        {
-          contentMd: rewritten,
-          contentText: markdownToPlainText(rewritten),
-          revision: nextRevision(),
-        },
+        { contentMd: text, contentText: markdownToPlainText(text), revision: nextRevision() },
         eq(notes.id, row.id),
       );
-      await rebuildNoteTags(scope, row.id, rewritten);
-      changed += 1;
+      await rebuildNoteTags(scope, row.id, text);
+      changed.push({ id: row.id, revision: updated?.revision ?? row.revision + 1, spots });
     }
   }
   return changed;
+}
+
+/**
+ * Undo of a merge: writes `#oldName` back where the merge put `#currentName`. A note edited since
+ * (its revision moved on) or gone is skipped. Call it after the old tag is live again.
+ */
+export async function restoreNotesTag(
+  scope: UserScope,
+  rewritten: readonly RewrittenNote[],
+  currentName: string,
+  oldName: string,
+): Promise<void> {
+  for (let index = 0; index < rewritten.length; index += BATCH) {
+    const slice = rewritten.slice(index, index + BATCH);
+    const rows = await scope.select(notes, {
+      where: inArray(
+        notes.id,
+        slice.map((entry) => entry.id),
+      ),
+    });
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    for (const entry of slice) {
+      const row = byId.get(entry.id);
+      if (row?.revision !== entry.revision) continue;
+      const text = restoreTagSpots(row.contentMd, entry.spots, currentName, oldName);
+      if (text === row.contentMd) continue;
+      await scope.update(
+        notes,
+        { contentMd: text, contentText: markdownToPlainText(text), revision: nextRevision() },
+        eq(notes.id, row.id),
+      );
+      await rebuildNoteTags(scope, row.id, text);
+    }
+  }
 }

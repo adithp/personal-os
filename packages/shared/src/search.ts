@@ -7,7 +7,7 @@ import { taskStatusSchema } from './tasks';
  * Keyword mode: every typed word is a prefix, joined by AND. Modules join through SEARCH_TYPES
  * (in display order); the server has one provider per type.
  */
-export const SEARCH_TYPES = ['task', 'tag'] as const;
+export const SEARCH_TYPES = ['task', 'note', 'tag'] as const;
 export type SearchType = (typeof SEARCH_TYPES)[number];
 export const searchTypeSchema = z.enum(SEARCH_TYPES);
 
@@ -42,10 +42,19 @@ export const taskHitSchema = z.object({
 });
 export type TaskHit = z.infer<typeof taskHitSchema>;
 
+export const noteHitSchema = z.object({
+  type: z.literal('note'),
+  ...hitBase,
+  pinned: z.boolean(),
+  /** The India day (YYYY-MM-DD) of a daily note, else null. */
+  dailyDate: z.string().nullable(),
+});
+export type NoteHit = z.infer<typeof noteHitSchema>;
+
 export const tagHitSchema = z.object({ type: z.literal('tag'), ...hitBase, color: z.string() });
 export type TagHit = z.infer<typeof tagHitSchema>;
 
-export const searchHitSchema = z.discriminatedUnion('type', [taskHitSchema, tagHitSchema]);
+export const searchHitSchema = z.discriminatedUnion('type', [taskHitSchema, noteHitSchema, tagHitSchema]);
 export type SearchHit = z.infer<typeof searchHitSchema>;
 
 /** Only non-empty groups, in SEARCH_TYPES order. The order of items is the rank. */
@@ -62,7 +71,7 @@ export const searchActions = {
   global: defineAction({
     name: 'search.global',
     description:
-      'Search tasks and tags by the start of their words (title and description). Returns groups of hits, best first.',
+      'Search tasks, notes and tags by the start of their words (title and description or text). Returns groups of hits, best first.',
     permission: 'read',
     input: searchGlobalInput,
   }),
