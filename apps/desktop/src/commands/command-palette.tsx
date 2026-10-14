@@ -181,6 +181,8 @@ export function CommandPalette() {
   };
 
   const groups = typed.length >= SEARCH_MIN_CHARS ? (search.result?.groups ?? []) : [];
+  // Rows are marked with the text they were answered for, not what has been typed since
+  const shownQuery = search.result?.q ?? typed;
   const hitCount = groups.reduce((sum, group) => sum + group.items.length, 0);
   const showRecent = typed === '' && recent.length > 0;
   const answered = typed.length < SEARCH_MIN_CHARS || (!search.waiting && !search.error);
@@ -216,7 +218,7 @@ export function CommandPalette() {
         <Kbd keys={['Esc']} />
       </div>
 
-      <Cmdk.List className="max-h-[360px] overflow-y-auto p-2">
+      <Cmdk.List aria-busy={search.stale} className="max-h-[360px] overflow-y-auto p-2">
         {showRecent && (
           <Cmdk.Group heading="Recent" className={GROUP_CLASS}>
             {recent.map((item) => (
@@ -259,7 +261,13 @@ export function CommandPalette() {
           );
         })}
 
-        <div className={search.stale ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
+        <div
+          className={
+            search.stale
+              ? 'opacity-60 transition-opacity motion-reduce:transition-none'
+              : 'transition-opacity motion-reduce:transition-none'
+          }
+        >
           {groups.map((group) => {
             const kind = SEARCH_KINDS[group.type];
             return (
@@ -270,19 +278,21 @@ export function CommandPalette() {
                     <Cmdk.Item
                       key={`${hit.type}:${hit.id}`}
                       value={`${hit.type}:${hit.id}`}
+                      // Older results must not open while newer ones are on the way
+                      disabled={search.stale}
                       onSelect={() => {
-                        openHit(hit);
+                        if (!search.stale) openHit(hit);
                       }}
                       className={`${ROW} ${hit.snippet ? 'h-12' : 'h-9'}`}
                     >
                       <ResultIcon type={hit.type} color={kind.dotColor?.(hit)} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate">
-                          <Highlighted text={hit.title} query={typed} />
+                          <Highlighted text={hit.title} query={shownQuery} />
                         </span>
                         {hit.snippet && (
                           <span className="block truncate text-small text-fg-muted">
-                            <Highlighted text={hit.snippet} query={typed} />
+                            <Highlighted text={hit.snippet} query={shownQuery} />
                           </span>
                         )}
                       </span>

@@ -36,9 +36,15 @@ textarea,
 
 /* Search match: a soft accent background, not bold (docs/design/research/search.md D10) */
 .search-mark {
-  border-radius: 4px;
+  border-radius: 8px;
   background-color: color-mix(in srgb, var(--accent) 30%, transparent);
   color: inherit;
+}
+@media (forced-colors: active) {
+  .search-mark {
+    background-color: Mark;
+    color: MarkText;
+  }
 }
 [data-theme='light'] .search-mark {
   background-color: color-mix(in srgb, var(--accent) 50%, transparent);

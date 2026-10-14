@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { RECENT_STORAGE_KEY, useRecentItems } from '../store/recent-items-store';
 import { createFakeClient } from '../test/fake-auth';
 import { createAuth } from './auth';
 
@@ -150,6 +151,18 @@ describe('signOut', () => {
     await auth.signOut();
     expect(mocks.signOut).toHaveBeenCalledWith({ scope: 'local' });
     expect(auth.store.getState()).toMatchObject({ status: 'signedOut', email: null });
+  });
+
+  it('forgets the recent palette items of this device', async () => {
+    const { client } = createFakeClient({ user: { email: 'me@example.com' } });
+    const auth = createAuth({ client });
+    await auth.initialize();
+    useRecentItems.getState().add({ type: 'tag', id: 'a', title: 'home' });
+    expect(localStorage.getItem(RECENT_STORAGE_KEY)).not.toBeNull();
+
+    await auth.signOut();
+    expect(useRecentItems.getState().items).toEqual([]);
+    expect(localStorage.getItem(RECENT_STORAGE_KEY)).toBeNull();
   });
 
   it('still forgets the session when the server call fails', async () => {

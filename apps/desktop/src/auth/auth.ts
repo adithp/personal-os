@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { loginSchema } from '@personal-os/shared';
 import type { StoreApi } from 'zustand';
 import { createStore } from 'zustand/vanilla';
+import { useRecentItems } from '../store/recent-items-store';
 
 /** The part of the Supabase client the app uses; tests pass a fake with the same shape. */
 export type AuthClient = Pick<
@@ -105,6 +106,8 @@ export function createAuth(source: AuthSource): Auth {
     } catch {
       // The server could not be reached. This device still forgets the session below.
     }
+    // Nothing of this account stays on the device for the next person to sign in
+    useRecentItems.getState().clear();
     store.setState(stateFor(null));
   };
 
