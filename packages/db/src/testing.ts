@@ -24,6 +24,7 @@ const SUPABASE_STAND_IN = `
   grant usage on schema public to anon, authenticated;
   grant usage on schema auth to anon, authenticated;
   grant select on auth.users to authenticated;
+  create publication supabase_realtime;
 `;
 
 /** Migration file names in the order they run. */

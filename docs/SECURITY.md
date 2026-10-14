@@ -1,7 +1,7 @@
 # Security
 
 - Login required on every device (Supabase Auth). Public sign-up disabled after my account exists.
-- Row Level Security on every table: user_id = auth.uid(). It protects client access (anon key, Realtime).
+- Row Level Security on every table: user_id = auth.uid(). It protects client access (anon key, Realtime). The tables the app listens to live have `REVOKE ALL FROM anon` and `GRANT SELECT TO authenticated` only (migration 0011), because Realtime DELETE events skip RLS.
 - The backend connects as the postgres role, which bypasses RLS, so every backend query is scoped by user_id through one shared helper, with tests proving one user can never read another user's rows.
 - Apps hold only the Supabase anon key and API URL. The anon key is public by design; RLS protects the data.
 - JWTs are verified on the server with the Supabase public JWKS (no shared JWT secret).

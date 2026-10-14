@@ -10,6 +10,7 @@ export * from './env';
 export * from './favorites';
 export * from './goals';
 export * from './modules';
+export * from './realtime';
 export * from './recurrence';
 export * from './search';
 export * from './money';

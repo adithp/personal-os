@@ -1,4 +1,4 @@
-import { ENTITY_TYPES, LINK_RELATIONS } from '@personal-os/shared';
+import { ENTITY_TYPES, LINK_RELATIONS, REALTIME_TABLES } from '@personal-os/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { entities, goals, links, taskFavorites, tasks } from './schema';
@@ -74,6 +74,7 @@ describe('the generated migrations', () => {
       '0008_goals.sql',
       '0009_goals_updated_at_trigger.sql',
       '0010_tasks_search_vector.sql',
+      '0011_realtime_publication.sql',
     ]);
     const all = migrationFiles().flatMap(migrationStatements).join('\n').toUpperCase();
     for (const dangerous of [
@@ -620,5 +621,31 @@ describe('task search vector', () => {
     );
     await t.pg.query('reset enable_seqscan');
     expect(JSON.stringify(plan)).toContain('entities_search_vector_idx');
+  });
+});
+
+describe('realtime publication', () => {
+  it('publishes exactly the REALTIME_TABLES', async () => {
+    const published = await rows(
+      "select tablename from pg_publication_tables where pubname = 'supabase_realtime' order by tablename",
+    );
+    expect(published.map((r) => r.tablename)).toEqual([...REALTIME_TABLES].sort());
+  });
+
+  it('lets authenticated read and anon do nothing on those tables', async () => {
+    for (const table of REALTIME_TABLES) {
+      const [row] = await rows(
+        `select has_table_privilege('authenticated', 'public.${table}', 'SELECT') as can_read,
+                has_table_privilege('anon', 'public.${table}', 'SELECT') as anon_read,
+                has_table_privilege('anon', 'public.${table}', 'DELETE') as anon_delete`,
+      );
+      expect(row, table).toEqual({ can_read: true, anon_read: false, anon_delete: false });
+    }
+  });
+
+  it('can run twice without failing', async () => {
+    for (const statement of migrationStatements('0011_realtime_publication.sql')) {
+      await t.pg.exec(statement);
+    }
   });
 });

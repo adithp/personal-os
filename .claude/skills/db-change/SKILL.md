@@ -33,6 +33,7 @@ export const things = pgTable('things', {
    ```
    Separate statements with `--> statement-breakpoint`.
 3. Run `pnpm exec drizzle-kit generate` once more: it must say "No schema changes". Never edit the files in `drizzle/meta` by hand (Prettier ignores them).
+3b. If screens show the table live, add it to `REALTIME_TABLES` (packages/shared/src/realtime.ts) and, in a hand-written migration, add it to the `supabase_realtime` publication, `GRANT SELECT` to `authenticated` and `REVOKE ALL` from `anon` (Supabase stops auto-granting new tables on 2026-10-30; see migration 0011).
 4. Update the packages/db tests: the migration list and table list in `src/schema.test.ts`, the `truncate` statements in tests that clear tables, and add tests for the new table (constraints, cascade, RLS with `asRole`, anonymous role has no access, trigger).
 5. Update docs/DATABASE.md (docs-sync skill).
 

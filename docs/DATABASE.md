@@ -27,7 +27,7 @@ Each module table uses the same id as its entity row.
 - There is at most one live link per user, source, target, and relation. A soft-deleted link does not block creating the same link again.
 - Deleting an entity deletes its links; deleting a user deletes their entities and links.
 - updated_at is refreshed by a trigger (set_updated_at(), migration 0001) on every update of entities, links, tasks, tags, entity_tags, task_favorites, and goals.
-- Each table has one policy, "<table>_own_rows", for the authenticated role: user_id = (select auth.uid()) for both reading and writing. The anon role has no access.
+- Each table has one policy, "<table>_own_rows", for the authenticated role: user_id = (select auth.uid()) for both reading and writing. The anon role has no access (for the Realtime tables this is also a real REVOKE, migration 0011).
 - Migrations live in packages/db/drizzle. They are generated with pnpm db:generate and applied only by the owner with pnpm db:migrate. Migrations 0001, 0003, 0005, 0007, and 0009 (the updated_at triggers) are written by hand because drizzle-kit cannot describe functions and triggers. The server reads the migration list at startup and warns (and answers 503 schema_behind) while the database is missing migrations; it never applies them.
 
 ## 3. Tables
@@ -109,3 +109,7 @@ Each module table uses the same id as its entity row.
 - entities.search_vector (tsvector) has a GIN index (entities_search_vector_idx). For tasks, migration 0010_tasks_search_vector.sql fills it with triggers on tasks (insert, and update of title or description): title weight A, description weight B, `simple` configuration (no stemming, no stop words; decision 42), and backfilled existing tasks (which also refreshed their entities.updated_at). Other modules add their own trigger when they join search.
 - Queries (apps/server/src/lib/search.ts, the only full-text SQL): each typed word becomes a prefix term (word:*), joined by AND, matched with @@ and ranked with ts_rank(..., 1). Snippets use ts_headline with empty markers (plain text). Tags have no search vector: they are matched with lower(name) LIKE 'word%'.
 - Semantic search uses embeddings with pgvector and cosine distance.
+
+## 5. Realtime
+- Migration 0011_realtime_publication.sql adds the tables in `REALTIME_TABLES` (packages/shared/src/realtime.ts: tasks, tags, entity_tags, task_favorites, links, goals) to the `supabase_realtime` publication (skipping any already added), runs `GRANT SELECT ... TO authenticated` and `REVOKE ALL ... FROM anon` on them. Replica identity stays default. Supabase stops granting new `public` tables to the API roles on 30 October 2026, so a new table that screens show needs its own grants and an entry in `REALTIME_TABLES` in the same feature (db-change skill).
+- Check after `pnpm db:migrate`: `select tablename from pg_publication_tables where pubname = 'supabase_realtime';` lists the six tables; `select grantee, privilege_type from information_schema.role_table_grants where table_schema = 'public' and table_name = 'tasks';` shows SELECT for authenticated and nothing for anon.
