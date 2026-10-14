@@ -11,6 +11,7 @@ import { ApiError, type RequestOptions } from '../../api/api-client';
 import { useApi } from '../../api/api-context';
 import { SEARCH_KEY } from '../../commands/search-queries';
 import { useToasts } from '../../store/toast-store';
+import { TAGS_KEY } from '../tasks/tags-queries';
 import { clearDraft } from './editor/use-autosave';
 import { NOTE_FOLDERS_KEY, noteKeys, NOTES_KEY } from './query-keys';
 
@@ -65,7 +66,9 @@ export function useNotes(filters: ListNotesInput = {}, options: { enabled?: bool
     placeholderData: (previous, previousQuery) => {
       // Only within the same place: another folder must not show this folder's notes meanwhile
       const before = previousQuery?.queryKey[2];
-      return before?.folderId === filters.folderId && before?.trash === filters.trash
+      return before?.folderId === filters.folderId &&
+        before?.tagId === filters.tagId &&
+        before?.trash === filters.trash
         ? previous
         : undefined;
     },
@@ -119,6 +122,8 @@ function useWriter() {
       client.invalidateQueries({ queryKey: NOTES_KEY }),
       // Folders show how many notes they hold
       client.invalidateQueries({ queryKey: NOTE_FOLDERS_KEY }),
+      // Tags show how many notes use them
+      client.invalidateQueries({ queryKey: TAGS_KEY }),
       client.invalidateQueries({ queryKey: SEARCH_KEY }),
     ]);
   };
@@ -178,6 +183,8 @@ export function useUpdateNote() {
       client.setQueryData(noteKeys.detail(note.id), note);
       await Promise.all([
         client.invalidateQueries({ queryKey: noteKeys.lists }),
+        // The text may have new #tags
+        client.invalidateQueries({ queryKey: TAGS_KEY }),
         client.invalidateQueries({ queryKey: SEARCH_KEY }),
       ]);
     },

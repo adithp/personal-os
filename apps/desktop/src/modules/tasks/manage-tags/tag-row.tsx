@@ -244,7 +244,7 @@ export function TagRow({ tag, all, active, onActivate, onGone }: TagRowProps) {
         <>
           <span className="min-w-0 flex-1 truncate py-[7px] text-body text-fg">{tag.name}</span>
           <span className="shrink-0 py-[7px] text-small text-fg-muted">
-            {usageLabel(taskCount)}
+            {usageLabel(taskCount, tag.noteCount ?? 0)}
           </span>
           <span className="flex shrink-0 items-center gap-1 py-1.5 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
             <button

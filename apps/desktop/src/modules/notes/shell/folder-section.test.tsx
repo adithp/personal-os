@@ -29,7 +29,7 @@ const folderNames = () =>
     .map((link) => link.querySelector('.truncate')?.textContent);
 
 describe('the side panel', () => {
-  it('has All notes, Trash, and Soon rows for what is not built yet', async () => {
+  it('has All notes, Today, Tags, Templates and Trash', async () => {
     await openNotes(createFakeApi());
     const nav = screen.getByRole('navigation', { name: 'Notes' });
     expect(within(nav).getByRole('link', { name: 'All notes' })).toHaveAttribute(
@@ -37,10 +37,10 @@ describe('the side panel', () => {
       'page',
     );
     expect(within(nav).getByRole('link', { name: 'Trash' })).toBeInTheDocument();
-    for (const label of ['Today', 'Tags', 'Templates']) {
-      const soon = within(nav).getByText(label).closest('[aria-disabled="true"]');
-      expect(soon).toHaveTextContent('Soon');
-    }
+    expect(within(nav).getByRole('button', { name: /^Today/ })).toBeEnabled();
+    expect(within(nav).getByRole('link', { name: 'Templates' })).toBeInTheDocument();
+    expect(within(nav).getByRole('region', { name: 'Tags' })).toBeInTheDocument();
+    expect(within(nav).queryByText('Soon')).not.toBeInTheDocument();
   });
 
   it('collapses to icons and remembers it', async () => {

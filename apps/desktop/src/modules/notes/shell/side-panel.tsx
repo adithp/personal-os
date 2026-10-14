@@ -12,10 +12,13 @@ import {
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { ApiError } from '../../../api/api-client';
-import { NOTE_FEATURES } from '../features';
+import { useNow } from '../../dashboard/greeting';
+import { useOpenDaily } from '../daily/use-open-daily';
 import { useNoteFolders } from '../folders-queries';
+import { TEMPLATES_PLACE } from '../notes-search';
 import { useNotesUi } from '../notes-ui-store';
 import { FolderSection } from './folder-section';
+import { TagsSection } from './tags-section';
 import { useNotesNav } from './use-notes-nav';
 
 const rowClass =
@@ -23,49 +26,42 @@ const rowClass =
 
 const iconOf = (Glyph: Icon) => <Glyph size={18} stroke={1.5} aria-hidden className="shrink-0" />;
 
-/** A part that is not built yet: disabled, with "Soon". */
-function SoonRow({ label, icon, collapsed }: { label: string; icon: Icon; collapsed: boolean }) {
-  const row = (
-    <div
-      aria-disabled="true"
-      aria-label={collapsed ? `${label}, coming soon` : undefined}
-      className={cx(rowClass, 'cursor-default text-fg-muted opacity-60')}
+const dayFormat = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Kolkata',
+  day: 'numeric',
+  month: 'short',
+});
+
+/** Opens (or creates) today's daily note. The India date is a muted hint. */
+function TodayRow({ collapsed }: { collapsed: boolean }) {
+  const daily = useOpenDaily();
+  const hint = dayFormat.format(useNow());
+  const button = (
+    <button
+      type="button"
+      aria-label={collapsed ? `Today, ${hint}` : undefined}
+      disabled={daily.isPending}
+      onClick={() => {
+        void daily.open();
+      }}
+      className={cx(
+        rowClass,
+        'w-full text-fg-secondary hover:bg-tint hover:text-fg disabled:opacity-60',
+      )}
     >
-      {iconOf(icon)}
+      {iconOf(IconCalendarEvent)}
       {collapsed ? null : (
         <>
-          <span>{label}</span>
-          <span className="ml-auto text-small text-fg-muted">Soon</span>
+          <span>Today</span>
+          <span className="ml-auto text-small text-fg-muted">{hint}</span>
         </>
       )}
-    </div>
+    </button>
   );
-  return <li>{collapsed ? <Tooltip label={`${label} (Soon)`}>{row}</Tooltip> : row}</li>;
+  return <li>{collapsed ? <Tooltip label={`Today, ${hint}`}>{button}</Tooltip> : button}</li>;
 }
 
-interface SoonItem {
-  label: string;
-  icon: Icon;
-  /** True once its stage is merged: the row then comes from that stage, not from here. */
-  built: boolean;
-}
-
-const SOON_TOP: readonly SoonItem[] = [
-  { label: 'Today', icon: IconCalendarEvent, built: NOTE_FEATURES.today },
-];
-const SOON_BOTTOM: readonly SoonItem[] = [
-  { label: 'Tags', icon: IconTags, built: NOTE_FEATURES.tags },
-  { label: 'Templates', icon: IconTemplate, built: NOTE_FEATURES.templates },
-];
-
-const soonRows = (items: readonly SoonItem[], collapsed: boolean) =>
-  items
-    .filter((item) => !item.built)
-    .map((item) => (
-      <SoonRow key={item.label} label={item.label} icon={item.icon} collapsed={collapsed} />
-    ));
-
-/** A link to All notes or Trash. The active one is marked with aria-current. */
+/** A link to All notes, Templates or Trash. The active one is marked with aria-current. */
 function PlaceRow({
   label,
   icon,
@@ -75,7 +71,7 @@ function PlaceRow({
 }: {
   label: string;
   icon: Icon;
-  place: 'all' | 'trash';
+  place: 'all' | 'trash' | typeof TEMPLATES_PLACE;
   active: boolean;
   collapsed: boolean;
 }) {
@@ -84,7 +80,7 @@ function PlaceRow({
       to="/notes"
       search={(previous) => ({
         ...(previous.note ? { note: previous.note } : {}),
-        ...(place === 'trash' ? { folder: 'trash' } : {}),
+        ...(place === 'all' ? {} : { folder: place }),
       })}
       aria-label={collapsed ? label : undefined}
       aria-current={active ? 'page' : undefined}
@@ -142,7 +138,7 @@ export function NotesSidePanel({ forceCollapsed = false }: { forceCollapsed?: bo
             active={nav.place === 'all'}
             collapsed={collapsed}
           />
-          {soonRows(SOON_TOP, collapsed)}
+          <TodayRow collapsed={collapsed} />
         </ul>
 
         {collapsed ? (
@@ -172,8 +168,33 @@ export function NotesSidePanel({ forceCollapsed = false }: { forceCollapsed?: bo
           />
         )}
 
+        {collapsed ? (
+          <ul>
+            <li>
+              <Tooltip label="Tags">
+                <button
+                  type="button"
+                  aria-label="Tags, expand the side panel to see them"
+                  onClick={toggle}
+                  className={cx(rowClass, 'w-full text-fg-secondary hover:bg-tint hover:text-fg')}
+                >
+                  {iconOf(IconTags)}
+                </button>
+              </Tooltip>
+            </li>
+          </ul>
+        ) : (
+          <TagsSection />
+        )}
+
         <ul className="flex flex-col gap-0.5">
-          {soonRows(SOON_BOTTOM, collapsed)}
+          <PlaceRow
+            label="Templates"
+            icon={IconTemplate}
+            place={TEMPLATES_PLACE}
+            active={nav.place === TEMPLATES_PLACE}
+            collapsed={collapsed}
+          />
           <PlaceRow
             label="Trash"
             icon={IconTrash}
