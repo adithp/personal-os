@@ -61,7 +61,9 @@ function type(text: string) {
 function typeChar(char: string) {
   const { view } = editor;
   const { from, to } = view.state.selection;
-  const handled = view.someProp('handleTextInput', (f) => f(view, from, to, char));
+  const handled = view.someProp('handleTextInput', (f) =>
+    f(view, from, to, char, () => view.state.tr),
+  );
   if (!handled) view.dispatch(view.state.tr.insertText(char, from, to));
 }
 

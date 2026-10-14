@@ -33,8 +33,8 @@ const blocks = (): JSONContent[] => editor.getJSON().content as JSONContent[];
 /** Rows and columns of the first table, and the type of its first cell. */
 const tableShape = () => {
   const table = blocks().find((n) => n.type === 'table');
-  const rows = (table?.content ?? []) as JSONContent[];
-  const first = (rows[0]?.content ?? []) as JSONContent[];
+  const rows = table?.content ?? [];
+  const first = rows[0]?.content ?? [];
   return { rows: rows.length, columns: first.length, firstCell: first[0]?.type };
 };
 
