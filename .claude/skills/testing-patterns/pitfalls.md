@@ -115,3 +115,10 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: The rule scans every non-.test.ts file outside src/lib
 - Fix: The helper is money-test-utils.test.ts (with one small test so Vitest accepts the file)
 - Prevention: guarded, apps/server/src/lib/no-direct-database.test.ts
+
+### 2026-10-14: a require at run time is not in the production bundle
+- Symptom: the server crashed on the AWS server with `Cannot find module 'rrule'` although all tests and the build passed
+- Cause: the Docker image holds one bundled file; `createRequire(...)('rrule')` is loaded at run time, so the bundler never included the package (the earlier fix for dev mode caused it)
+- Fix: a normal `import * as` that works in tsx and in the bundle (see actions/recurrence.ts)
+- Prevention: startup-imports.test.ts now builds the real bundle and starts it; never load a package with a run-time require
+

@@ -80,3 +80,5 @@ Every time something cost a retry or a fix, we record it here so it never happen
 | 2026-10-14 | data-hooks | invalidateQueries is ignored by a query still on its first fetch (no data yet); cancel first | guarded | apps/desktop/src/modules/money/money-queries.test.tsx |
 | 2026-10-14 | testing-patterns | Server test helpers that run raw SQL must be named *.test.ts (the no-direct-database rule scans all other files) | guarded | apps/server/src/actions/money-test-utils.test.ts |
 | 2026-10-14 | db-change | A generated migration can get a `when` older than the previous one (drizzle would skip it) | guarded | apps/server/src/lib/schema-guard.test.ts |
+| 2026-10-14 | testing-patterns | A run-time require is missing in the production bundle (server crashed on AWS) | guarded | apps/server/src/startup-imports.test.ts |
+
