@@ -19,7 +19,7 @@ export function NotesLayout() {
   const { place, noteId, showPlace } = nav;
   const rightPanelOpen = useNotesUi((state) => state.rightPanelOpen);
   const narrow = useNarrowWindow();
-  // The panel needs an open note; below 1240 px it makes the side panel show icons only
+  // The panel needs an open note; below 1252 px it makes the side panel show icons only
   const panelShown = rightPanelOpen && noteId !== null;
 
   // Opening Notes with no link returns to the last place
@@ -52,7 +52,7 @@ export function NotesLayout() {
       <NotesSidePanel forceCollapsed={panelShown && narrow} />
       <NoteList key={place} />
       <EditorSlot noteId={noteId} />
-      {panelShown && noteId ? <RightPanel key={noteId} noteId={noteId} /> : null}
+      {panelShown && noteId ? <RightPanel noteId={noteId} /> : null}
     </div>
   );
 }

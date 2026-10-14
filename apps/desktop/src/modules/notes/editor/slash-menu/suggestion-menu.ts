@@ -1,5 +1,10 @@
-import { shift } from '@floating-ui/dom';
-import type { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
+import { flip, shift, size } from '@floating-ui/dom';
+import type { PluginKey } from '@tiptap/pm/state';
+import {
+  exitSuggestion,
+  type SuggestionKeyDownProps,
+  type SuggestionProps,
+} from '@tiptap/suggestion';
 import './suggestion-menu.css';
 
 /** What one row of the menu shows. */
@@ -11,9 +16,27 @@ export interface MenuRow {
 
 /**
  * Placement for `Suggestion({ floatingUi })`: the menu is fixed to the window (so a scrolling page
- * cannot clip it) and kept 8 px inside the edges.
+ * cannot clip it), flips above the line when there is no room below, is kept 8 px inside the edges
+ * and gets a shorter max height when the room is small. Use it with `flip: false` on the
+ * Suggestion, so the flip is not done twice.
  */
-export const MENU_FLOATING = { strategy: 'fixed' as const, middleware: [shift({ padding: 8 })] };
+export const MENU_FLOATING = {
+  strategy: 'fixed' as const,
+  middleware: [
+    flip({ padding: 8 }),
+    shift({ padding: 8 }),
+    size({
+      padding: 8,
+      apply({ availableHeight, elements }) {
+        // The CSS caps the height at 320 px; this only makes it shorter when the room is smaller
+        elements.floating.style.setProperty(
+          '--menu-room',
+          `${String(Math.max(0, Math.floor(availableHeight)))}px`,
+        );
+      },
+    }),
+  ],
+};
 
 let menuCount = 0;
 
@@ -24,13 +47,24 @@ let menuCount = 0;
  * key handler. The menu hides itself when there is nothing to show. Text is set with
  * `textContent`, so note titles can never inject markup.
  */
-export function createMenuRenderer<T>(options: { label: string; row: (item: T) => MenuRow }) {
+export function createMenuRenderer<T>(options: {
+  label: string;
+  row: (item: T) => MenuRow;
+  /** The key of the Suggestion this menu belongs to (to close it when the editor loses focus). */
+  pluginKey: PluginKey;
+}) {
   return () => {
     const listId = `suggestion-menu-${String(++menuCount)}`;
     let element: HTMLDivElement | null = null;
     let unmount: (() => void) | null = null;
     let props: SuggestionProps<T> | null = null;
     let selected = 0;
+
+    // The menu lives in document.body, so it must go when the focus leaves the editor (the palette
+    // opens, another window is chosen); the pointer never takes the focus (see mousedown below)
+    const onFocusOut = () => {
+      if (props) exitSuggestion(props.editor.view, options.pluginKey);
+    };
 
     const rows = () => [...(element?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])];
 
@@ -86,6 +120,8 @@ export function createMenuRenderer<T>(options: { label: string; row: (item: T) =
         });
         element?.append(row);
       });
+      // No rows, nothing to point at
+      if (items.length === 0) props.editor.view.dom.removeAttribute('aria-activedescendant');
       mark();
     };
 
@@ -98,6 +134,11 @@ export function createMenuRenderer<T>(options: { label: string; row: (item: T) =
         element.setAttribute('role', 'listbox');
         element.setAttribute('aria-label', options.label);
         element.className = 'suggestion-menu glass-strong rounded-card';
+        // A click on the menu's own scrollbar or padding must not take the focus either
+        element.addEventListener('mousedown', (event) => {
+          event.preventDefault();
+        });
+        next.editor.view.dom.addEventListener('focusout', onFocusOut);
         unmount = next.mount(element);
         next.editor.view.dom.setAttribute('aria-controls', listId);
         render();
@@ -123,6 +164,7 @@ export function createMenuRenderer<T>(options: { label: string; row: (item: T) =
         return false;
       },
       onExit(last: SuggestionProps<T>) {
+        last.editor.view.dom.removeEventListener('focusout', onFocusOut);
         unmount?.();
         unmount = null;
         element = null;

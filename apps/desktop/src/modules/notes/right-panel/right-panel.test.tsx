@@ -15,14 +15,22 @@ vi.mock('@tauri-apps/api/window', async (importOriginal) => ({
   getCurrentWindow: vi.fn(),
 }));
 
-vi.mock('../editor/note-editor-pane', () => ({
-  NoteEditorPane: ({ noteId }: { noteId: string }) => <div data-testid="editor">{noteId}</div>,
-}));
+vi.mock('../editor/note-editor-pane', async () => {
+  const { RightPanelToggle } = await import('./right-panel-toggle');
+  return {
+    NoteEditorPane: ({ noteId }: { noteId: string }) => (
+      <div data-testid="editor">
+        {noteId}
+        <RightPanelToggle />
+      </div>
+    ),
+  };
+});
 
 beforeEach(resetEverything);
 afterEach(restoreEverything);
 
-/** Window width: true means narrower than 1240 px. */
+/** Window width: true means narrower than 1252 px. */
 function setNarrow(narrow: boolean) {
   vi.stubGlobal(
     'matchMedia',
@@ -74,12 +82,13 @@ describe('the right panel', () => {
   it('opens and closes from the toggle and the choice is saved on this device', async () => {
     const user = userEvent.setup();
     render(<RightPanelToggle />);
-    await user.click(screen.getByRole('button', { name: 'Show links and outline' }));
+    const toggle = screen.getByRole('button', { name: 'Links and outline' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await user.click(toggle);
     expect(useNotesUi.getState().rightPanelOpen).toBe(true);
     expect(localStorage.getItem('personal-os.notes-ui')).toContain('"rightPanelOpen":true');
-    const hide = screen.getByRole('button', { name: 'Hide links and outline' });
-    expect(hide).toHaveAttribute('aria-pressed', 'true');
-    await user.click(hide);
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await user.click(toggle);
     expect(useNotesUi.getState().rightPanelOpen).toBe(false);
   });
 
@@ -87,7 +96,7 @@ describe('the right panel', () => {
     const { user, beta } = await openWithPanel();
     const links = within(await sectionOf('Backlinks (1)'));
     expect(links.getByText('Beta')).toBeInTheDocument();
-    expect(links.getByText('Back to [[Alpha]] now')).toBeInTheDocument();
+    expect(links.getByText('Back to Alpha now')).toBeInTheDocument();
     await user.click(links.getByRole('button', { name: /Beta/ }));
     await waitFor(() => {
       expect(screen.getByTestId('editor')).toHaveTextContent(beta.id);
@@ -137,6 +146,81 @@ describe('the right panel', () => {
     unregister();
   });
 
+  it('has one Tab stop per list and moves between rows with the arrow keys, Home and End', async () => {
+    const { user } = await openWithPanel();
+    const outgoing = within(await sectionOf('Outgoing links (2)'));
+    const beta = outgoing.getByRole('button', { name: /^Beta$/ });
+    const create = outgoing.getByRole('button', { name: 'Create note: Ghost' });
+    expect(beta).toHaveAttribute('tabindex', '0');
+    expect(create).toHaveAttribute('tabindex', '-1');
+    beta.focus();
+    await user.keyboard('{ArrowDown}');
+    expect(create).toHaveFocus();
+    expect(create).toHaveAttribute('tabindex', '0');
+    expect(beta).toHaveAttribute('tabindex', '-1');
+    await user.keyboard('{ArrowDown}');
+    expect(create).toHaveFocus();
+    await user.keyboard('{Home}');
+    expect(beta).toHaveFocus();
+    await user.keyboard('{End}');
+    expect(create).toHaveFocus();
+    await user.keyboard('{ArrowUp}');
+    expect(beta).toHaveFocus();
+  });
+
+  it('gives the headings one Tab stop too, and Enter jumps', async () => {
+    const jump = vi.fn();
+    const unregister = registerHeadingJump(jump);
+    const { user } = await openWithPanel();
+    await user.click(await screen.findByRole('radio', { name: 'Outline' }));
+    const buttons = within(screen.getByRole('list', { name: 'Headings' })).getAllByRole('button');
+    expect(buttons.map((b) => b.getAttribute('tabindex'))).toEqual(['0', '-1', '-1']);
+    buttons[0]?.focus();
+    await user.keyboard('{ArrowDown}{ArrowDown}');
+    expect(buttons[2]).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(jump).toHaveBeenCalledWith(2);
+    unregister();
+  });
+
+  it('keeps the tab choice for the next note and does not rebuild the panel', async () => {
+    const { user } = await openWithPanel();
+    await user.click(await screen.findByRole('radio', { name: 'Outline' }));
+    expect(useNotesUi.getState().rightPanelTab).toBe('outline');
+    const before = panel();
+    await user.click(screen.getByRole('radio', { name: 'Links' }));
+    const backlink = within(await sectionOf('Backlinks (1)')).getByRole('button', { name: /Beta/ });
+    backlink.focus();
+    await user.keyboard('{Enter}');
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Backlinks (1)' })).toBeInTheDocument();
+    });
+    expect(panel()).toBe(before);
+    expect(localStorage.getItem('personal-os.notes-ui')).toContain('"rightPanelTab":"links"');
+  });
+
+  it('Escape in the panel returns the focus to the toggle', async () => {
+    const { user } = await openWithPanel();
+    const beta = within(await sectionOf('Outgoing links (2)')).getByRole('button', {
+      name: /^Beta$/,
+    });
+    beta.focus();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Links and outline' })).toHaveFocus();
+  });
+
+  it('announces the loading message and makes Create at least 28 px high', async () => {
+    setNarrow(false);
+    const { alpha, beta } = sample();
+    useNotesUi.setState({ rightPanelOpen: true });
+    const fake = createFakeApi([], [], [], [], [alpha, beta]);
+    fake.slow(100);
+    await openNotes(fake, `/notes?note=${alpha.id}`);
+    expect(await screen.findByText('Loading links…')).toHaveAttribute('role', 'status');
+    const create = await screen.findByRole('button', { name: 'Create note: Ghost' });
+    expect(create).toHaveClass('h-7');
+  });
+
   it('moves between the tabs with the arrow keys', async () => {
     const { user } = await openWithPanel();
     await user.click(await screen.findByRole('radio', { name: 'Links' }));
@@ -145,7 +229,7 @@ describe('the right panel', () => {
     expect(within(panel()).queryByRole('radio', { name: 'History' })).toBeNull();
   });
 
-  it('shows icons only in the side panel below 1240 px while it is open', async () => {
+  it('shows icons only in the side panel below 1252 px while it is open', async () => {
     await openWithPanel(true);
     await screen.findByRole('heading', { name: 'Backlinks (1)' });
     expect(screen.getByRole('button', { name: 'Expand side panel' })).toBeInTheDocument();
@@ -188,6 +272,17 @@ describe('the right panel', () => {
       expect(document.documentElement.innerHTML).not.toMatch(/#[0-9a-f]{6}/i);
     },
   );
+});
+
+describe('the panel and the saved text', () => {
+  it('keeps the tab choice in the store, with a bad saved value falling back to Links', () => {
+    localStorage.setItem(
+      'personal-os.notes-ui',
+      JSON.stringify({ state: { rightPanelTab: 'nope' }, version: 1 }),
+    );
+    void useNotesUi.persist.rehydrate();
+    expect(useNotesUi.getState().rightPanelTab).toBe('links');
+  });
 });
 
 describe('parseOutline', () => {

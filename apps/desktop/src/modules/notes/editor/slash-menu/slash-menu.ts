@@ -143,6 +143,7 @@ export const SlashMenu = Extension.create({
         pluginKey: slashMenuKey,
         char: '/',
         allowedPrefixes: [' '],
+        flip: false,
         floatingUi: MENU_FLOATING,
         allow: ({ state, range }) => {
           const $from = state.doc.resolve(range.from);
@@ -157,6 +158,7 @@ export const SlashMenu = Extension.create({
           props.run(editor, range);
         },
         render: createMenuRenderer<SlashItem>({
+          pluginKey: slashMenuKey,
           label: 'Insert a block',
           row: (item) => ({ text: item.title, hint: item.hint }),
         }),

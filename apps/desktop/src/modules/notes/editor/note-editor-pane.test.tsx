@@ -3,12 +3,15 @@ import type { Editor } from '@tiptap/core';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../../api/api-client';
-import { jumpToHeading } from '../right-panel';
+import { headingsOf, jumpToHeading } from '../right-panel';
+import { useLiveOutline } from '../right-panel/outline-bus';
 import { NoteEditorPane } from './note-editor-pane';
 
 const mocks = vi.hoisted(() => ({
   note: undefined as Note | undefined,
-  titles: [] as { id: string; title: string }[],
+  titles: [] as { id: string; title: string }[] | undefined,
+  refetchTitles: vi.fn(),
+  query: undefined as { isPending?: boolean; isError?: boolean; error?: unknown } | undefined,
   update: vi.fn(),
   rename: vi.fn(),
   create: vi.fn(),
@@ -22,13 +25,19 @@ vi.mock('../notes-queries', () => ({
     isError: false,
     data: mocks.note,
     refetch: mocks.refetch,
+    ...mocks.query,
   }),
   useUpdateNote: () => ({ mutateAsync: mocks.update }),
   useRenameNote: () => ({ mutateAsync: mocks.rename }),
   useCreateNote: () => ({ mutateAsync: mocks.create }),
 }));
 vi.mock('../links-queries', () => ({
-  useNoteTitles: () => ({ data: mocks.titles, isPending: false, isError: false }),
+  useNoteTitles: () => ({
+    data: mocks.titles,
+    isPending: mocks.titles === undefined,
+    isError: false,
+    refetch: mocks.refetchTitles,
+  }),
 }));
 vi.mock('../shell/use-notes-nav', () => ({
   useNotesNav: () => ({ noteId: null, place: 'all', openNote: mocks.openNote }),
@@ -85,6 +94,8 @@ beforeEach(() => {
   mocks.create.mockReset();
   mocks.openNote.mockReset();
   mocks.titles = [];
+  mocks.query = undefined;
+  mocks.refetchTitles.mockReset();
   mocks.update.mockImplementation((input: UpdateNoteInput) =>
     Promise.resolve(makeNote({ revision: input.baseRevision + 1, contentMd: input.contentMd })),
   );
@@ -398,6 +409,71 @@ describe('NoteEditorPane', () => {
       expect(linkEl()).toHaveClass('wikilink-resolved');
     });
 
+    it('ignores more clicks while the note is being created', async () => {
+      let finish: (note: Note) => void = () => undefined;
+      mocks.create.mockReturnValue(
+        new Promise<Note>((resolve) => {
+          finish = resolve;
+        }),
+      );
+      render(<NoteEditorPane noteId="n1" />);
+      insertLink('Ideas');
+      fireEvent.click(linkEl());
+      fireEvent.click(linkEl());
+      expect(mocks.create).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        finish(makeNote({ id: 'new-id', title: 'Ideas' }));
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(mocks.openNote).toHaveBeenCalledWith('new-id');
+      // The next click works again
+      mocks.create.mockResolvedValue(makeNote({ id: 'again', title: 'Ideas' }));
+      fireEvent.click(linkEl());
+      expect(mocks.create).toHaveBeenCalledTimes(2);
+    });
+
+    it('opens the existing note when creating it fails because the title is taken', async () => {
+      mocks.create.mockRejectedValue(
+        new ApiError(409, 'note_title_taken', 'A note with this title exists.'),
+      );
+      mocks.refetchTitles.mockResolvedValue({ data: [{ id: 'n-ideas', title: 'ideas' }] });
+      render(<NoteEditorPane noteId="n1" />);
+      insertLink('Ideas');
+      fireEvent.click(linkEl());
+      await tick(0);
+      expect(mocks.refetchTitles).toHaveBeenCalled();
+      expect(mocks.openNote).toHaveBeenCalledWith('n-ideas');
+    });
+
+    it('opens nothing and draws no link as missing while the titles are loading', async () => {
+      mocks.titles = undefined;
+      render(<NoteEditorPane noteId="n1" />);
+      insertLink('Ideas');
+      expect(linkEl()).not.toHaveClass('wikilink-unresolved');
+      expect(linkEl()).not.toHaveClass('wikilink-resolved');
+      fireEvent.click(linkEl());
+      await tick(0);
+      expect(mocks.create).not.toHaveBeenCalled();
+      expect(mocks.openNote).not.toHaveBeenCalled();
+    });
+
+    it('does not follow links in a note in the trash', async () => {
+      mocks.note = makeNote({ deletedAt: '2025-10-07T06:00:00.000Z' });
+      mocks.titles = [{ id: 'n-plan-b', title: 'Plan B' }];
+      render(<NoteEditorPane noteId="n1" />);
+      act(() => {
+        editorOf().commands.setContent('[[Plan B]] [[Ghost]]', { contentType: 'markdown' });
+      });
+      const found = document.querySelectorAll<HTMLElement>('[data-type="wikiLink"]');
+      expect(found).toHaveLength(2);
+      found.forEach((link) => {
+        fireEvent.click(link);
+      });
+      await tick(0);
+      expect(mocks.openNote).not.toHaveBeenCalled();
+      expect(mocks.create).not.toHaveBeenCalled();
+    });
+
     it('offers the latest titles in the [[ menu', async () => {
       mocks.titles = [{ id: 'n-plan-b', title: 'Plan B' }];
       render(<NoteEditorPane noteId="n1" />);
@@ -410,16 +486,127 @@ describe('NoteEditorPane', () => {
     });
   });
 
+  it('saves on the renamed revision at once, without waiting for the refetch', async () => {
+    mocks.rename.mockResolvedValue({ item: makeNote({ title: 'New name', revision: 9 }) });
+    render(<NoteEditorPane noteId="n1" />);
+    const title = screen.getByRole('textbox', { name: 'Title' });
+    fireEvent.change(title, { target: { value: 'New name' } });
+    fireEvent.keyDown(title, { key: 'Enter' });
+    await tick(0);
+    typeText('!');
+    await tick(1000);
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ baseRevision: 9 }));
+  });
+
+  describe('a quiet reload of text changed elsewhere', () => {
+    it('keeps the cursor, clamped to the new text, and clears the undo history', async () => {
+      const { rerender } = render(<NoteEditorPane noteId="n1" />);
+      typeText('!');
+      expect(editorOf().can().undo()).toBe(true);
+      await tick(1000);
+      act(() => {
+        editorOf().commands.setTextSelection(4);
+      });
+      mocks.note = makeNote({ revision: 6, contentMd: 'Changed on the phone' });
+      rerender(<NoteEditorPane noteId="n1" />);
+      expect(screen.getByText('Changed on the phone')).toBeInTheDocument();
+      expect(editorOf().state.selection.from).toBe(4);
+      expect(editorOf().can().undo()).toBe(false);
+
+      // A cursor past the end of shorter text lands at the end
+      act(() => {
+        editorOf().commands.setTextSelection(15);
+      });
+      mocks.note = makeNote({ revision: 8, contentMd: 'Hi' });
+      rerender(<NoteEditorPane noteId="n1" />);
+      expect(editorOf().state.selection.from).toBeLessThanOrEqual(3);
+      expect(editorOf().state.selection.from).toBeGreaterThan(0);
+    });
+
+    it('waits for an input method composition to end', () => {
+      const { rerender } = render(<NoteEditorPane noteId="n1" />);
+      const editor = editorOf();
+      const { input } = editor.view as unknown as { input: { composing: boolean } };
+      input.composing = true;
+      mocks.note = makeNote({ revision: 6, contentMd: 'Changed on the phone' });
+      rerender(<NoteEditorPane noteId="n1" />);
+      expect(screen.queryByText('Changed on the phone')).toBeNull();
+      input.composing = false;
+      act(() => {
+        editor.view.dom.dispatchEvent(new Event('compositionend'));
+      });
+      expect(screen.getByText('Changed on the phone')).toBeInTheDocument();
+    });
+  });
+
+  it('keeps the panel toggle in the loading, error and gone states', () => {
+    mocks.query = { isPending: true };
+    const { rerender } = render(<NoteEditorPane noteId="n1" />);
+    expect(screen.getByRole('status')).toHaveTextContent('Loading note…');
+    expect(screen.getByRole('button', { name: 'Links and outline' })).toBeInTheDocument();
+
+    mocks.query = { isPending: false, isError: true, error: new ApiError(404, 'not_found', 'x') };
+    rerender(<NoteEditorPane noteId="n1" />);
+    expect(screen.getByText('This note no longer exists.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Links and outline' })).toBeInTheDocument();
+
+    mocks.query = {
+      isPending: false,
+      isError: true,
+      error: new ApiError(500, 'server_error', 'Down.'),
+    };
+    rerender(<NoteEditorPane noteId="n1" />);
+    expect(screen.getByText('Down.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Links and outline' })).toBeInTheDocument();
+  });
+
+  it('counts a heading that holds only a wikilink the same in the list and the jump', () => {
+    mocks.note = makeNote({ contentMd: '# [[Ghost]]\n\n## \n\n## Two' });
+    render(<NoteEditorPane noteId="n1" />);
+    expect(headingsOf(editorOf().state.doc).map((h) => h.text)).toEqual(['Ghost', 'Two']);
+    act(() => {
+      jumpToHeading(1);
+    });
+    expect(editorOf().state.selection.$from.parent.textContent).toBe('Two');
+  });
+
+  it('publishes the headings of the live document for the Outline tab', () => {
+    mocks.note = makeNote({ contentMd: '# One' });
+    function Probe() {
+      const items = useLiveOutline(mocks.note?.id ?? '');
+      return <p data-testid="outline">{items?.map((item) => item.text).join('|') ?? 'none'}</p>;
+    }
+    render(
+      <>
+        <NoteEditorPane noteId="n1" />
+        <Probe />
+      </>,
+    );
+    expect(screen.getByTestId('outline')).toHaveTextContent('One');
+    act(() => {
+      editorOf()
+        .chain()
+        .focus('end')
+        .insertContent({
+          type: 'heading',
+          attrs: { level: 2 },
+          content: [{ type: 'text', text: 'Fresh' }],
+        })
+        .run();
+    });
+    expect(screen.getByTestId('outline')).toHaveTextContent('One|Fresh');
+  });
+
   it('has a button in the top bar that shows or hides the right panel', () => {
     render(<NoteEditorPane noteId="n1" />);
-    const toggle = screen.getByRole('button', { name: 'Show links and outline' });
+    const toggle = screen.getByRole('button', { name: 'Links and outline' });
     expect(toggle).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(toggle);
-    expect(screen.getByRole('button', { name: 'Hide links and outline' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Links and outline' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Hide links and outline' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Links and outline' }));
   });
 
   it('moves the cursor to the i-th heading when the Outline asks, skipping nothing but empty ones', () => {

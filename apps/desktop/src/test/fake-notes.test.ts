@@ -106,4 +106,40 @@ describe('the Notes mock API follows the real server', () => {
       );
     }
   });
+
+  it('lists a link to the note itself as outgoing, like the server', () => {
+    const me = makeNote({ title: 'Me', contentMd: 'see [[Me]] and [[Other]]' });
+    const fake = createNotesFake([me]);
+    const { item } = fake.handle('GET', `/notes/${me.id}/links`, {}) as {
+      item: { outgoing: { target: string; noteId: string | null }[] };
+    };
+    expect(item.outgoing).toEqual([
+      { target: 'Me', noteId: me.id },
+      { target: 'Other', noteId: null },
+    ]);
+  });
+
+  it('gives backlink context as plain text of the first line outside code fences', () => {
+    const target = makeNote({ title: 'Target' });
+    const source = makeNote({
+      title: 'Source',
+      contentMd: '```\nin code [[Target]]\n```\n\nA **bold** [[Target|word]] here',
+    });
+    const fake = createNotesFake([target, source]);
+    const { item } = fake.handle('GET', `/notes/${target.id}/links`, {}) as {
+      item: { backlinks: { context: string }[] };
+    };
+    expect(item.backlinks[0]?.context).toBe('A bold word here');
+  });
+
+  it('updates the excerpt and time of notes whose links a rename rewrote', () => {
+    const renamed = makeNote({ title: 'Old' });
+    const other = makeNote({ title: 'Other', contentMd: 'See [[Old]]' });
+    const fake = createNotesFake([renamed, other]);
+    fake.handle('POST', `/notes/${renamed.id}/rename`, { body: { title: 'Fresh' } });
+    const after = fake.notes().find((note) => note.id === other.id);
+    expect(after).toMatchObject({ contentMd: 'See [[Fresh]]', revision: 2 });
+    expect(after?.excerpt).toBe('See Fresh');
+    expect(after?.updatedAt).not.toBe(other.updatedAt);
+  });
 });
