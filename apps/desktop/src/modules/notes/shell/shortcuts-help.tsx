@@ -1,6 +1,7 @@
 import { IconButton, Kbd } from '@personal-os/ui';
 import { IconX } from '@tabler/icons-react';
 import { useEffect, useRef, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { trapTab } from '../../tasks/inbox/trap-tab';
 
 interface Shortcut {
@@ -12,7 +13,7 @@ const NOTES: readonly Shortcut[] = [
   { keys: ['N'], action: 'New note' },
   { keys: ['↑', '↓'], action: 'Move between notes' },
   { keys: ['Enter'], action: 'Open the note and start writing' },
-  { keys: ['Delete'], action: 'Move to Trash' },
+  { keys: ['Delete'], action: 'Move to trash' },
   { keys: ['Esc'], action: 'From the editor, back to the list' },
   { keys: ['?'], action: 'Show this help' },
 ];
@@ -40,7 +41,10 @@ function Group({ label, shortcuts }: { label: string; shortcuts: readonly Shortc
   );
 }
 
-/** The keyboard shortcuts of the Notes page. Escape closes. */
+/**
+ * The keyboard shortcuts of the Notes page. Escape closes. Rendered through the body, like
+ * ConfirmDialog: a backdrop filter on a parent would trap position: fixed.
+ */
 export function NotesShortcutsHelp({ onClose }: { onClose: () => void }) {
   const box = useRef<HTMLDivElement>(null);
 
@@ -64,7 +68,7 @@ export function NotesShortcutsHelp({ onClose }: { onClose: () => void }) {
     trapTab(event, box.current);
   };
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-40 flex items-center justify-center"
       onMouseDown={(event) => {
@@ -85,8 +89,9 @@ export function NotesShortcutsHelp({ onClose }: { onClose: () => void }) {
           <IconButton aria-label="Close" icon={<IconX size={16} aria-hidden />} onClick={onClose} />
         </div>
         <Group label="Notes" shortcuts={NOTES} />
-        <Group label="In Trash" shortcuts={TRASH} />
+        <Group label="In trash" shortcuts={TRASH} />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

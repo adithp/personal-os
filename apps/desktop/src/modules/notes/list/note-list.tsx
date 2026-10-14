@@ -6,7 +6,7 @@ import {
   type NoteSort,
   type NoteSummary,
 } from '@personal-os/shared';
-import { Button, IconButton, Input, Tooltip } from '@personal-os/ui';
+import { Button, cx, IconButton, Input, Tooltip } from '@personal-os/ui';
 import { IconPlus, IconSortDescending } from '@tabler/icons-react';
 import { useMemo, useRef, useState } from 'react';
 import { ApiError } from '../../../api/api-client';
@@ -87,7 +87,8 @@ export function NoteList() {
   const byId = useMemo(() => new Map(loaded.map((note) => [note.id, note])), [loaded]);
   const tabbableId =
     tabId !== null && shown.some((n) => n.id === tabId) ? tabId : (shown[0]?.id ?? null);
-  const ready = !notes.isPending && !notes.isError;
+  // A failed background refresh keeps the rows on screen; the error shows in a bar above them
+  const ready = !notes.isPending && (!notes.isError || notes.data !== undefined);
   const filtering = filter.trim() !== '';
 
   const placeName = trash
@@ -219,16 +220,17 @@ export function NoteList() {
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Tooltip label="Keyboard shortcuts">
-            <button
-              type="button"
+            <IconButton
               aria-label="Keyboard shortcuts"
+              icon={
+                <span aria-hidden className="text-body">
+                  ?
+                </span>
+              }
               onClick={() => {
                 setHelpOpen(true);
               }}
-              className="h-[30px] min-w-[30px] rounded-control px-2 text-body text-fg-muted focus-ring hover:bg-input hover:text-fg"
-            >
-              ?
-            </button>
+            />
           </Tooltip>
           <Tooltip label="Sort notes">
             <IconButton
@@ -292,7 +294,13 @@ export function NoteList() {
           </p>
         ) : null}
         {notes.isError ? (
-          <div role="alert" className="flex flex-col items-start gap-2 px-2">
+          <div
+            role="alert"
+            className={cx(
+              'flex flex-col items-start gap-2 px-2',
+              ready && 'mb-2 rounded-control bg-input py-2',
+            )}
+          >
             <p className="text-body text-fg">
               {notes.error instanceof ApiError ? notes.error.message : 'Could not load your notes.'}
             </p>
@@ -310,7 +318,7 @@ export function NoteList() {
         {ready && shown.length > 0 ? (
           <ul
             ref={listRoot}
-            aria-label={trash ? 'Notes in Trash' : 'Notes'}
+            aria-label={trash ? 'Notes in trash' : 'Notes'}
             className="flex flex-col"
           >
             {shown.map((note) => (
@@ -340,7 +348,9 @@ export function NoteList() {
             ))}
           </ul>
         ) : null}
-        {ready && loaded.length >= limit && limit < NOTE_LIST_LIMIT_MAX ? (
+        {ready &&
+        (loaded.length >= limit || notes.isPlaceholderData) &&
+        limit < NOTE_LIST_LIMIT_MAX ? (
           <Button
             variant="secondary"
             className="mt-2 w-full"
@@ -412,7 +422,7 @@ export function NoteList() {
               trashNote(note);
             }}
           >
-            <span className="text-danger">Move to Trash</span>
+            <span className="text-danger">Move to trash</span>
           </MenuItem>
         </AnchoredMenu>
       ) : null}
@@ -449,9 +459,9 @@ export function NoteList() {
       ) : null}
       {confirm?.kind === 'empty' ? (
         <ConfirmDialog
-          title="Empty Trash?"
+          title="Empty trash?"
           message={`${String(loaded.length)} ${loaded.length === 1 ? 'note' : 'notes'} will be deleted for good. This cannot be undone.`}
-          confirmLabel="Empty Trash"
+          confirmLabel="Empty trash"
           onCancel={() => {
             setConfirm(null);
           }}

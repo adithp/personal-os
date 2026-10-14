@@ -35,10 +35,10 @@ describe('moving a note to Trash', () => {
     await screen.findByText('Gone');
 
     await user.click(rowMore('Gone'));
-    await user.click(screen.getByRole('menuitem', { name: 'Move to Trash' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Move to trash' }));
 
     expect(rowTitles()).toEqual(['Keep']);
-    const toast = await findToast('Moved to Trash.');
+    const toast = await findToast('Moved to trash.');
     expect(fake.trashedNotes().map((note) => note.title)).toEqual(['Gone']);
 
     await user.click(within(toast).getByRole('button', { name: 'Undo' }));
@@ -56,7 +56,7 @@ describe('moving a note to Trash', () => {
     );
     expect(await screen.findByTestId('editor')).toBeInTheDocument();
     await user.click(rowMore('Open one'));
-    await user.click(screen.getByRole('menuitem', { name: 'Move to Trash' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Move to trash' }));
     await waitFor(() => {
       expect(screen.queryByTestId('editor')).not.toBeInTheDocument();
     });
@@ -69,7 +69,7 @@ describe('moving a note to Trash', () => {
     await screen.findByText('Stays');
     fake.failNext(500, 'internal', 'Trash is jammed', '/notes/');
     await user.click(rowMore('Stays'));
-    await user.click(screen.getByRole('menuitem', { name: 'Move to Trash' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Move to trash' }));
     await findToast('Trash is jammed');
     await waitFor(() => {
       expect(rowTitles()).toEqual(['Stays']);
@@ -142,6 +142,36 @@ describe('the Trash view', () => {
     await findToast('Note deleted for good.');
   });
 
+  it('shows the confirmation through the body, not inside the glass list panel', async () => {
+    const { user } = await openNotes(
+      createFakeApi([], [], [], [], [trashed('Doomed')]),
+      '/notes?folder=trash',
+    );
+    await user.click(await screen.findByRole('button', { name: 'Delete forever: Doomed' }));
+    const dialog = screen.getByRole('alertdialog', { name: 'Delete forever?' });
+    // position: fixed inside a backdrop-filter panel would be clipped to that panel
+    expect(dialog.parentElement?.parentElement).toBe(document.body);
+    expect(screen.getByRole('region', { name: 'Notes list' })).not.toContainElement(dialog);
+  });
+
+  it('deletes the unsent draft of a note deleted for good', async () => {
+    const doomed = trashed('Doomed');
+    localStorage.setItem(
+      `personal-os.notes-draft.${doomed.id}`,
+      JSON.stringify({ markdown: 'x', baseRevision: 1 }),
+    );
+    const { user } = await openNotes(
+      createFakeApi([], [], [], [], [doomed]),
+      '/notes?folder=trash',
+    );
+    await user.click(await screen.findByRole('button', { name: 'Delete forever: Doomed' }));
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete forever' }),
+    );
+    await findToast('Note deleted for good.');
+    expect(localStorage.getItem(`personal-os.notes-draft.${doomed.id}`)).toBeNull();
+  });
+
   it('empties the trash after a confirmation', async () => {
     const { user, fake } = await openNotes(
       createFakeApi([], [], [], [], [makeNote({ title: 'Live' }), trashed('A'), trashed('B')]),
@@ -149,7 +179,11 @@ describe('the Trash view', () => {
     );
     await user.click(await screen.findByRole('button', { name: 'Empty trash' }));
     expect(screen.getByText(/2 notes will be deleted for good/)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Empty Trash' }));
+    await user.click(
+      within(screen.getByRole('alertdialog', { name: 'Empty trash?' })).getByRole('button', {
+        name: 'Empty trash',
+      }),
+    );
     await waitFor(() => {
       expect(fake.trashedNotes()).toHaveLength(0);
     });

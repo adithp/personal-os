@@ -1,6 +1,8 @@
 import {
+  excerptOf as excerptOfText,
   FOLDER_DEPTH_MAX,
-  NOTE_EXCERPT_MAX,
+  markdownToPlainText,
+  NOTE_CONTENT_MAX,
   NOTE_LIST_LIMIT_DEFAULT,
   noteTitleSchema,
   type Note,
@@ -45,8 +47,8 @@ export function makeFolder(overrides: Partial<NoteFolder> = {}): NoteFolder {
   };
 }
 
-const excerptOf = (markdown: string) =>
-  markdown.replace(/\s+/g, ' ').trim().slice(0, NOTE_EXCERPT_MAX);
+/** The same excerpt the server builds (plain text of the Markdown, cut at 140). */
+const excerptOf = (markdown: string) => excerptOfText(markdownToPlainText(markdown));
 
 const textOf = (value: unknown) => (typeof value === 'string' ? value : '');
 const flag = (value: unknown) => value === true || value === 'true';
@@ -90,6 +92,12 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
       (note) => note.id !== exceptId && note.title.toLowerCase() === title.toLowerCase(),
     );
   const takenError = () => new ApiError(409, 'note_title_taken', 'A note with this title exists.');
+
+  const checkContent = (raw: unknown) => {
+    if (typeof raw === 'string' && raw.length > NOTE_CONTENT_MAX) {
+      throw new ApiError(400, 'validation_error', 'The note is too long.');
+    }
+  };
 
   const checkTitle = (raw: unknown) => {
     const parsed = noteTitleSchema.safeParse(raw);
@@ -162,6 +170,7 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
     if (folderId !== null) findFolder(folderId);
     counter += 1;
     const now = new Date().toISOString();
+    checkContent(body.contentMd);
     const contentMd = textOf(body.contentMd);
     const note: Note = {
       id: idFor(counter),
@@ -184,6 +193,7 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
     if (body.contentMd === undefined && body.folderId === undefined && body.pinned === undefined) {
       throw new ApiError(400, 'validation_error', 'Nothing to change');
     }
+    checkContent(body.contentMd);
     if (body.force !== true && body.baseRevision !== current.revision) {
       throw new ApiError(409, 'note_conflict', 'This note was changed on another device.');
     }
@@ -241,12 +251,20 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
 
   const restoreNote = (id: string) => {
     const current = noteStore.get(id);
-    if (!current?.deletedAt) throw missing();
+    if (!current) throw missing();
+    // Like the server: a note that is not in the trash is returned as it is
+    if (!current.deletedAt) return { item: current, undo: null };
     let title = current.title;
     for (let n = 2; taken(title); n += 1) title = `${current.title} (${String(n)})`;
     const folderId =
       current.folderId !== null && folderGone.has(current.folderId) ? null : current.folderId;
-    const next = { ...current, title, folderId, deletedAt: null };
+    const next = {
+      ...current,
+      title,
+      folderId,
+      deletedAt: null,
+      ...(title === current.title ? {} : { revision: current.revision + 1 }),
+    };
     noteStore.set(id, next);
     return { item: next, undo: { action: 'notes.delete', input: { id } } };
   };
@@ -390,12 +408,17 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
     if (path === '/notes/trash' && method === 'DELETE') {
       const trashed = [...noteStore.values()].filter((note) => note.deletedAt !== null);
       for (const note of trashed) noteStore.delete(note.id);
-      return { item: { count: trashed.length }, undo: null };
+      return { item: { deleted: trashed.length }, undo: null };
     }
     const noteRoute = /^\/notes\/([^/]+)(?:\/(rename|restore|forever))?$/.exec(path);
     if (noteRoute) {
       const [, id = '', verb] = noteRoute;
-      if (method === 'GET' && !verb) return { item: findLive(id) };
+      // Trashed notes can be read too (the Trash view shows them)
+      if (method === 'GET' && !verb) {
+        const found = noteStore.get(id);
+        if (!found) throw missing();
+        return { item: found };
+      }
       if (method === 'PATCH' && !verb) return updateNote(id, body);
       if (method === 'POST' && verb === 'rename') return renameNote(id, body);
       if (method === 'POST' && verb === 'restore') return restoreNote(id);
@@ -404,10 +427,10 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
         const current = noteStore.get(id);
         if (!current) throw missing();
         if (current.deletedAt === null) {
-          throw new ApiError(409, 'not_in_trash', 'Move the note to Trash first.');
+          throw new ApiError(400, 'validation_error', 'Move the note to the trash first.');
         }
         noteStore.delete(id);
-        return { item: current, undo: null };
+        return { item: { id }, undo: null };
       }
     }
 

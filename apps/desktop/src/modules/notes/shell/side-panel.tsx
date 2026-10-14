@@ -11,6 +11,7 @@ import {
   type Icon,
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
+import { ApiError } from '../../../api/api-client';
 import { NOTE_FEATURES } from '../features';
 import { useNoteFolders } from '../folders-queries';
 import { useNotesUi } from '../notes-ui-store';
@@ -163,6 +164,7 @@ export function NotesSidePanel() {
             folders={folders.data ?? []}
             isPending={folders.isPending}
             isError={folders.isError}
+            errorMessage={folders.error instanceof ApiError ? folders.error.message : null}
             onRetry={() => {
               void folders.refetch();
             }}

@@ -117,3 +117,32 @@ describe('what the editor cannot keep (not offered; listed in the N1 report)', (
     expect(roundTrip('[[Note]] #tag')).toBe('\\[\\[Note\\]\\] #tag');
   });
 });
+
+describe('active content (security)', () => {
+  /** What the editor shows after loading this Markdown. */
+  function htmlOf(markdown: string): string {
+    editor = new Editor({
+      extensions: createNoteExtensions(),
+      content: markdown,
+      contentType: 'markdown',
+    });
+    return editor.getHTML();
+  }
+
+  it('keeps a javascript: link as text in the file but gives the link no address', () => {
+    const markdown = '[x](javascript:alert(1))';
+    // The Markdown is stored as typed, but the editor drops the unsafe address (href="")
+    expect(roundTrip(markdown)).toBe(markdown);
+    const html = htmlOf(markdown);
+    expect(html).toContain('href=""');
+    expect(html).not.toContain('javascript:');
+  });
+
+  it('drops raw HTML such as an img with onerror: nothing live reaches the editor', () => {
+    const markdown = 'a <img src=x onerror=alert(1)> b';
+    expect(roundTrip(markdown)).toBe('a  b');
+    const html = htmlOf(markdown);
+    expect(html).not.toContain('<img');
+    expect(html).not.toContain('onerror');
+  });
+});

@@ -11,6 +11,7 @@ import { ApiError, type RequestOptions } from '../../api/api-client';
 import { useApi } from '../../api/api-context';
 import { SEARCH_KEY } from '../../commands/search-queries';
 import { useToasts } from '../../store/toast-store';
+import { clearDraft } from './editor/use-autosave';
 import { NOTE_FOLDERS_KEY, noteKeys, NOTES_KEY } from './query-keys';
 
 /**
@@ -35,10 +36,21 @@ const messageOf = (error: unknown) =>
 /** Query-string form of the list filters. */
 function toQuery(filters: ListNotesInput): RequestOptions['query'] {
   const query: Record<string, string | boolean | number | undefined> = {};
-  for (const [key, value] of Object.entries(filters)) {
+  for (const [key, value] of Object.entries(filters) as [
+    string,
+    string | number | boolean | undefined,
+  ][]) {
     query[key] = value;
   }
   return query;
+}
+
+/** What the purge and empty-trash routes answer. */
+interface PurgeResult {
+  item: { id: string };
+}
+interface EmptyTrashResult {
+  item: { deleted: number };
 }
 
 /** Notes of one place (all, a folder, 'none', or the trash). No text, only a short excerpt. */
@@ -50,6 +62,14 @@ export function useNotes(filters: ListNotesInput = {}, options: { enabled?: bool
       (await api.request<{ items: NoteSummary[] }>('GET', '/notes', { query: toQuery(filters) }))
         .items,
     enabled: options.enabled ?? true,
+    // "Show more" and a new sort keep the rows on screen (and the focus in them) until the answer comes
+    placeholderData: (previous, previousQuery) => {
+      // Only within the same place: another folder must not show this folder's notes meanwhile
+      const before = previousQuery?.queryKey[2];
+      return before?.folderId === filters.folderId && before?.trash === filters.trash
+        ? previous
+        : undefined;
+    },
   });
 }
 
@@ -205,7 +225,7 @@ export function useDeleteNote() {
       return { snapshot: removeFromLists(client, id) };
     },
     onSuccess: ({ undo }) => {
-      offerUndo('Moved to Trash.', undo);
+      offerUndo('Moved to trash.', undo);
     },
     onError: (error, _id, context) => {
       fail(error, context?.snapshot);
@@ -238,12 +258,14 @@ export function usePurgeNote() {
   const { api, client, refresh, fail } = useWriter();
   const toast = useToasts.getState;
   return useMutation({
-    mutationFn: (id: string) => api.request<WriteResult>('DELETE', `/notes/${id}/forever`),
+    mutationFn: (id: string) => api.request<PurgeResult>('DELETE', `/notes/${id}/forever`),
     onMutate: async (id) => {
       await client.cancelQueries({ queryKey: NOTES_KEY });
       return { snapshot: removeFromLists(client, id) };
     },
-    onSuccess: () => {
+    onSuccess: (_result, id) => {
+      // The text can never be saved now; an unsent draft would only come back as a false conflict
+      clearDraft(id);
       toast().show('Note deleted for good.');
     },
     onError: (error, _id, context) => {
@@ -258,7 +280,7 @@ export function useEmptyTrash() {
   const { api, refresh, fail } = useWriter();
   const toast = useToasts.getState;
   return useMutation({
-    mutationFn: () => api.request('DELETE', '/notes/trash'),
+    mutationFn: () => api.request<EmptyTrashResult>('DELETE', '/notes/trash'),
     onSuccess: () => {
       toast().show('Trash emptied.');
     },

@@ -231,8 +231,76 @@ describe('the folder tree', () => {
     const fake = createFakeApi([], [], [], [], [], [home]);
     fake.failNext(500, 'internal', 'boom', '/note-folders');
     const { user } = await openNotes(fake);
-    expect(await screen.findByText(/Could not load folders/)).toBeInTheDocument();
+    expect(await screen.findByText('boom')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('link', { name: /Home/ })).toBeInTheDocument();
+  });
+});
+
+describe('the folder tree with the keyboard', () => {
+  it('has one Tab stop per row: the chevron and the more button are skipped', async () => {
+    await openNotes(createFakeApi([], [], [], [], [], tree()));
+    await screen.findByRole('link', { name: /Work/ });
+    expect(screen.getByRole('button', { name: 'Fold Work' })).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByRole('button', { name: 'More options for Work' })).toHaveAttribute(
+      'tabindex',
+      '-1',
+    );
+  });
+
+  it('moves between rows with the arrow keys', async () => {
+    const { user } = await openNotes(createFakeApi([], [], [], [], [], tree()));
+    const homeLink = await screen.findByRole('link', { name: /Home/ });
+    homeLink.focus();
+    await user.keyboard('{ArrowDown}');
+    expect(screen.getByRole('link', { name: /Work/ })).toHaveFocus();
+    await user.keyboard('{ArrowDown}');
+    expect(screen.getByRole('link', { name: /Plans/ })).toHaveFocus();
+    await user.keyboard('{ArrowUp}{ArrowUp}');
+    expect(homeLink).toHaveFocus();
+  });
+
+  it('opens the folder menu with the menu key and returns focus to the row on Escape', async () => {
+    const { user } = await openNotes(createFakeApi([], [], [], [], [], [home]));
+    const link = await screen.findByRole('link', { name: /Home/ });
+    link.focus();
+    await user.keyboard('{ContextMenu}');
+    expect(screen.getByRole('menu', { name: 'Folder Home' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('puts the focus back on the folder link after a rename', async () => {
+    const { user } = await openNotes(createFakeApi([], [], [], [], [], [home]));
+    await user.click(await screen.findByRole('button', { name: 'More options for Home' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Rename' }));
+    const box = screen.getByRole('textbox', { name: 'Rename folder Home' });
+    await user.clear(box);
+    await user.type(box, 'House{Enter}');
+    expect(await screen.findByRole('link', { name: /House/ })).toHaveFocus();
+  });
+
+  it('puts the focus back on the folder link when a rename is cancelled with Escape', async () => {
+    const { user } = await openNotes(createFakeApi([], [], [], [], [], [home]));
+    await user.click(await screen.findByRole('button', { name: 'More options for Home' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Rename' }));
+    await user.keyboard('{Escape}');
+    expect(await screen.findByRole('link', { name: /Home/ })).toHaveFocus();
+  });
+
+  it('moves the focus to the next row after a delete, and to New folder after the last one', async () => {
+    const a = makeFolder({ name: 'Aaa' });
+    const b = makeFolder({ name: 'Bbb' });
+    const { user } = await openNotes(createFakeApi([], [], [], [], [], [a, b]));
+    await user.click(await screen.findByRole('button', { name: 'More options for Aaa' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete folder' }));
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /Bbb/ })).toHaveFocus();
+    });
+    await user.click(screen.getByRole('button', { name: 'More options for Bbb' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete folder' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'New folder' })).toHaveFocus();
+    });
   });
 });

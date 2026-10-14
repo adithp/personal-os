@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { loginSchema } from '@personal-os/shared';
 import type { StoreApi } from 'zustand';
 import { createStore } from 'zustand/vanilla';
+import { clearAllDrafts } from '../modules/notes/editor/use-autosave';
 import { useRecentItems } from '../store/recent-items-store';
 
 /** The part of the Supabase client the app uses; tests pass a fake with the same shape. */
@@ -111,6 +112,7 @@ export function createAuth(source: AuthSource): Auth {
     }
     // Nothing of this account stays on the device for the next person to sign in
     useRecentItems.getState().clear();
+    clearAllDrafts();
     store.setState(stateFor(null));
   };
 
