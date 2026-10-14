@@ -138,6 +138,61 @@ describe('version snapshots', () => {
     expect(conflict.data.contentMd).toBe('two');
   });
 
+  it('stores a version inside the 10 minutes when a save wipes most of a long text', async () => {
+    const long = 'word '.repeat(60);
+    const note = await create(alice(), 'Cut', long);
+    await save(alice(), note.id, `${long}more`);
+    expect(await versions(alice(), note.id)).toHaveLength(1);
+    await save(alice(), note.id, '');
+    const list = await versions(alice(), note.id);
+    expect(list).toHaveLength(2);
+    const newest = await run<NoteVersion>(alice(), 'notes.getVersion', {
+      id: note.id,
+      versionId: list[0]?.id,
+    });
+    expect(newest.data.contentMd).toBe(`${long}more`);
+  });
+
+  it('does not treat a small cut or a short text as a big cut', async () => {
+    const long = 'word '.repeat(60);
+    const note = await create(alice(), 'Small', long);
+    await save(alice(), note.id, `${long}more`);
+    await save(alice(), note.id, long.slice(0, 150));
+    expect(await versions(alice(), note.id)).toHaveLength(1);
+    const short = await create(alice(), 'Short', 'a'.repeat(100));
+    await save(alice(), short.id, 'b');
+    await save(alice(), short.id, '');
+    expect(await versions(alice(), short.id)).toHaveLength(1);
+  });
+
+  it('deletes the oldest auto versions first and keeps conflict versions', async () => {
+    const note = await create(alice(), 'Prune', 'v0');
+    await save(alice(), note.id, 'v1');
+    await save(alice(), note.id, 'c', true);
+    for (let n = 2; n <= 55; n += 1) {
+      minutes(11);
+      await save(alice(), note.id, `v${String(n)}`);
+    }
+    const list = await versions(alice(), note.id);
+    expect(list).toHaveLength(50);
+    expect(list.filter((v) => v.reason === 'conflict')).toHaveLength(1);
+  });
+
+  it('deletes the oldest of any reason when no auto version is left', async () => {
+    const note = await create(alice(), 'PruneAll', 'v0');
+    for (let n = 1; n <= 52; n += 1) {
+      minutes(1);
+      await save(alice(), note.id, `v${String(n)}`, true);
+    }
+    const list = await versions(alice(), note.id);
+    expect(list).toHaveLength(50);
+    const oldest = await run<NoteVersion>(alice(), 'notes.getVersion', {
+      id: note.id,
+      versionId: list[49]?.id,
+    });
+    expect(oldest.data.contentMd).toBe('v2');
+  });
+
   it('keeps only the newest 50 versions of a note', async () => {
     const note = await create(alice(), 'E', 'v0');
     for (let n = 1; n <= 55; n += 1) {
@@ -262,29 +317,48 @@ describe('notes.restoreVersion', () => {
     expect(undone.data.revision).toBe(restored.data.revision + 1);
   });
 
-  it('stores before_restore inside the 10 minutes, and reuses the newest when the text is equal', async () => {
+  it('stores before_restore inside the 10 minutes', async () => {
     const note = await create(alice(), 'W', 'one');
     await save(alice(), note.id, 'two');
     const [version] = await versions(alice(), note.id);
-    await run(alice(), 'notes.restoreVersion', { id: note.id, versionId: version?.id });
-    expect(await versions(alice(), note.id)).toHaveLength(2);
-    // Current text is "one", the newest version is "two": restoring "one" again stores "one"
-    // as a new version; restoring it a second time finds it equal and adds nothing
+    const restored = await run<Note>(alice(), 'notes.restoreVersion', {
+      id: note.id,
+      versionId: version?.id,
+    });
+    expect(restored.data.contentMd).toBe('one');
+    expect((await versions(alice(), note.id)).map((v) => v.reason)).toEqual([
+      'before_restore',
+      'auto',
+    ]);
+  });
+
+  it('changes nothing when the version text equals the current text', async () => {
+    const note = await create(alice(), 'W2', 'one');
+    await save(alice(), note.id, 'two');
+    const [version] = await versions(alice(), note.id);
+    const first = await run<Note>(alice(), 'notes.restoreVersion', {
+      id: note.id,
+      versionId: version?.id,
+    });
     minutes(1);
     const second = await run<Note>(alice(), 'notes.restoreVersion', {
       id: note.id,
       versionId: version?.id,
     });
-    const afterSecond = await versions(alice(), note.id);
-    expect(afterSecond).toHaveLength(3);
-    minutes(1);
-    const third = await run(alice(), 'notes.restoreVersion', {
+    expect(second.undo).toBeNull();
+    expect(second.data.revision).toBe(first.data.revision);
+    expect(await versions(alice(), note.id)).toHaveLength(2);
+  });
+
+  it('returns the tag names of the restored text', async () => {
+    const note = await create(alice(), 'W3', 'one #alpha');
+    await save(alice(), note.id, 'two');
+    const [version] = await versions(alice(), note.id);
+    const restored = await run<Note & { tagNames: string[] }>(alice(), 'notes.restoreVersion', {
       id: note.id,
       versionId: version?.id,
     });
-    expect(await versions(alice(), note.id)).toHaveLength(3);
-    expect(third.undo?.input.versionId).toBe(afterSecond[0]?.id);
-    expect(second.data.contentMd).toBe('one');
+    expect(restored.data.tagNames).toEqual(['alpha']);
   });
 
   it('stores an empty current text for undo', async () => {

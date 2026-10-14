@@ -51,7 +51,7 @@ const titleTaken = () =>
 const conflict = () =>
   new HttpError(409, 'note_conflict', 'This note was changed on another device.');
 
-function toSummary(row: NoteRow): NoteSummary {
+export function toSummary(row: NoteRow): NoteSummary {
   return {
     id: row.id,
     title: row.title,
@@ -65,7 +65,7 @@ function toSummary(row: NoteRow): NoteSummary {
   };
 }
 
-const toNote = (row: NoteRow): Note => ({
+export const toNote = (row: NoteRow): Note => ({
   ...toSummary(row),
   contentMd: row.contentMd,
   revision: row.revision,
@@ -300,7 +300,8 @@ export const noteImplementations = [
           }
           if (Object.keys(values).length === 0) return { data: toNote(before), undo: null };
 
-          if (contentChanged) await maybeSnapshot(tx, before, input.force ? 'conflict' : 'auto');
+          if (contentChanged)
+            await maybeSnapshot(tx, before, input.force ? 'conflict' : 'auto', input.contentMd);
           // A content save only writes while the revision is still the one read (a save from another
           // device in between finds no row and is a conflict). With force, or without content, any revision.
           const [updated] = await tx.update(

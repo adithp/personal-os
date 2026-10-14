@@ -3,18 +3,18 @@ import {
   countWords,
   markdownToPlainText,
   noteVersionActions,
-  excerptOf,
-  type Note,
+  wordsDelta,
   type NoteVersion,
   type NoteVersionSummary,
   type UndoDescriptor,
 } from '@personal-os/shared';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, sql } from 'drizzle-orm';
 import { HttpError } from '../lib/http-error';
 import { withUserLock } from '../lib/user-lock';
 import type { UserScope } from '../lib/user-scope';
 import { rebuildNoteLinks } from './note-links';
-import { rebuildNoteTags, withTagRetry } from './note-tags';
+import { toNote } from './notes';
+import { rebuildNoteTags, tagNamesByNote, withTagRetry } from './note-tags';
 import { snapshotNote } from './note-versions';
 import { implement } from './registry';
 
@@ -50,18 +50,27 @@ export const noteVersionImplementations = [
   // Works for trashed notes too, like notes.get
   implement(noteVersionActions.versions, async ({ scope }, { id }) => {
     await findNote(scope, id, true);
-    const rows = await scope.select(noteVersions, {
-      where: eq(noteVersions.noteId, id),
-      orderBy: [desc(noteVersions.createdAt), desc(noteVersions.id)],
-    });
-    const words = rows.map((row) => countWords(markdownToPlainText(row.contentMd)));
+    const rows = await scope.selectFields(
+      noteVersions,
+      {
+        id: noteVersions.id,
+        createdAt: noteVersions.createdAt,
+        reason: noteVersions.reason,
+        contentMd: noteVersions.contentMd,
+      },
+      {
+        where: eq(noteVersions.noteId, id),
+        orderBy: [desc(noteVersions.createdAt), desc(noteVersions.id)],
+      },
+    );
+    const text = (index: number) => markdownToPlainText((rows[index]?.contentMd as string | undefined) ?? '');
     const data = rows.map((row, index): NoteVersionSummary => ({
-      id: row.id,
-      createdAt: iso(row.createdAt),
+      id: row.id as string,
+      createdAt: iso(row.createdAt as Date),
       reason: row.reason as NoteVersionSummary['reason'],
-      words: words[index] ?? 0,
+      words: countWords(text(index)),
       // Rows are newest first, so the next older version is the next index (none = empty text)
-      wordsDelta: (words[index] ?? 0) - (words[index + 1] ?? 0),
+      wordsDelta: wordsDelta(text(index + 1), text(index)),
     }));
     return { data };
   }),
@@ -69,18 +78,18 @@ export const noteVersionImplementations = [
   implement(noteVersionActions.getVersion, async ({ scope }, { id, versionId }) => {
     await findNote(scope, id, true);
     const row = await findVersion(scope, id, versionId);
-    const all = await scope.select(noteVersions, {
-      where: eq(noteVersions.noteId, id),
+    const [older] = await scope.select(noteVersions, {
+      where: and(eq(noteVersions.noteId, id), lt(noteVersions.createdAt, row.createdAt)),
       orderBy: [desc(noteVersions.createdAt), desc(noteVersions.id)],
+      limit: 1,
     });
-    const older = all[all.findIndex((v) => v.id === row.id) + 1];
-    const words = countWords(markdownToPlainText(row.contentMd));
+    const text = markdownToPlainText(row.contentMd);
     const data: NoteVersion = {
       id: row.id,
       createdAt: iso(row.createdAt),
       reason: row.reason as NoteVersion['reason'],
-      words,
-      wordsDelta: words - (older ? countWords(markdownToPlainText(older.contentMd)) : 0),
+      words: countWords(text),
+      wordsDelta: wordsDelta(markdownToPlainText(older?.contentMd ?? ''), text),
       title: row.title,
       contentMd: row.contentMd,
     };
@@ -94,6 +103,7 @@ export const noteVersionImplementations = [
         scope.transaction(async (tx) => {
           const before = await findNote(tx, id, false);
           const version = await findVersion(tx, id, versionId);
+          if (version.contentMd === before.contentMd) return { data: toNote(before), undo: null };
           const undoVersionId = await snapshotNote(tx, before, 'before_restore');
           const [updated] = await tx.update(
             notes,
@@ -107,19 +117,8 @@ export const noteVersionImplementations = [
           if (!updated) throw noteNotFound();
           await rebuildNoteLinks(tx, id, updated.contentMd);
           await rebuildNoteTags(tx, id, updated.contentMd);
-          const data: Note = {
-            id: updated.id,
-            title: updated.title,
-            folderId: updated.folderId,
-            pinned: updated.pinned,
-            excerpt: excerptOf(updated.contentText),
-            dailyDate: updated.dailyDate,
-            createdAt: iso(updated.createdAt),
-            updatedAt: iso(updated.updatedAt),
-            deletedAt: null,
-            contentMd: updated.contentMd,
-            revision: updated.revision,
-          };
+          const tagNames = (await tagNamesByNote(tx, [id])).get(id) ?? [];
+          const data = { ...toNote(updated), tagNames };
           return {
             data,
             undo: undoVersionId
