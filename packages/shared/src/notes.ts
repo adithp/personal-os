@@ -73,10 +73,10 @@ export const listNotesInput = z.object({
   /** A folder id, or 'none' for notes in no folder. Omit for all notes. */
   folderId: z.union([id, z.literal('none')]).optional(),
   /** Only trashed notes. */
-  trash: z.boolean().default(false),
+  trash: z.union([z.boolean(), z.stringbool()]).default(false),
   sort: noteSortSchema.default('updated'),
-  limit: z.number().int().min(1).max(NOTE_LIST_LIMIT_MAX).default(NOTE_LIST_LIMIT_DEFAULT),
-  offset: z.number().int().min(0).default(0),
+  limit: z.coerce.number().int().min(1).max(NOTE_LIST_LIMIT_MAX).default(NOTE_LIST_LIMIT_DEFAULT),
+  offset: z.coerce.number().int().min(0).default(0),
 });
 export type ListNotesInput = z.input<typeof listNotesInput>;
 

@@ -144,9 +144,15 @@ describe('POST /notes and GET /notes', () => {
     expect(taken.json()).toMatchObject({ error: { code: 'note_title_taken' } });
   });
 
-  it.todo(
-    'GET /notes?trash=true and ?limit=1 need z.coerce / z.stringbool in shared listNotesInput',
-  );
+  it('reads trash and limit from the query string', async () => {
+    const first = await addNote('One');
+    await addNote('Two');
+    await call('DELETE', `/notes/${first.item.id}`);
+    const trash = await call('GET', '/notes?trash=true');
+    expect(trash.json<{ items: NoteItem[] }>().items.map((n) => n.title)).toEqual(['One']);
+    const limited = await call('GET', '/notes?limit=1');
+    expect(limited.json<{ items: unknown[] }>().items).toHaveLength(1);
+  });
 
   it('sorts from the query string', async () => {
     await addNote('b');
