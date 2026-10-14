@@ -1,29 +1,115 @@
 import type { NoteLinks } from '@personal-os/shared';
 import { Button, cx, SegmentedControl } from '@personal-os/ui';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, type KeyboardEvent } from 'react';
 import { ApiError } from '../../../api/api-client';
 import { useNoteLinks } from '../links-queries';
 import { useCreateNote, useNote } from '../notes-queries';
+import { useNotesUi, type RightPanelTab } from '../notes-ui-store';
 import { noteKeys } from '../query-keys';
 import { useNotesNav } from '../shell/use-notes-nav';
-import { jumpToHeading } from './outline-bus';
+import { jumpToHeading, useLiveOutline } from './outline-bus';
 import { parseOutline } from './outline';
+import { useRovingList } from './use-roving-list';
 
-type Tab = 'links' | 'outline';
 // History joins this list in stage N4
 const TABS = [
   { value: 'links', label: 'Links' },
   { value: 'outline', label: 'Outline' },
-] as const;
+] as const satisfies readonly { value: RightPanelTab; label: string }[];
 
 const rowClass =
   'flex w-full flex-col gap-0.5 rounded-chip px-2 py-1.5 text-left focus-ring transition-colors duration-150 ease-out hover:bg-tint motion-reduce:transition-none';
 
 const sectionTitle = 'px-2 text-small font-medium text-fg-muted';
 
-function Message({ children }: { children: string }) {
-  return <p className="px-2 text-body text-fg-muted">{children}</p>;
+function Message({ children, live }: { children: string; live?: boolean }) {
+  return (
+    <p className="px-2 text-body text-fg-muted" role={live ? 'status' : undefined}>
+      {children}
+    </p>
+  );
+}
+
+function BacklinkList({ backlinks }: { backlinks: NoteLinks['backlinks'] }) {
+  const nav = useNotesNav();
+  const roving = useRovingList(backlinks.length);
+  return (
+    <ul className="flex flex-col" {...roving.listProps}>
+      {backlinks.map((link, index) => (
+        <li key={link.noteId}>
+          <button
+            type="button"
+            {...roving.itemProps(index)}
+            onClick={() => {
+              nav.openNote(link.noteId);
+            }}
+            className={rowClass}
+          >
+            <span className="truncate text-body font-medium text-fg">{link.title}</span>
+            {link.context !== '' ? (
+              <span className="line-clamp-2 text-small text-fg-muted">{link.context}</span>
+            ) : null}
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+interface OutgoingListProps {
+  outgoing: NoteLinks['outgoing'];
+  onCreate: (title: string) => Promise<void>;
+  creating: boolean;
+}
+
+function OutgoingList({ outgoing, onCreate, creating }: OutgoingListProps) {
+  const nav = useNotesNav();
+  const roving = useRovingList(outgoing.length);
+  return (
+    <ul className="flex flex-col" {...roving.listProps}>
+      {outgoing.map((link, index) => {
+        const target = link.noteId;
+        return (
+          <li key={link.target.toLowerCase()}>
+            {target ? (
+              <button
+                type="button"
+                {...roving.itemProps(index)}
+                onClick={() => {
+                  nav.openNote(target);
+                }}
+                className={rowClass}
+              >
+                <span className="truncate text-body text-fg">{link.target}</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 rounded-chip px-2 py-1">
+                <span
+                  className="min-w-0 flex-1 truncate text-body text-fg-muted"
+                  title="No note has this title yet"
+                >
+                  {link.target}
+                </span>
+                <button
+                  type="button"
+                  {...roving.itemProps(index)}
+                  aria-label={`Create note: ${link.target}`}
+                  disabled={creating}
+                  onClick={() => {
+                    void onCreate(link.target);
+                  }}
+                  className="h-7 shrink-0 rounded-chip px-2 text-small font-medium text-fg focus-ring hover:bg-tint disabled:opacity-50"
+                >
+                  Create
+                </button>
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 interface LinksTabProps {
@@ -36,7 +122,7 @@ function LinksTab({ noteId, folderId }: LinksTabProps) {
   const create = useCreateNote();
   const nav = useNotesNav();
 
-  if (links.isPending) return <Message>Loading links…</Message>;
+  if (links.isPending) return <Message live>Loading links…</Message>;
   if (links.isError) {
     return (
       <div className="flex flex-col items-start gap-2 px-2">
@@ -75,24 +161,7 @@ function LinksTab({ noteId, folderId }: LinksTabProps) {
         {backlinks.length === 0 ? (
           <Message>No notes link here yet.</Message>
         ) : (
-          <ul className="flex flex-col">
-            {backlinks.map((link) => (
-              <li key={link.noteId}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    nav.openNote(link.noteId);
-                  }}
-                  className={rowClass}
-                >
-                  <span className="truncate text-body font-medium text-fg">{link.title}</span>
-                  {link.context !== '' ? (
-                    <span className="line-clamp-2 text-small text-fg-muted">{link.context}</span>
-                  ) : null}
-                </button>
-              </li>
-            ))}
-          </ul>
+          <BacklinkList backlinks={backlinks} />
         )}
       </section>
 
@@ -103,61 +172,26 @@ function LinksTab({ noteId, folderId }: LinksTabProps) {
         {outgoing.length === 0 ? (
           <Message>This note links nowhere yet.</Message>
         ) : (
-          <ul className="flex flex-col">
-            {outgoing.map((link) => {
-              const target = link.noteId;
-              return (
-                <li key={link.target.toLowerCase()}>
-                  {target ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        nav.openNote(target);
-                      }}
-                      className={rowClass}
-                    >
-                      <span className="truncate text-body text-fg">{link.target}</span>
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-2 rounded-chip px-2 py-1.5">
-                      <span
-                        className="min-w-0 flex-1 truncate text-body text-fg-muted"
-                        title="No note has this title yet"
-                      >
-                        {link.target}
-                      </span>
-                      <button
-                        type="button"
-                        aria-label={`Create note: ${link.target}`}
-                        disabled={create.isPending}
-                        onClick={() => {
-                          void createAndOpen(link.target);
-                        }}
-                        className="h-6 shrink-0 rounded-chip px-2 text-small font-medium text-fg focus-ring hover:bg-tint disabled:opacity-50"
-                      >
-                        Create
-                      </button>
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          <OutgoingList outgoing={outgoing} onCreate={createAndOpen} creating={create.isPending} />
         )}
       </section>
     </div>
   );
 }
 
-function OutlineTab({ markdown }: { markdown: string }) {
-  const items = useMemo(() => parseOutline(markdown), [markdown]);
+function OutlineTab({ noteId, markdown }: { noteId: string; markdown: string }) {
+  // The open editor's live headings; the saved text only while no editor has published any
+  const live = useLiveOutline(noteId);
+  const items = useMemo(() => live ?? parseOutline(markdown), [live, markdown]);
+  const roving = useRovingList(items.length);
   if (items.length === 0) return <Message>No headings yet.</Message>;
   return (
-    <ul className="flex flex-col" aria-label="Headings">
-      {items.map((item) => (
+    <ul className="flex flex-col" aria-label="Headings" {...roving.listProps}>
+      {items.map((item, index) => (
         <li key={item.index}>
           <button
             type="button"
+            {...roving.itemProps(index)}
             onClick={() => {
               jumpToHeading(item.index);
             }}
@@ -175,29 +209,44 @@ function OutlineTab({ markdown }: { markdown: string }) {
   );
 }
 
+/** Escape in the panel hands the focus back to the toggle that opened it (or the editor). */
+function leavePanel(event: KeyboardEvent) {
+  if (event.key !== 'Escape' || event.defaultPrevented) return;
+  event.preventDefault();
+  const target =
+    document.querySelector<HTMLElement>('[data-right-panel-toggle]') ??
+    document.querySelector<HTMLElement>('[data-notes-editor] .ProseMirror');
+  target?.focus();
+}
+
 /**
- * The right panel of the editor: links of the open note, and its outline. The outline comes from
- * the saved text, so it follows typing with the autosave delay.
+ * The right panel of the editor: links of the open note, and its outline. The outline follows the
+ * live editor document. The panel is not created again for another note, so the focus stays where
+ * it is; what belongs to one note is reset from `noteId`.
  */
 export function RightPanel({ noteId }: { noteId: string }) {
-  const [tab, setTab] = useState<Tab>('links');
+  const tab = useNotesUi((state) => state.rightPanelTab);
+  const setTab = useNotesUi((state) => state.setRightPanelTab);
   const note = useNote(noteId);
   const client = useQueryClient();
 
   // A save (here or on another device) can change the links: fetch them again
   const revision = note.data?.revision;
-  const seen = useRef(revision);
+  const seen = useRef<{ noteId: string; revision: number | undefined }>({ noteId, revision });
   useEffect(() => {
     const before = seen.current;
-    seen.current = revision;
-    // The first load of the note is not a change
-    if (before === undefined || before === revision) return;
+    seen.current = { noteId, revision };
+    // The first load of a note (and opening another note) is not a change
+    if (before.noteId !== noteId || before.revision === undefined || before.revision === revision) {
+      return;
+    }
     void client.invalidateQueries({ queryKey: noteKeys.links(noteId) });
   }, [revision, noteId, client]);
 
   return (
     <aside
       aria-label="Links and outline"
+      onKeyDown={leavePanel}
       className="flex h-full min-h-0 w-[264px] shrink-0 flex-col gap-3 overflow-y-auto rounded-card glass p-3"
     >
       <SegmentedControl
@@ -210,7 +259,7 @@ export function RightPanel({ noteId }: { noteId: string }) {
       {tab === 'links' ? (
         <LinksTab noteId={noteId} folderId={note.data?.folderId ?? null} />
       ) : (
-        <OutlineTab markdown={note.data?.contentMd ?? ''} />
+        <OutlineTab noteId={noteId} markdown={note.data?.contentMd ?? ''} />
       )}
     </aside>
   );

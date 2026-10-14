@@ -7,6 +7,9 @@ export type NotesPlace = string;
 export const DEFAULT_PLACE: NotesPlace = 'all';
 export const DEFAULT_NOTE_SORT: NoteSort = 'updated';
 
+export const RIGHT_PANEL_TABS = ['links', 'outline'] as const;
+export type RightPanelTab = (typeof RIGHT_PANEL_TABS)[number];
+
 interface NotesUiState {
   /** The last place shown; opening Notes with no link returns to it. Saved on this device. */
   place: NotesPlace;
@@ -15,12 +18,15 @@ interface NotesUiState {
   sidePanelCollapsed: boolean;
   /** The right panel (links, outline; stage N2) is open. Saved on this device. */
   rightPanelOpen: boolean;
+  /** The tab of the right panel. Saved on this device, and kept when another note opens. */
+  rightPanelTab: RightPanelTab;
   /** Folders the user folded in the tree (all start open). Saved on this device. */
   collapsedFolders: Record<string, boolean>;
   setPlace: (place: NotesPlace) => void;
   setSort: (sort: NoteSort) => void;
   toggleSidePanel: () => void;
   toggleRightPanel: () => void;
+  setRightPanelTab: (tab: RightPanelTab) => void;
   setFolderCollapsed: (id: string, collapsed: boolean) => void;
 }
 
@@ -29,6 +35,7 @@ const defaults = {
   sort: DEFAULT_NOTE_SORT,
   sidePanelCollapsed: false,
   rightPanelOpen: false,
+  rightPanelTab: 'links' as RightPanelTab,
   collapsedFolders: {} as Record<string, boolean>,
 };
 
@@ -49,6 +56,9 @@ export const useNotesUi = create<NotesUiState>()(
       toggleRightPanel: () => {
         set((state) => ({ rightPanelOpen: !state.rightPanelOpen }));
       },
+      setRightPanelTab: (rightPanelTab) => {
+        set({ rightPanelTab });
+      },
       setFolderCollapsed: (id, collapsed) => {
         set((state) => ({ collapsedFolders: { ...state.collapsedFolders, [id]: collapsed } }));
       },
@@ -61,7 +71,9 @@ export const useNotesUi = create<NotesUiState>()(
       merge: (saved, current) => {
         const stored = (saved ?? {}) as Partial<NotesUiState>;
         const sort = NOTE_SORTS.find((key) => key === stored.sort) ?? DEFAULT_NOTE_SORT;
-        return { ...current, ...stored, sort };
+        const rightPanelTab =
+          RIGHT_PANEL_TABS.find((tab) => tab === stored.rightPanelTab) ?? 'links';
+        return { ...current, ...stored, sort, rightPanelTab };
       },
     },
   ),

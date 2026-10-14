@@ -1,18 +1,19 @@
 import type { Note, NoteTitle } from '@personal-os/shared';
 import { Button } from '@personal-os/ui';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ApiError } from '../../../api/api-client';
 import { useNoteTitles } from '../links-queries';
 import { useCreateNote, useNote, useRenameNote, useUpdateNote } from '../notes-queries';
-import { RightPanelToggle, registerHeadingJump } from '../right-panel';
+import { RightPanelToggle, headingsOf, publishOutline, registerHeadingJump } from '../right-panel';
 import { useNotesNav } from '../shell/use-notes-nav';
 import { editedLabel } from './edited-label';
 import { createNoteExtensions } from './extensions';
 import './note-editor.css';
+import { reloadQuietly } from './quiet-reload';
 import { serializeNote } from './serialize';
 import { readDraft, useAutosave, type SaveFn, type SaveStatus } from './use-autosave';
-import { refreshWikilinks } from './wikilink/wikilink';
+import { LINK_UNKNOWN, refreshWikilinks } from './wikilink/wikilink';
 import { onWindowCloseFlush } from './window-close';
 
 const STATUS_TEXT: Record<SaveStatus, string> = {
@@ -23,39 +24,57 @@ const STATUS_TEXT: Record<SaveStatus, string> = {
 
 const GONE_TEXT = 'This note no longer exists.';
 
+/** The top bar and a message, for a note that is loading or cannot be shown (the panel toggle stays). */
+function PaneMessage({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-10 shrink-0 items-center justify-end gap-2 px-6">
+        <RightPanelToggle />
+      </div>
+      {children}
+    </div>
+  );
+}
+
 /** Loads one note and shows the editor for it. */
 export function NoteEditorPane({ noteId }: { noteId: string }) {
   const query = useNote(noteId);
   if (query.isPending) {
     return (
-      <div className="p-6 text-body text-fg-muted" role="status">
-        Loading note…
-      </div>
+      <PaneMessage>
+        <div className="p-6 text-body text-fg-muted" role="status">
+          Loading note…
+        </div>
+      </PaneMessage>
     );
   }
   if (query.isError) {
     // The note is gone (deleted for good elsewhere): trying again cannot help
     if (query.error instanceof ApiError && query.error.status === 404) {
       return (
-        <div className="p-6 text-body text-fg-secondary" role="alert">
-          {GONE_TEXT}
-        </div>
+        <PaneMessage>
+          <div className="p-6 text-body text-fg-secondary" role="alert">
+            {GONE_TEXT}
+          </div>
+        </PaneMessage>
       );
     }
     return (
-      <div className="flex flex-col items-start gap-3 p-6" role="alert">
-        <p className="text-body text-fg-secondary">
-          {query.error instanceof ApiError ? query.error.message : 'Could not load this note.'}
-        </p>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            void query.refetch();
-          }}
-        >
-          Try again
-        </Button>
-      </div>
+      <PaneMessage>
+        <div className="flex flex-col items-start gap-3 p-6" role="alert">
+          <p className="text-body text-fg-secondary">
+            {query.error instanceof ApiError ? query.error.message : 'Could not load this note.'}
+          </p>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              void query.refetch();
+            }}
+          >
+            Try again
+          </Button>
+        </div>
+      </PaneMessage>
     );
   }
   // One editor per note: switching notes unmounts this one, which saves its text first
@@ -65,21 +84,25 @@ export function NoteEditorPane({ noteId }: { noteId: string }) {
 /** The wikilink options for one editor, plus the setters that keep them current. */
 function createLinkBridge() {
   let ids = new Map<string, string>();
-  let titles: NoteTitle[] = [];
+  let titles: (NoteTitle & { lower: string })[] = [];
+  // False until the list of titles has loaded: before that no link is known to be missing
+  let loaded = false;
   let open: (title: string) => void = () => undefined;
   const idOf = (title: string) => ids.get(title.trim().toLowerCase());
   return {
     options: {
-      resolve: (title: string) => idOf(title) ?? null,
+      resolve: (title: string) => (loaded ? (idOf(title) ?? null) : LINK_UNKNOWN),
       getTitles: () => titles,
       onOpen: (title: string) => {
         open(title);
       },
     },
     idOf,
-    setTitles(next: NoteTitle[]) {
-      titles = next;
-      ids = new Map(next.map((item) => [item.title.toLowerCase(), item.id]));
+    isLoaded: () => loaded,
+    setTitles(next: NoteTitle[] | undefined) {
+      loaded = next !== undefined;
+      titles = (next ?? []).map((item) => ({ ...item, lower: item.title.toLowerCase() }));
+      ids = new Map(titles.map((item) => [item.lower, item.id]));
     },
     setOpen(next: (title: string) => void) {
       open = next;
@@ -104,7 +127,11 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
   const seenRevision = useRef(note.revision);
   const nav = useNotesNav();
   const createNote = useCreateNote();
-  const titles = useNoteTitles().data;
+  const titlesQuery = useNoteTitles();
+  const titles = titlesQuery.data;
+  const refetchTitles = titlesQuery.refetch;
+  // True while a link click is creating a note: more clicks wait for it
+  const creating = useRef(false);
   // The wikilink callbacks are created once; they read the latest values through this bridge
   const [bridge] = useState(createLinkBridge);
   const [extensions] = useState(() => createNoteExtensions(bridge.options));
@@ -175,70 +202,110 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
 
   // Links: the latest titles for the callbacks, and a new look at every link when they change
   useEffect(() => {
-    bridge.setTitles(titles ?? []);
+    bridge.setTitles(titles);
     if (!editor.isDestroyed) refreshWikilinks(editor);
   }, [bridge, editor, titles]);
   const { folderId } = note;
   const { openNote } = nav;
   useEffect(() => {
     bridge.setOpen((title) => {
+      // A note in the trash is read-only: its links are only text. Titles still loading: wait
+      if (!editor.isEditable || creating.current || !bridge.isLoaded()) return;
       const id = bridge.idOf(title);
       if (id) {
         openNote(id);
         return;
       }
       // A link to a note that does not exist yet creates it next to this one
-      createNote.mutateAsync({ title, folderId }).then(
-        (created) => {
-          openNote(created.id);
-        },
-        () => undefined, // the hook already showed the message
-      );
+      creating.current = true;
+      createNote
+        .mutateAsync({ title, folderId })
+        .then(
+          (created) => {
+            openNote(created.id);
+          },
+          async (error: unknown) => {
+            // The hook already showed the message. If the title was taken, open that note
+            if (
+              error instanceof ApiError &&
+              error.status === 409 &&
+              error.code === 'note_title_taken'
+            ) {
+              const existing = (await refetchTitles()).data?.find(
+                (item) => item.title.toLowerCase() === title.toLowerCase(),
+              );
+              if (existing) openNote(existing.id);
+            }
+          },
+        )
+        .finally(() => {
+          creating.current = false;
+        });
     });
   });
 
-  // The Outline tab asks for the i-th heading (H1 to H3, in document order, empty ones skipped)
+  // The Outline tab asks for the i-th heading; headingsOf is the rule that makes its list too
   useEffect(
     () =>
       registerHeadingJump((index) => {
-        let seen = 0;
-        let target = -1;
-        editor.state.doc.descendants((node, pos) => {
-          if (target >= 0) return false;
-          if (node.type.name === 'heading' && node.textContent.trim() !== '') {
-            if (seen === index) target = pos;
-            seen += 1;
-          }
-          return true;
-        });
-        if (target < 0) return;
+        const target = headingsOf(editor.state.doc)[index];
+        if (!target) return;
         editor
           .chain()
           .focus()
-          .setTextSelection(target + 1)
+          .setTextSelection(target.pos + 1)
           .scrollIntoView()
           .run();
       }),
     [editor],
   );
+  // The Outline tab lists the headings of the live document, so it follows typing at once
+  useEffect(() => {
+    let unpublish = publishOutline(note.id, headingsOf(editor.state.doc));
+    const onTransaction = ({ transaction }: { transaction: { docChanged: boolean } }) => {
+      if (!transaction.docChanged) return;
+      unpublish = publishOutline(note.id, headingsOf(editor.state.doc));
+    };
+    editor.on('transaction', onTransaction);
+    return () => {
+      editor.off('transaction', onTransaction);
+      unpublish();
+    };
+  }, [editor, note.id]);
 
   // A new revision from elsewhere (another device, a rename, an undo). Same text: just follow the
   // revision. New text and nothing unsaved: load it quietly. New text over unsaved edits: ask.
   const { setRevision, hasPending, markConflict } = autosave;
+  // Counts finished IME compositions: a reload that waited for one is tried again
+  const [compositions, setCompositions] = useState(0);
+  useEffect(() => {
+    const dom = editor.view.dom;
+    const onEnd = () => {
+      setCompositions((count) => count + 1);
+    };
+    dom.addEventListener('compositionend', onEnd);
+    return () => {
+      dom.removeEventListener('compositionend', onEnd);
+    };
+  }, [editor]);
   useEffect(() => {
     if (note.revision <= seenRevision.current) return;
-    seenRevision.current = note.revision;
     if (note.contentMd === knownContent.current) {
+      seenRevision.current = note.revision;
       setRevision(note.revision);
     } else if (hasPending()) {
+      seenRevision.current = note.revision;
       markConflict(note.revision);
     } else {
+      // Replacing the text under an IME composition would break it: wait for compositionend
+      if (editor.view.composing) return;
+      seenRevision.current = note.revision;
       knownContent.current = note.contentMd;
-      // emitUpdate false: loading the server's text is not an edit to save
-      editor.commands.setContent(note.contentMd, { contentType: 'markdown', emitUpdate: false });
+      // Not an edit to save; the cursor stays and the undo history starts fresh
+      reloadQuietly(editor, note.contentMd);
       setRevision(note.revision);
     }
-  }, [editor, note.revision, note.contentMd, setRevision, hasPending, markConflict]);
+  }, [editor, note.revision, note.contentMd, compositions, setRevision, hasPending, markConflict]);
 
   // Unsent text from an earlier session
   useEffect(() => {
@@ -323,6 +390,8 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
             try {
               const { item: renamed } = await rename.mutateAsync({ id: note.id, title });
               seenRevision.current = Math.max(seenRevision.current, renamed.revision);
+              // The next save starts from the renamed revision, without waiting for the refetch
+              autosave.setRevision(renamed.revision);
               setEditedAt(renamed.updatedAt);
             } finally {
               autosave.resume();

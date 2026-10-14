@@ -84,6 +84,19 @@ describe('the [[ menu', () => {
     });
   });
 
+  it('compares only the note part when a #Heading is typed, for the Create row too', async () => {
+    type('[[reading list#Intro');
+    await vi.waitFor(() => {
+      expect(rowTexts()).toEqual(['Reading list']);
+    });
+    editor.commands.setContent('', { contentType: 'markdown' });
+    editor.commands.focus();
+    type('[[Brand new#Intro');
+    await vi.waitFor(() => {
+      expect(rowTexts()).toEqual(['Create "Brand new#Intro"']);
+    });
+  });
+
   it('moves with the arrow keys (wrapping), marks the row and points the editor at it', async () => {
     type('[[g');
     await vi.waitFor(() => {
@@ -209,6 +222,27 @@ describe('the wikilink node in the page', () => {
     expect(links()[0]).toHaveClass('wikilink-resolved');
     expect(links()[1]).toHaveClass('wikilink-unresolved');
     expect(links()[1]).toHaveAttribute('title', 'Not created yet. Click to create it.');
+  });
+
+  it('says an unresolved link is not created yet to assistive technology too', () => {
+    expect(links()[1]).toHaveAttribute('aria-label', 'shown, not created yet');
+    expect(links()[1]).toHaveAttribute('role', 'link');
+    expect(links()[0]).not.toHaveAttribute('aria-label');
+  });
+
+  it('draws a link as neither found nor missing while the titles are loading', () => {
+    known = { 'garden plan': 'unknown', missing: 'unknown' };
+    refreshWikilinks(editor);
+    expect(links()[0]).not.toHaveClass('wikilink-resolved');
+    expect(links()[1]).not.toHaveClass('wikilink-unresolved');
+  });
+
+  it('does nothing on a click or Enter when the editor is read-only', () => {
+    editor.setEditable(false, false);
+    links()[0]?.click();
+    editor.commands.setNodeSelection(1);
+    press('Enter');
+    expect(onOpen).not.toHaveBeenCalled();
   });
 
   it('follows the titles after refreshWikilinks', () => {

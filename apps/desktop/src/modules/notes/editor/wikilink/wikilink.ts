@@ -9,10 +9,18 @@ import './wikilink.css';
 export interface NoteTitle {
   id: string;
   title: string;
+  /** `title` in lower case, worked out once by the caller (it is compared on every key). */
+  lower?: string;
 }
 
+/** The answer of `resolve` while the titles are not loaded yet: the link is neither found nor missing. */
+export const LINK_UNKNOWN = 'unknown';
+
 export interface WikiLinkOptions {
-  /** The id of the live note with this title (ignoring case), or null when there is none. */
+  /**
+   * The id of the live note with this title (ignoring case), null when there is none, or
+   * `LINK_UNKNOWN` while the titles are still loading.
+   */
   resolve: (title: string) => string | null;
   /** The titles offered after typing `[[`. Called on every key, so it must be cheap. */
   getTitles: () => NoteTitle[];
@@ -42,18 +50,16 @@ export function refreshWikilinks(editor: Editor): void {
 
 function pickItems(titles: NoteTitle[], query: string): WikiItem[] {
   const typed = query.trim();
-  const needle = typed.toLowerCase();
+  // `Note#Heading` is compared by its note part
+  const needle = titleOf(typed).toLowerCase();
+  const lower = (note: NoteTitle) => note.lower ?? note.title.toLowerCase();
   const found = titles
-    .filter((note) => note.title.toLowerCase().includes(needle))
-    .sort(
-      (a, b) =>
-        Number(b.title.toLowerCase().startsWith(needle)) -
-        Number(a.title.toLowerCase().startsWith(needle)),
-    )
+    .filter((note) => lower(note).includes(needle))
+    .sort((a, b) => Number(lower(b).startsWith(needle)) - Number(lower(a).startsWith(needle)))
     .slice(0, MAX_NOTES)
-    .map((note): WikiItem => ({ kind: 'note', ...note }));
-  const exact = titles.some((note) => note.title.toLowerCase() === needle);
-  return typed && !exact ? [...found, { kind: 'create', title: typed }] : found;
+    .map((note): WikiItem => ({ kind: 'note', id: note.id, title: note.title }));
+  const exact = titles.some((note) => lower(note) === needle);
+  return needle && !exact ? [...found, { kind: 'create', title: typed }] : found;
 }
 
 /**
@@ -161,12 +167,22 @@ export const WikiLink = Mention.extend<WikiLinkOptions>({
       const decorations: Decoration[] = [];
       doc.descendants((node, pos) => {
         if (node.type.name !== name) return;
-        const found = resolve(titleOf(String(node.attrs.target))) !== null;
+        const found = resolve(titleOf(String(node.attrs.target)));
+        if (found === LINK_UNKNOWN) return;
+        const shown = String(node.attrs.label ?? node.attrs.target);
         decorations.push(
-          Decoration.node(pos, pos + node.nodeSize, {
-            class: found ? 'wikilink-resolved' : 'wikilink-unresolved',
-            ...(found ? {} : { title: 'Not created yet. Click to create it.' }),
-          }),
+          Decoration.node(
+            pos,
+            pos + node.nodeSize,
+            found !== null
+              ? { class: 'wikilink-resolved' }
+              : {
+                  class: 'wikilink-unresolved',
+                  role: 'link',
+                  'aria-label': `${shown}, not created yet`,
+                  title: 'Not created yet. Click to create it.',
+                },
+          ),
         );
       });
       return DecorationSet.create(doc, decorations);
@@ -182,14 +198,16 @@ export const WikiLink = Mention.extend<WikiLinkOptions>({
       props: {
         decorations: (state) => wikiLinkStateKey.getState(state),
         handleDOMEvents: {
-          click: (_view, event) => {
+          click: (view, event) => {
+            if (!view.editable) return false;
             const link =
               event.target instanceof Element
                 ? event.target.closest<HTMLElement>('[data-type="wikiLink"]')
                 : null;
             if (!link) return false;
             const title = titleOf(link.dataset.target ?? '');
-            if (title) onOpen(title);
+            if (!title) return false;
+            onOpen(title);
             return true;
           },
         },
@@ -198,13 +216,15 @@ export const WikiLink = Mention.extend<WikiLinkOptions>({
           if (
             event.key !== 'Enter' ||
             event.isComposing ||
+            !view.editable ||
             !(selection instanceof NodeSelection) ||
             selection.node.type.name !== name
           ) {
             return false;
           }
           const title = titleOf(String(selection.node.attrs.target));
-          if (title) onOpen(title);
+          if (!title) return false;
+          onOpen(title);
           return true;
         },
       },
@@ -216,6 +236,7 @@ export const WikiLink = Mention.extend<WikiLinkOptions>({
       char: '[[',
       allowSpaces: true,
       allowedPrefixes: null,
+      flip: false,
       floatingUi: MENU_FLOATING,
       // A `]` ends the link, `[` or `|` start something else: the menu closes in all three cases
       findSuggestionMatch: (config) => {
@@ -239,6 +260,7 @@ export const WikiLink = Mention.extend<WikiLinkOptions>({
           .run();
       },
       render: createMenuRenderer<WikiItem>({
+        pluginKey: wikiLinkSuggestionKey,
         label: 'Link to a note',
         row: (item) => ({ text: item.kind === 'create' ? `Create "${item.title}"` : item.title }),
       }),

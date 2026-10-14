@@ -54,6 +54,23 @@ export function makeFolder(overrides: Partial<NoteFolder> = {}): NoteFolder {
 /** The same excerpt the server builds (plain text of the Markdown, cut at 140). */
 const excerptOf = (markdown: string) => excerptOfText(markdownToPlainText(markdown));
 
+/** Like the server: the line around the first link to `title` outside code fences, as plain text. */
+function contextOf(contentMd: string, title: string): string {
+  const wanted = title.toLowerCase();
+  let inFence = false;
+  for (const line of contentMd.split(/\r?\n/)) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    if (parseWikilinks(line).some((link) => link.target.toLowerCase() === wanted)) {
+      return excerptOfText(markdownToPlainText(line), NOTE_CONTEXT_MAX);
+    }
+  }
+  return '';
+}
+
 const textOf = (value: unknown) => (typeof value === 'string' ? value : '');
 const flag = (value: unknown) => value === true || value === 'true';
 
@@ -245,7 +262,13 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
       if (other.id === id) continue;
       const contentMd = rewriteWikilinks(other.contentMd, current.title, title);
       if (contentMd === other.contentMd) continue;
-      noteStore.set(other.id, { ...other, contentMd, revision: other.revision + 1 });
+      noteStore.set(other.id, {
+        ...other,
+        contentMd,
+        excerpt: excerptOf(contentMd),
+        revision: other.revision + 1,
+        updatedAt: next.updatedAt,
+      });
       updatedNoteIds.push(other.id);
     }
     return {
@@ -269,21 +292,16 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
             (link) => link.target.toLowerCase() === note.title.toLowerCase(),
           ),
       )
-      .map((other) => {
-        const line =
-          other.contentMd
-            .split('\n')
-            .find((text) => text.toLowerCase().includes(`[[${note.title.toLowerCase()}`)) ?? '';
-        return {
-          noteId: other.id,
-          title: other.title,
-          context: line.trim().slice(0, NOTE_CONTEXT_MAX),
-        };
-      });
+      .map((other) => ({
+        noteId: other.id,
+        title: other.title,
+        context: contextOf(other.contentMd, note.title),
+      }));
     const seen = new Set<string>();
     const outgoing = parseWikilinks(note.contentMd).flatMap((link) => {
       const key = link.target.toLowerCase();
-      if (seen.has(key) || key === note.title.toLowerCase()) return [];
+      // Like the server, a link to the note itself is listed too
+      if (seen.has(key)) return [];
       seen.add(key);
       return [{ target: link.target, noteId: byTitle.get(key)?.id ?? null }];
     });

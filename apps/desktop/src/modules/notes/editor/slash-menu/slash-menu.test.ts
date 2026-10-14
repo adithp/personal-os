@@ -127,6 +127,36 @@ describe('the slash menu', () => {
     expect(blocks()).toHaveLength(2);
   });
 
+  it('stops pointing the editor at a row when nothing matches', async () => {
+    editor.commands.insertContent('/');
+    await opened();
+    expect(editor.view.dom.getAttribute('aria-activedescendant')).not.toBeNull();
+    editor.commands.insertContent('zzz');
+    await vi.waitFor(() => {
+      expect(menu()?.hidden).toBe(true);
+    });
+    expect(editor.view.dom.hasAttribute('aria-activedescendant')).toBe(false);
+  });
+
+  it('leaves no menu behind when Ctrl+K takes the focus away (the palette opens)', async () => {
+    editor.commands.insertContent('/');
+    await opened();
+    editor.view.dom.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }),
+    );
+    // The palette's input takes the focus
+    const palette = document.createElement('input');
+    document.body.append(palette);
+    // What the browser reports when the focus moves from the editor to the palette
+    editor.view.dom.dispatchEvent(
+      new FocusEvent('focusout', { bubbles: true, relatedTarget: palette }),
+    );
+    await vi.waitFor(() => {
+      expect(document.querySelectorAll('[role="listbox"]')).toHaveLength(0);
+    });
+    expect(editor.view.dom.hasAttribute('aria-controls')).toBe(false);
+  });
+
   it('moves with the arrows and runs the chosen item with Enter', async () => {
     editor.commands.insertContent('/');
     await opened();
