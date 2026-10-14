@@ -20,48 +20,65 @@ type SearchProvider = (scope: UserScope, text: string, limit: number) => Promise
 
 /** Done and archived tasks stay findable but rank at half weight (D9). */
 const DONE_OR_ARCHIVED_WEIGHT = 0.5;
-/** The task provider reads this many times the limit, then re-ranks and cuts (D9). */
-const OVERFETCH = 4;
+/** The task provider reads at least this many candidates per page, then re-ranks and cuts (D9). */
+const MIN_CANDIDATES = 100;
+const CANDIDATE_FACTOR = 10;
+/** Extra pages read when too few valid hits were found (done tasks or orphans took the slots). */
+const MAX_PAGES = 4;
 
 const taskProvider: SearchProvider = async (scope, text, limit) => {
-  const matches = await matchEntities(scope, { text, type: 'task', limit: limit * OVERFETCH });
-  if (matches.length === 0) return [];
+  const pageSize = Math.max(limit * CANDIDATE_FACTOR, MIN_CANDIDATES);
+  const ranked: { row: typeof tasks.$inferSelect; rank: number; updatedAt: number }[] = [];
 
-  const rows = await scope.select(tasks, {
-    where: and(
-      scope.isLive(tasks),
-      inArray(
-        tasks.id,
-        matches.map((match) => match.id),
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const matches = await matchEntities(scope, {
+      text,
+      type: 'task',
+      limit: pageSize,
+      offset: page * pageSize,
+    });
+    if (matches.length === 0) break;
+
+    const rows = await scope.select(tasks, {
+      where: and(
+        scope.isLive(tasks),
+        inArray(
+          tasks.id,
+          matches.map((match) => match.id),
+        ),
       ),
-    ),
-  });
-  const byId = new Map(rows.map((row) => [row.id, row]));
+    });
+    const byId = new Map(rows.map((row) => [row.id, row]));
 
-  // Subtasks are only reachable through their parent: drop them when the parent is deleted.
-  const parentIds = [
-    ...new Set(rows.flatMap((row) => (row.parentTaskId ? [row.parentTaskId] : []))),
-  ];
-  const liveParents = new Set(
-    parentIds.length === 0
-      ? []
-      : (
-          await scope.select(tasks, {
-            where: and(scope.isLive(tasks), inArray(tasks.id, parentIds)),
-          })
-        ).map((parent) => parent.id),
-  );
+    // Subtasks are only reachable through their parent: drop them when the parent is deleted.
+    // Subtasks nest one level only (tasks.create rejects a parent that has a parent), so the
+    // parent is the whole ancestor chain. Revisit this check if deeper nesting is ever allowed.
+    const parentIds = [
+      ...new Set(rows.flatMap((row) => (row.parentTaskId ? [row.parentTaskId] : []))),
+    ];
+    const liveParents = new Set(
+      parentIds.length === 0
+        ? []
+        : (
+            await scope.select(tasks, {
+              where: and(scope.isLive(tasks), inArray(tasks.id, parentIds)),
+            })
+          ).map((parent) => parent.id),
+    );
 
-  const ranked = matches
-    .flatMap((match) => {
+    for (const match of matches) {
       const row = byId.get(match.id);
-      if (!row) return [];
-      if (row.parentTaskId && !liveParents.has(row.parentTaskId)) return [];
+      if (!row) continue;
+      if (row.parentTaskId && !liveParents.has(row.parentTaskId)) continue;
       const weight = row.status === 'done' || row.archivedAt ? DONE_OR_ARCHIVED_WEIGHT : 1;
-      return [{ row, rank: match.rank * weight, updatedAt: match.updatedAt.getTime() }];
-    })
-    .sort((a, b) => b.rank - a.rank || b.updatedAt - a.updatedAt)
-    .slice(0, limit);
+      // Tie-break on tasks.updated_at: the 0010 backfill reset entities.updated_at.
+      ranked.push({ row, rank: match.rank * weight, updatedAt: row.updatedAt.getTime() });
+    }
+    if (ranked.length >= limit || matches.length < pageSize) break;
+  }
+
+  ranked.sort((a, b) => b.rank - a.rank || b.updatedAt - a.updatedAt);
+  ranked.splice(limit);
 
   const excerpts = await snippets(scope, {
     table: tasks,
