@@ -85,7 +85,7 @@ Full product details: `docs/PRD.md`. Build order: `docs/ROADMAP.md`. Decisions w
 - **Step 1:** done (shell, dock, login, settings, dashboard, palette, server, database, infra).
 - **Skills, agents, lessons and docs-sync job:** done (commit f7a746d).
 - **Step 2, Tasks feature 1:** built, tested and approved by me. ROADMAP.md is ticked.
-- **Decisions 52 to 67:** up to 5 agents at once; Recharts instead of ECharts; keep dnd-kit, rrule and chrono-node; the drag and drop rules; the dependency and recurring rules; the quick add rules; the autonomous build loop; favorites and tag management; the Inbox rules; the Reporting rules; the Goals rules.
+- **Decisions 52 to 68:** up to 5 agents at once; Recharts instead of ECharts; keep dnd-kit, rrule and chrono-node; the drag and drop rules; the dependency and recurring rules; the quick add rules; the autonomous build loop; favorites and tag management; the Inbox rules; the Reporting rules; the Goals rules.
 - **Design-consistency job** (design audit, design:check, shared-components rule, design-reviewer checklist): still unsent: I send it when I want it.
 - **Tasks feature 2 (Board and drag and drop):** built, tested and approved by me (ROADMAP ticked). The dashboard Today's tasks tile is real. Next in order: feature 3 (dependencies and recurring), then 4 to 8, one prompt each; the design-consistency job comes before feature 3.
 - **Tasks feature 3 (dependencies and recurring):** built, tested and approved by me (ROADMAP ticked). Then feature 4 (quick add).
@@ -130,3 +130,5 @@ When a discussion is done, save the ready prompt to `docs/prompts/next.md` (over
 ### Reviewing a build report for me
 
 When I paste a report, check: did it follow the plan? Are there hidden decisions it made alone (list them so I can approve)? Is anything untested (the real Tauri window, real Supabase, Windows-specific)? Then give me the test checklist and the ready reply message.
+
+- **Working method (decision 68):** batches are built as parallel lanes, tested once at the end (see .claude/skills/orchestrate-lanes). First lane batch in progress: Habits, Money (no AI), Projects; the Notes/Tasks leftovers are merged and wait for the final check.

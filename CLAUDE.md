@@ -55,7 +55,7 @@ For trivial changes (typos, one-liners), use judgment instead of the full proces
 10. When something in the docs is unclear, ask before building.
 
 ## Skills (use them instead of guessing the procedure)
-- Before every commit and before a feature report: **verify** (lint, typecheck, test, docs check, build).
+- At the end of a batch (not on every commit) and before a report: **verify** (lint, typecheck, test, docs check, build), split across parallel Haiku agents; do not fix lint while building, fix it once at the end (decision 68).
 - New action: **new-action**. New route: **api-route**. Schema change or migration: **db-change**.
 - Screens and components: **ui-design-system**. Server data in the app: **data-hooks**.
 - Dates, recurrence, money: **time-and-money**. Writing tests: **testing-patterns**.
@@ -78,10 +78,10 @@ For trivial changes (typos, one-liners), use judgment instead of the full proces
 
 ## Working rules (always follow, in every mode, including auto-accept mode)
 
-### One feature at a time
-- Build only ONE feature (one lettered part or one roadmap item) at a time.
-- Never start the next feature on your own. After finishing a feature, STOP and wait.
-- Only start the next feature when I clearly write "next" or "start <feature name>".
+### One batch at a time
+- Build only the batch I approved (one or several roadmap items, built as parallel lanes, see the orchestrate-lanes skill), never more.
+- Never start the next batch on your own. After finishing a batch, STOP and wait.
+- Only start the next batch when I clearly write "next" or "start <name>".
 - Never build parts of future features "to save time", even if it seems easy.
 
 ### Doubts must be asked
@@ -104,4 +104,4 @@ Then write: "Feature complete. Waiting for your check. Reply 'next' to continue 
 - Only after I reply "next": tick the item in docs/ROADMAP.md and suggest a commit message.
 
 ## Parallel work
-The main session is the orchestrator and may run at most 5 subagents at once (server-dev, ui-dev, and the reviewers code-reviewer, design-reviewer, security-reviewer, docs-reviewer). All use Sonnet and each works in its own git worktree. Only I start a parallel feature, with /orchestrate-feature <feature>; the procedure (contract first, file ownership, merge, reviews) lives in that skill. Agents cannot ask me anything: they stop and report questions, and the orchestrator asks me.
+The main session is the orchestrator. A batch runs as up to 4 parallel **lanes** (decision 68, orchestrate-lanes skill, started when I approve a batch): each lane lead is a Sonnet general-purpose agent in its own git worktree that does research, docs, schema, code, one test pass (Haiku test agents), docs sync and one review by itself and may start its own helper agents (keep the total at about 10 agents at a time). The orchestrator makes a scaffold commit first, merges lanes, regenerates migrations, runs one final check with parallel Haiku agents and writes one report. Test agents and mechanical agents use Haiku, builders and reviewers use Sonnet. Agents cannot ask me anything: they stop and report questions, and the orchestrator asks me. The older orchestrate-feature skill (contract first, 4 reviewers) stays for a single big feature when I ask for it.

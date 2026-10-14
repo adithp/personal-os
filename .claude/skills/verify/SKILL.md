@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Run the project quality gate (lint, typecheck, test, docs check, build) and report pass or fail per step. Use before every commit, before any feature report, and after merging agent branches. Web-only: never runs the Tauri or Rust build or pnpm db:migrate.
+description: Run the project quality gate (lint, typecheck, test, docs check, build) and report pass or fail per step. Use at the end of a batch (after all lanes are merged), before any report, and when the owner asks. Do not run it on every commit or after every merge (decision 68); lint is fixed once at the end, not while building. Web-only: never runs the Tauri or Rust build or pnpm db:migrate.
 allowed-tools: Bash(pnpm lint), Bash(pnpm typecheck), Bash(pnpm test), Bash(pnpm test:*), Bash(pnpm docs:check), Bash(pnpm docs:check:*), Bash(pnpm build), Bash(git status), Bash(git diff:*)
 ---
 
