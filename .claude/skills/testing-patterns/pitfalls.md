@@ -109,3 +109,9 @@ Lessons for this area (index: docs/LESSONS.md). Add new ones with the record-les
 - Cause: nodeInputRule replaces only capture group 1; insertContent does not run input rules; findBy does not advance fake timers
 - Fix: use InputRule with a handler that replaces the whole range; type through view.someProp('handleTextInput'); use vi.waitFor
 - Prevention: a typeChar helper in the wikilink tests
+
+### 2026-10-14: A shared server test helper that runs raw SQL must be a .test.ts file
+- Symptom: no-direct-database.test.ts failed on actions/money-test-utils.ts (db.execute and the db testing import)
+- Cause: The rule scans every non-.test.ts file outside src/lib
+- Fix: The helper is money-test-utils.test.ts (with one small test so Vitest accepts the file)
+- Prevention: guarded, apps/server/src/lib/no-direct-database.test.ts

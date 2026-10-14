@@ -17,3 +17,6 @@ Answers "Which subscriptions are renewing this week?" and "How much am I spendin
 
 ## Done when
 I never miss a renewal and know my total monthly subscription cost.
+
+## Built (Step 6, money lane)
+Subscriptions with cycle (weekly, monthly, quarterly, yearly), next renewal day, status (active, paused, cancelled), wallet and category; monthly and yearly cost per subscription and in total; an Upcoming renewals list (default 30 days) and an Overdue state instead of push reminders; "Mark paid" moves the renewal on and books the expense in the wallet (Finance). Not built: reminder notifications, renewal history screen. See [money.md](money.md).

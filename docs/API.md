@@ -114,7 +114,24 @@ Goal details: `title` 1 to 200 characters, `description` up to 20,000 (or null),
 | GET | /drive/files?folder=&q= | Browse or search Drive |
 | POST | /drive/upload | Upload a file |
 | GET | /drive/files/:id/download | Download a file |
-| GET | /finance/summary?month= | Monthly totals and category breakdown |
+| GET, POST | /wallets | Money. List (`?includeArchived=true`; each wallet carries `balancePaise`) / create (201). See docs/features/money.md for all Money routes |
+| PATCH, DELETE | /wallets/:id | Change (name, kind, color, openingBalancePaise, archived) / delete (409 `wallet_in_use` while it has transactions) |
+| POST | /wallets/:id/restore | Bring a deleted wallet back |
+| GET, POST | /categories | List (creates the default categories on the very first call) / create (409 `name_taken`) |
+| PATCH, DELETE, POST | /categories/:id, /categories/:id/restore | Change / delete (transactions keep it, shown as uncategorised) / restore |
+| GET, POST | /transactions | List newest first (`walletId` also matches transfers into it, `categoryId`, `kind`, `from`, `to`, `q`, `limit` up to 500, `offset`) / create income, expense or transfer (`amountPaise`, `occurredOn` India day, default today) |
+| PATCH, DELETE, POST | /transactions/:id, /transactions/:id/restore | Change / delete / restore |
+| GET, POST | /recurring-transactions | List / create (`rule` is a repeat preset, `startOn`, `endsOn`) |
+| POST | /recurring-transactions/run | Creates the transactions of rules due up to today; `{ created }`. No undo |
+| PATCH, DELETE, POST | /recurring-transactions/:id, /recurring-transactions/:id/restore | Change (also `active`) / delete / restore |
+| GET, PUT | /budgets | `?month=YYYY-MM` list with `spentPaise` and `percent` / set `{ categoryId, month, amountPaise }` (replaces) |
+| DELETE | /budgets/:id | Remove (undo sets it again) |
+| GET, POST | /savings-goals | List with `percent` and `achieved` / create |
+| PATCH, DELETE, POST | /savings-goals/:id, /savings-goals/:id/restore, /savings-goals/:id/contribute | Change / delete / restore / add or take out `deltaPaise` (never below 0) |
+| GET | /finance/summary?month= | `{ summary }`: income, expense, net, previous month expense, by category and by day (transfers left out) |
+| GET, POST | /subscriptions | `{ items, summary }` with monthly and yearly cost, `daysUntilRenewal`, `overdue` / create |
+| GET | /subscriptions/upcoming?days= | Active subscriptions renewing within N days (default 30), overdue first |
+| PATCH, DELETE, POST | /subscriptions/:id, /subscriptions/:id/restore, /subscriptions/:id/renew | Change (also pause or cancel) / delete / restore / mark the renewal paid: moves the renewal one cycle on and books the expense in its wallet; `{ item: { subscription, transaction }, undo }` |
 | GET | /dashboard/today | Combined data for the dashboard tiles and activity feed |
 | POST | /ai/chat | Send a message; response is streamed (Server-Sent Events) |
 | POST | /ai/actions/:logId/confirm | Approve an external or destructive action |

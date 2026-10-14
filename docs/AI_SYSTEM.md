@@ -65,9 +65,9 @@ Undo: a write returns an undo (an action plus its input). tasks.create undoes wi
 - gmail: search, read, draft, send, reply, forward, archive, star, label, delete
 - drive: search, list, read_text, upload
 - projects: list, get, create, update, status
-- finance: add_transaction, summary, budget_status
-- subscriptions: list, upcoming, add, update
-- wallet: balances, transfer
+- finance (built without AI, Step 6): `finance.wallets.{list,create,update,delete,restore}`, `finance.categories.{list,create,update,delete,restore}`, `finance.transactions.{list,create,update,delete,restore}` (transfers are `kind: transfer` with `toWalletId`), `finance.recurring.{list,create,update,delete,restore,run}`, `finance.budgets.{list,set,delete}`, `finance.goals.{list,create,update,contribute,delete,restore}`, `finance.summary`. Reads are `read`, everything else `write` with an undo (create undoes with delete, update with update carrying the old values, delete and restore undo each other, budgets.set undoes with set or delete, goals.contribute with the negated amount; recurring.run has no undo). The AI tools add_transaction, summary and budget_status of Step 3 map to transactions.create, summary and budgets.list
+- subscriptions: `subscriptions.{list,upcoming,create,update,renew,delete,restore}` plus `subscriptions.undo_renew` (an undo only; the AI must not call it). `renew` moves the renewal one cycle on and books an expense when the subscription has a wallet
+- wallet: balances come from `finance.wallets.list`; a transfer is `finance.transactions.create` with kind transfer
 - reminders: create
 - search: global (read; POST /search; input q, types?, limit? up to 20 per group; tasks and tags, word-start matching, done and archived tasks at half rank; one provider per type in apps/server/src/actions/search.ts)
 - links: create
