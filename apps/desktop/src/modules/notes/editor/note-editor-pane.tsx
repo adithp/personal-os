@@ -3,7 +3,14 @@ import { Button } from '@personal-os/ui';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ApiError } from '../../../api/api-client';
+import { useToasts } from '../../../store/toast-store';
 import { useTags } from '../../tasks/tags-queries';
+import {
+  useVersionPreview,
+  useVersionPreviewStore,
+  VersionDiff,
+  VersionPreviewBar,
+} from '../history';
 import { useNoteTitles } from '../links-queries';
 import { useCreateNote, useNote, useRenameNote, useUpdateNote } from '../notes-queries';
 import { RightPanelToggle, headingsOf, publishOutline, registerHeadingJump } from '../right-panel';
@@ -211,10 +218,15 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
   useEffect(() => {
     editorRef.current = editor;
   });
+  // A previewed version (History tab) is shown read-only in place of the text; `liveText` is the
+  // note's own text while a version is on screen, put back when the preview closes
+  const preview = useVersionPreview(note.id);
+  const [liveText, setLiveText] = useState<string | null>(null);
+  const previewing = liveText !== null;
   useEffect(() => {
     // false: do not report it as an edit (that would save an unchanged note)
-    editor.setEditable(!readOnly, false);
-  }, [editor, readOnly]);
+    editor.setEditable(!readOnly && !previewing, false);
+  }, [editor, readOnly, previewing]);
 
   // Links: the latest titles for the callbacks, and a new look at every link when they change
   useEffect(() => {
@@ -310,6 +322,8 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
     };
   }, [editor]);
   useEffect(() => {
+    // The preview shows a version in the editor; the text is looked at again when it closes
+    if (previewing) return;
     if (note.revision <= seenRevision.current) return;
     if (note.contentMd === knownContent.current) {
       seenRevision.current = note.revision;
@@ -326,7 +340,16 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
       reloadQuietly(editor, note.contentMd);
       setRevision(note.revision);
     }
-  }, [editor, note.revision, note.contentMd, compositions, setRevision, hasPending, markConflict]);
+  }, [
+    editor,
+    note.revision,
+    note.contentMd,
+    compositions,
+    previewing,
+    setRevision,
+    hasPending,
+    markConflict,
+  ]);
 
   // Unsent text from an earlier session
   useEffect(() => {
@@ -338,8 +361,47 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
 
-  const { flush } = autosave;
+  const { flush, pause, resume } = autosave;
   useEffect(() => onWindowCloseFlush(flush), [flush]);
+
+  // Previewing a version: save what is unsaved first, hold autosave, show the version without
+  // reporting an edit, and put the note's own text back when the preview changes or closes
+  const previewText = preview.version?.contentMd;
+  const previewId = preview.version?.id;
+  useEffect(() => {
+    if (previewText === undefined) return;
+    let cancelled = false;
+    let live: string | null = null;
+    void flush().then(() => {
+      if (cancelled || editor.isDestroyed) return;
+      if (hasPending()) {
+        // The save failed or the note is in conflict: the text on screen must not be replaced
+        useVersionPreviewStore.getState().close(note.id);
+        useToasts.getState().show('Wait until the note is saved, then open the version.', {
+          tone: 'error',
+        });
+        return;
+      }
+      live = serializeNote(editor);
+      pause();
+      reloadQuietly(editor, previewText);
+      setLiveText(live);
+    });
+    return () => {
+      cancelled = true;
+      if (live === null) return;
+      if (!editor.isDestroyed) reloadQuietly(editor, live);
+      resume();
+      setLiveText(null);
+    };
+  }, [editor, note.id, previewId, previewText, flush, hasPending, pause, resume]);
+  // Leaving the note closes its preview
+  useEffect(
+    () => () => {
+      useVersionPreviewStore.getState().close(note.id);
+    },
+    [note.id],
+  );
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -355,6 +417,11 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
     selector: ({ editor: current }) =>
       (current.storage.characterCount as { words: () => number }).words(),
   });
+
+  const diff =
+    preview.showChanges && liveText !== null && preview.version
+      ? { current: liveText, version: preview.version.contentMd }
+      : null;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -399,10 +466,11 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
           </Button>
         </div>
       ) : null}
+      <VersionPreviewBar noteId={note.id} />
       <div className="min-h-0 flex-1 overflow-y-auto px-6">
         <TitleField
           note={note}
-          readOnly={readOnly}
+          readOnly={readOnly || previewing}
           onRenamed={async (title) => {
             // Save the text first, so the rename does not meet a half-saved note; the timers wait
             // until the rename is answered (the revision effect above follows its new revision)
@@ -420,7 +488,8 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
           }}
           onEnter={() => editor.commands.focus('start')}
         />
-        <EditorContent editor={editor} className="pb-6" />
+        {diff ? <VersionDiff {...diff} /> : null}
+        <EditorContent editor={editor} className={diff ? 'hidden' : 'pb-6'} />
       </div>
       <p className="shrink-0 px-6 py-2 text-small text-fg-muted">
         {words === 1 ? '1 word' : `${String(words)} words`} ·{' '}

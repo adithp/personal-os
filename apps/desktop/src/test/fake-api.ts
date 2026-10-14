@@ -22,6 +22,7 @@ import { vi } from 'vitest';
 import { ApiError, type ApiClient, type RequestOptions } from '../api/api-client';
 import { positionBetween } from '../modules/tasks/drag/position';
 import { createNoteTemplatesFake } from './fake-note-templates';
+import { createNoteVersionsFake } from './fake-note-versions';
 import { createNotesFake, NOT_NOTES } from './fake-notes';
 
 export { makeFolder, makeNote } from './fake-notes';
@@ -172,6 +173,7 @@ export function createFakeApi(
     (id) => tagStore.get(id)?.name,
   );
   const templatesFake = createNoteTemplatesFake(notesFake);
+  const versionsFake = createNoteVersionsFake(notesFake, templatesFake.handle);
   const deleted = new Set<string>();
   const favoriteStore = new Map<string, Favorite>(
     initialFavorites.map((favorite) => [favorite.id, favorite]),
@@ -330,7 +332,7 @@ export function createFakeApi(
   const handle = (method: string, path: string, options: RequestOptions): unknown => {
     const body = (options.body ?? {}) as Record<string, unknown>;
 
-    const noteAnswer = templatesFake.handle(method, path, options);
+    const noteAnswer = versionsFake.handle(method, path, options);
     if (noteAnswer !== NOT_NOTES) return noteAnswer;
 
     if (method === 'GET' && path === '/tasks/report') {
@@ -821,6 +823,8 @@ export function createFakeApi(
     trashedNotes: notesFake.trashed,
     noteFolders: notesFake.folders,
     noteTemplates: templatesFake.templates,
+    /** Note versions (N4): `versions(noteId)` lists them, `seed(noteId, [...])` puts some on a note. */
+    noteVersions: versionsFake,
     /** What GET /tasks/report answers for its period (other periods get an empty report). */
     setReport: (report: TaskReport) => {
       reportOverride = report;

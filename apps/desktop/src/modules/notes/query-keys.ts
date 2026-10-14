@@ -17,4 +17,8 @@ export const noteKeys = {
   /** Links of every note (invalidate after a save) or of one. */
   allLinks: [...NOTES_KEY, 'links'] as const,
   links: (id: string) => [...NOTES_KEY, 'links', id] as const,
+  /** Versions of every note, of one note (the History list), or one version with its text (N4). */
+  allVersions: [...NOTES_KEY, 'versions'] as const,
+  versions: (id: string) => [...NOTES_KEY, 'versions', id] as const,
+  version: (id: string, versionId: string) => [...NOTES_KEY, 'version', id, versionId] as const,
 };

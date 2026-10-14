@@ -3,6 +3,7 @@ import { Button, cx, SegmentedControl } from '@personal-os/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, type KeyboardEvent } from 'react';
 import { ApiError } from '../../../api/api-client';
+import { HistoryPanel } from '../history';
 import { useNoteLinks } from '../links-queries';
 import { useCreateNote, useNote } from '../notes-queries';
 import { useNotesUi, type RightPanelTab } from '../notes-ui-store';
@@ -13,10 +14,10 @@ import { parseOutline } from './outline';
 import { TagsSection } from './tags-section';
 import { useRovingList } from './use-roving-list';
 
-// History joins this list in stage N4
 const TABS = [
   { value: 'links', label: 'Links' },
   { value: 'outline', label: 'Outline' },
+  { value: 'history', label: 'History' },
 ] as const satisfies readonly { value: RightPanelTab; label: string }[];
 
 const rowClass =
@@ -261,8 +262,10 @@ export function RightPanel({ noteId }: { noteId: string }) {
       />
       {tab === 'links' ? (
         <LinksTab noteId={noteId} folderId={note.data?.folderId ?? null} />
-      ) : (
+      ) : tab === 'outline' ? (
         <OutlineTab noteId={noteId} markdown={note.data?.contentMd ?? ''} />
+      ) : (
+        <HistoryPanel noteId={noteId} />
       )}
     </aside>
   );
