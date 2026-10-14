@@ -345,3 +345,64 @@ describe('notes.create with a template', () => {
     expect((await run<NoteSummary[]>(alice(), 'notes.list', {})).data).toEqual([]);
   });
 });
+
+describe('tag names in notes (tag_not_note_safe)', () => {
+  const failureOf = async (promise: Promise<unknown>) => {
+    try {
+      await promise;
+    } catch (error) {
+      if (error instanceof HttpError) return { status: error.statusCode, code: error.code };
+      throw error;
+    }
+    return { status: 0, code: '' };
+  };
+
+  it('refuses a rename to a name the note parser cannot read when a note carries the tag', async () => {
+    await create(alice(), 'A', 'plan #work');
+    const id = await tagId(alice(), 'work');
+    expect(await failureOf(registry.run(alice(), 'tags.update', { id, name: 'my.work' }))).toEqual({
+      status: 409,
+      code: 'tag_not_note_safe',
+    });
+    expect(await failureOf(registry.run(alice(), 'tags.update', { id, name: '2024' }))).toEqual({
+      status: 409,
+      code: 'tag_not_note_safe',
+    });
+    expect((await tagList(alice())).map((tag) => tag.name)).toEqual(['work']);
+  });
+
+  it('counts a trashed note too, and allows any name when no note carries the tag', async () => {
+    const note = await create(alice(), 'A', '#work');
+    await run(alice(), 'notes.delete', { id: note.id });
+    const id = await tagId(alice(), 'work');
+    expect(
+      await failureOf(registry.run(alice(), 'tags.update', { id, name: 'a.b' })),
+    ).toMatchObject({ code: 'tag_not_note_safe' });
+    await run(alice(), 'notes.purge', { id: note.id });
+    await registry.run(alice(), 'tags.update', { id, name: 'a.b' });
+    expect((await tagList(alice())).map((tag) => tag.name)).toEqual(['a.b']);
+  });
+
+  it('refuses a merge into a name the note parser cannot read, but a safe rename works', async () => {
+    const note = await create(alice(), 'A', '#work');
+    const source = await tagId(alice(), 'work');
+    const target = (await run<Tag>(alice(), 'tags.create', { name: 'my.work' })).data.id;
+    expect(
+      await failureOf(registry.run(alice(), 'tags.merge', { sourceId: source, targetId: target })),
+    ).toMatchObject({ status: 409, code: 'tag_not_note_safe' });
+    await registry.run(alice(), 'tags.update', { id: source, name: 'job' });
+    expect(await storedTags(note.id)).toEqual(['job']);
+  });
+});
+
+describe('notes.restore and tags', () => {
+  it('rebuilds the tags from the text after the tag was deleted while the note was trashed', async () => {
+    const note = await create(alice(), 'A', 'plan #work');
+    await run(alice(), 'notes.delete', { id: note.id });
+    await run(alice(), 'tags.delete', { id: await tagId(alice(), 'work') });
+    expect((await get(alice(), note.id)).tagNames).toEqual([]);
+    await run(alice(), 'notes.restore', { id: note.id });
+    expect((await get(alice(), note.id)).tagNames).toEqual(['work']);
+    expect((await tagList(alice())).map((tag) => tag.name)).toEqual(['work']);
+  });
+});

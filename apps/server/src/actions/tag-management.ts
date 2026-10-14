@@ -14,7 +14,7 @@ import { HttpError } from '../lib/http-error';
 import { withUserLock } from '../lib/user-lock';
 import type { UserScope } from '../lib/user-scope';
 import { liveTagIds, viewWithLiveTags, withFavoritesLock } from './favorites';
-import { liveNoteCount, rewriteNotesTag } from './note-tags';
+import { assertNoteSafeTagName, liveNoteCount, rewriteNotesTag } from './note-tags';
 import { implement } from './registry';
 import { TAG_NAME_INDEX, isUniqueViolation, toTag } from './tags';
 
@@ -251,6 +251,7 @@ export const tagManagementImplementations = [
       scope.transaction(async (tx) => {
         const sourceTag = await findLiveTag(tx, sourceId);
         const targetTag = await findLiveTag(tx, targetId);
+        await assertNoteSafeTagName(tx, sourceId, targetTag.name);
         const links = await tx.select(entityTags, { where: taskLinks(tx, sourceId) });
         const ids = links.map((link) => link.entityId);
         // Tasks that already have the target keep their one link; the others get a new one

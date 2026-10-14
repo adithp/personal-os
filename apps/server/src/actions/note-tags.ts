@@ -1,5 +1,6 @@
 import { entityTags, notes, tags } from '@personal-os/db';
-import { markdownToPlainText, parseTags, rewriteTag } from '@personal-os/shared';
+import { HttpError } from '../lib/http-error';
+import { isNoteTagName, markdownToPlainText, parseTags, rewriteTag } from '@personal-os/shared';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { UserScope } from '../lib/user-scope';
 import { TAG_NAME_INDEX, findOrCreateTag, isUniqueViolation } from './tags';
@@ -65,6 +66,24 @@ async function noteIdsWithTag(scope: UserScope, tagId: string, live: boolean): P
     },
   );
   return rows.map((row) => row.entityId as string);
+}
+
+/**
+ * A tag carried by any note (trashed too) can only get a name the note parser reads, else the
+ * rewritten `#name` would not be a tag in the text. 409 tag_not_note_safe.
+ */
+export async function assertNoteSafeTagName(
+  scope: UserScope,
+  tagId: string,
+  newName: string,
+): Promise<void> {
+  if (isNoteTagName(newName)) return;
+  if ((await noteIdsWithTag(scope, tagId, false)).length === 0) return;
+  throw new HttpError(
+    409,
+    'tag_not_note_safe',
+    'This tag is used in notes, so its name can only have letters, numbers, _, - and /.',
+  );
 }
 
 /** How many live notes carry the tag. */

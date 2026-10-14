@@ -87,3 +87,8 @@ The last place (so opening Notes with no link returns to it), the sort, whether 
   - **Key D** opens today's daily note (same guards as N; also listed in the shortcut help). It only works where the list is shown (not in Templates).
   - **Data:** every note save and write refresh also invalidates the tags list (`TAGS_KEY`) so counts follow. Manage tags (Tasks) shows "2 tasks · 3 notes" when `noteCount` is present.
   - **Mock API:** saving a note finds or creates a tag for each `#tag` (case-insensitive); summaries carry `tagNames`; `GET /notes?tagId=` filters; `GET /tags` carries `noteCount`.
+- **Server rules (review fixes):**
+  - `isNoteTagName(name)` (note-text.ts, also used by the parser) says whether `#name` reads as a tag. `tags.update` (rename) and `tags.merge` answer 409 `tag_not_note_safe` when any note (trashed too) carries the tag and the new/target name is not readable ("This tag is used in notes, so its name can only have letters, numbers, _, - and /.").
+  - `notes.openDaily` fills `{{date}}` with the note's day and `{{time}}` with the current India time (`applyTemplate` takes an optional `date`); creating it retries once on a tag-creation race.
+  - `notes.restore` runs under the notes queue and rebuilds the note's tags from its text. If its `dailyDate` is now used by another live daily note, it comes back as a normal note (`dailyDate` cleared, title kept); the Undo of a delete does the same.
+  - `notes.create` with `templateId` answers 400 `validation_error` ("The template is too long for a note") when the filled text exceeds 200,000 characters.

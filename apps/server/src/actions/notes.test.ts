@@ -1,4 +1,4 @@
-import { entities, links, noteFolders, notes } from '@personal-os/db';
+import { entities, links, noteFolders, noteTemplates, notes } from '@personal-os/db';
 import { createTestDb, createTestUser, type TestDb } from '@personal-os/db/testing';
 import type { Note, NoteSummary } from '@personal-os/shared';
 import { eq, sql } from 'drizzle-orm';
@@ -32,7 +32,7 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   await t.db.execute(
-    sql`truncate table notes, note_folders, entity_tags, tags, links, tasks, entities, auth.users cascade`,
+    sql`truncate table notes, note_templates, note_folders, entity_tags, tags, links, tasks, entities, auth.users cascade`,
   );
   await createTestUser(t.db, ALICE);
   await createTestUser(t.db, BOB);
@@ -591,5 +591,20 @@ describe('notes.purge and notes.emptyTrash', () => {
     await expect(registry.run(context(ALICE, false), 'notes.emptyTrash', {})).rejects.toMatchObject(
       { statusCode: 409 },
     );
+  });
+});
+
+describe('notes.create with a template that grows too long', () => {
+  it('answers 400 when the filled template exceeds the note limit', async () => {
+    const [template] = await createUserScope(t.db, ALICE).insert(noteTemplates, {
+      name: 'Big',
+      contentMd: '{{title}}'.repeat(15_000),
+    });
+    expect(
+      await failure(
+        registry.run(alice(), 'notes.create', { title: 'T'.repeat(20), templateId: template?.id }),
+      ),
+    ).toEqual({ status: 400, code: 'validation_error' });
+    expect(await listOf(alice())).toEqual([]);
   });
 });

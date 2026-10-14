@@ -12,7 +12,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { withUserLock } from '../lib/user-lock';
 import type { UserScope } from '../lib/user-scope';
 import { rebuildNoteLinks, reresolveLinksTo } from './note-links';
-import { rebuildNoteTags } from './note-tags';
+import { rebuildNoteTags, withTagRetry } from './note-tags';
 import { implement } from './registry';
 import { isUniqueViolation } from './tags';
 
@@ -68,42 +68,45 @@ async function dailyTitle(scope: UserScope, date: string): Promise<string> {
   return title;
 }
 
-async function createDaily(scope: UserScope, date: string): Promise<NoteRow> {
-  return scope.transaction(async (tx) => {
-    const title = await dailyTitle(tx, date);
-    const [template] = await tx.select(noteTemplates, {
-      where: and(eq(noteTemplates.isDailyDefault, true), tx.isLive(noteTemplates)),
-      limit: 1,
-    });
-    const contentMd = template ? applyTemplate(template.contentMd, { title, now: new Date() }) : '';
-    const [entity] = await tx.insert(entities, { type: 'note', title });
-    if (!entity) throw new Error('Could not create the daily note');
-    const [created] = await tx.insert(notes, {
-      id: entity.id,
-      title,
-      contentMd,
-      contentText: markdownToPlainText(contentMd),
-      folderId: null,
-      dailyDate: date,
-    });
-    if (!created) throw new Error('Could not create the daily note');
-    if (contentMd) {
-      await rebuildNoteLinks(tx, created.id, contentMd);
-      await rebuildNoteTags(tx, created.id, contentMd);
-    }
-    await reresolveLinksTo(tx, title);
-    return created;
-  });
+async function createDaily(scope: UserScope, date: string, now: Date): Promise<NoteRow> {
+  return withTagRetry(() =>
+    scope.transaction(async (tx) => {
+      const title = await dailyTitle(tx, date);
+      const [template] = await tx.select(noteTemplates, {
+        where: and(eq(noteTemplates.isDailyDefault, true), tx.isLive(noteTemplates)),
+        limit: 1,
+      });
+      const contentMd = template ? applyTemplate(template.contentMd, { title, now, date }) : '';
+      const [entity] = await tx.insert(entities, { type: 'note', title });
+      if (!entity) throw new Error('Could not create the daily note');
+      const [created] = await tx.insert(notes, {
+        id: entity.id,
+        title,
+        contentMd,
+        contentText: markdownToPlainText(contentMd),
+        folderId: null,
+        dailyDate: date,
+      });
+      if (!created) throw new Error('Could not create the daily note');
+      if (contentMd) {
+        await rebuildNoteLinks(tx, created.id, contentMd);
+        await rebuildNoteTags(tx, created.id, contentMd);
+      }
+      await reresolveLinksTo(tx, title);
+      return created;
+    }),
+  );
 }
 
 export const noteDailyImplementations = [
   implement(noteDailyActions.openDaily, ({ scope }, input) =>
     withUserLock('notes', scope.userId, async () => {
-      const date = input.date ?? indiaDay(new Date());
+      const now = new Date();
+      const date = input.date ?? indiaDay(now);
       const existing = await findDaily(scope, date);
       if (existing) return { data: toNote(existing), undo: null };
       try {
-        const created = await createDaily(scope, date);
+        const created = await createDaily(scope, date, now);
         return {
           data: toNote(created),
           undo: { action: 'notes.delete', input: { id: created.id } } satisfies UndoDescriptor,
