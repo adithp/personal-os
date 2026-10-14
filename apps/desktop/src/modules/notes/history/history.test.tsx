@@ -291,6 +291,96 @@ describe('restoring a version', () => {
   });
 });
 
+describe('focus and labels', () => {
+  const openFirst = async () => {
+    const { note, fake } = sample();
+    const { user } = await openHistory(fake, note.id);
+    await screen.findByRole('heading', { name: 'Today' });
+    await user.click(rowAt(1));
+    const bar = await screen.findByRole('region', { name: 'Version preview' });
+    await waitFor(() => {
+      expect(within(bar).getByRole('button', { name: 'Restore' })).toBeEnabled();
+    });
+    return { bar, user, note, fake };
+  };
+
+  it('marks the chosen version with a bar as well as a tint, and names the preview', async () => {
+    const { bar } = await openFirst();
+    expect(rowAt(1)).toHaveAttribute('aria-current', 'true');
+    expect(rowAt(1)).toHaveClass('before:bg-accent', 'bg-tint');
+    expect(rowAt(0)).not.toHaveClass('before:bg-accent');
+    expect(within(bar).getByRole('status')).toHaveTextContent(/^Version from 7 Oct, 00:10$/);
+    await waitFor(() => {
+      expect(editorDom()).toHaveAttribute('aria-label', 'Note text, version preview, read only');
+    });
+  });
+
+  it('puts the focus back on the row after Close', async () => {
+    const { bar, user } = await openFirst();
+    await user.click(within(bar).getByRole('button', { name: 'Close' }));
+    await waitFor(() => {
+      expect(rowAt(1)).toHaveFocus();
+    });
+    expect(editorDom()).toHaveAttribute('aria-label', 'Note text');
+  });
+
+  it('puts the focus back on the row after Escape in the bar', async () => {
+    const { bar, user } = await openFirst();
+    within(bar).getByRole('button', { name: 'Close' }).focus();
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(rowAt(1)).toHaveFocus();
+    });
+  });
+
+  it('puts the focus back on the row after a restore', async () => {
+    const { bar, user } = await openFirst();
+    await user.click(within(bar).getByRole('button', { name: 'Restore' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: 'Version preview' })).toBeNull();
+    });
+    await waitFor(() => {
+      expect(rowAt(1)).toHaveFocus();
+    });
+  });
+
+  it('closes the preview with the first Escape on a row and leaves the panel with the second', async () => {
+    const { user } = await openFirst();
+    rowAt(1).focus();
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: 'Version preview' })).toBeNull();
+    });
+    expect(screen.getByRole('complementary')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(rowAt(1)).toHaveFocus();
+    });
+    await user.keyboard('{Escape}');
+    expect(rowAt(1)).not.toHaveFocus();
+    expect(document.querySelector('[data-right-panel-toggle]') ?? editorDom()).toHaveFocus();
+  });
+});
+
+describe('the day headings', () => {
+  it('moves Today on to Yesterday when the tab stays open past midnight', async () => {
+    vi.useRealTimers();
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(new Date('2025-10-07T09:30:00.000Z'));
+    const { note, fake } = sample();
+    await openHistory(fake, note.id);
+    await screen.findByRole('heading', { name: 'Today' });
+    await act(async () => {
+      vi.setSystemTime(new Date('2025-10-07T19:00:00.000Z')); // 00:30 IST, 8 Oct
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual([
+      'Yesterday',
+      '6 Oct',
+      '1 Oct',
+    ]);
+  });
+});
+
 describe('look', () => {
   it('uses no hard-coded colors in the list, the bar or the diff, in dark and light', async () => {
     for (const theme of ['dark', 'light'] as const) {

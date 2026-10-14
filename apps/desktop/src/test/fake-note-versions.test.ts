@@ -92,4 +92,62 @@ describe('the mock note versions', () => {
       fake.api.request('GET', `/notes/${note.id}/versions/00000000-0000-4000-a000-0000000000ff`),
     ).rejects.toMatchObject({ status: 404 });
   });
+
+  it('stores every forced save as a conflict version, even with the right revision', async () => {
+    const { note, fake, save } = setup('server text');
+    await save('mine', 1, { force: true });
+    expect(fake.noteVersions.versions(note.id)).toMatchObject([{ reason: 'conflict' }]);
+  });
+
+  it('counts words of the plain text and compares with the next older version', async () => {
+    const { note, fake } = setup('x');
+    fake.noteVersions.seed(note.id, [
+      makeVersion({ contentMd: '# Title\n\n**bold** [[Link]] word' }),
+      makeVersion({ contentMd: '' }),
+    ]);
+    const [newer, older] = fake.noteVersions.versions(note.id);
+    expect(older).toMatchObject({ words: 4, wordsDelta: 4 });
+    expect(newer).toMatchObject({ words: 0, wordsDelta: -4 });
+  });
+
+  it('keeps a text that shrank to under 20% at once, however recent the last version is', async () => {
+    const long = 'word '.repeat(60); // 300 characters
+    const { note, fake, save } = setup(long);
+    fake.noteVersions.seed(note.id, [makeVersion({ createdAt: new Date().toISOString() })]);
+    await save('tiny', 1);
+    expect(fake.noteVersions.versions(note.id)).toHaveLength(2);
+    expect(fake.noteVersions.versions(note.id)[0]?.reason).toBe('auto');
+    // A smaller cut of a short text still waits
+    const short = setup('a short note');
+    short.fake.noteVersions.seed(short.note.id, [
+      makeVersion({ createdAt: new Date().toISOString() }),
+    ]);
+    await short.save('a', 1);
+    expect(short.fake.noteVersions.versions(short.note.id)).toHaveLength(1);
+  });
+
+  it('stores before_restore even for an empty note, and restoring the same text changes nothing', async () => {
+    const { note, fake } = setup('');
+    fake.noteVersions.seed(note.id, [makeVersion({ contentMd: 'restored text' })]);
+    const target = fake.noteVersions.versions(note.id)[0];
+    const restored = await fake.api.request<{
+      item: { revision: number; contentMd: string };
+      undo: { input: { versionId: string } } | null;
+    }>('POST', `/notes/${note.id}/restore/${target?.id ?? ''}`);
+    // The empty current text is kept as before_restore
+    expect(fake.noteVersions.versions(note.id)[0]).toMatchObject({
+      reason: 'before_restore',
+      words: 0,
+    });
+    expect(restored.undo).not.toBeNull();
+    expect(restored.item).toMatchObject({ contentMd: 'restored text', revision: 2 });
+
+    const again = await fake.api.request<{ item: { revision: number }; undo: unknown }>(
+      'POST',
+      `/notes/${note.id}/restore/${target?.id ?? ''}`,
+    );
+    expect(again.item.revision).toBe(2);
+    expect(again.undo).toBeNull();
+    expect(fake.noteVersions.versions(note.id)).toHaveLength(2);
+  });
 });

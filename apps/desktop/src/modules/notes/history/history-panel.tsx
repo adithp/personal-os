@@ -1,13 +1,14 @@
 import { Button, cx } from '@personal-os/ui';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, type KeyboardEvent } from 'react';
 import { ApiError } from '../../../api/api-client';
+import { useNow } from '../../dashboard/greeting';
 import { useNote } from '../notes-queries';
 import { noteKeys } from '../query-keys';
 import { useRovingList } from '../right-panel/use-roving-list';
 import { useNoteVersions } from '../versions-queries';
 import { deltaLabel, groupByDay, REASON_WORD, versionTime } from './format';
-import { useVersionPreview, useVersionPreviewStore } from './preview-store';
+import { closePreview, useVersionPreview, useVersionPreviewStore } from './preview-store';
 
 function Message({ children, live }: { children: string; live?: boolean }) {
   return (
@@ -40,8 +41,8 @@ export function HistoryPanel({ noteId }: { noteId: string }) {
   }, [revision, noteId, client]);
 
   const data = versions.data;
-  // "Today" is judged when the tab opens
-  const [now] = useState(() => Date.now());
+  // "Today" is judged again every minute, so a tab left open past midnight moves on
+  const now = useNow().getTime();
   const groups = useMemo(() => groupByDay(data ?? [], now), [data, now]);
   const roving = useRovingList(data?.length ?? 0);
 
@@ -69,9 +70,17 @@ export function HistoryPanel({ noteId }: { noteId: string }) {
     return <Message>No earlier versions yet. Versions are saved while you edit.</Message>;
   }
 
+  // Escape on a row closes the preview first; a second Escape leaves the panel
+  const onKeyDown = (event: KeyboardEvent) => {
+    roving.listProps.onKeyDown(event);
+    if (event.key !== 'Escape' || event.defaultPrevented || chosen === null) return;
+    event.preventDefault();
+    closePreview(noteId);
+  };
+
   const flat = groups.flatMap((group) => group.versions);
   return (
-    <div className="flex flex-col gap-4" {...roving.listProps}>
+    <div className="flex flex-col gap-4" {...roving.listProps} onKeyDown={onKeyDown}>
       {groups.map((group) => (
         <section
           key={group.day}
@@ -91,13 +100,16 @@ export function HistoryPanel({ noteId }: { noteId: string }) {
                   <button
                     type="button"
                     {...roving.itemProps(position)}
+                    data-version-id={version.id}
                     aria-current={selected ? 'true' : undefined}
                     onClick={() => {
                       open(noteId, version.id);
                     }}
                     className={cx(
-                      'flex w-full items-baseline gap-2 rounded-chip px-2 py-1.5 text-left text-body focus-ring transition-colors duration-150 ease-out hover:bg-tint motion-reduce:transition-none',
-                      selected && 'bg-tint',
+                      'relative flex w-full items-baseline gap-2 rounded-chip px-2 py-1.5 text-left text-body focus-ring transition-colors duration-150 ease-out hover:bg-tint motion-reduce:transition-none',
+                      // A lavender bar on the left (not only a tint) marks the version on screen
+                      selected &&
+                        'bg-tint before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-accent',
                     )}
                   >
                     <span className="font-medium text-fg">{versionTime(version.createdAt)}</span>

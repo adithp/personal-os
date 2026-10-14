@@ -9,7 +9,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * - Saves at once on `flush()`, when the page is hidden, and when the hook unmounts or the note changes.
  * - One save in flight; changes made meanwhile go out in one follow-up save.
  * - A failed save is retried after 5 s (or sooner when the next change saves). A 404 (`gone`) is not retried.
- * - `pause()` holds the timers (for example while a rename request is out); `resume()` restarts them.
+ * - `pause()` holds the timers (for example while a rename request is out or a version is previewed);
+ *   each `pause()` needs its own `resume()`, and the timers restart when the last one is lifted.
  * - Unsent text is kept in localStorage (`personal-os.notes-draft.<id>`) until the server accepts it.
  */
 
@@ -110,7 +111,8 @@ function createEngine(options: EngineOptions) {
   let conflictRevision: number | null | undefined;
   let inConflict = false;
   let gone = false;
-  let paused = false;
+  // Counts the holds (a rename, a version preview): the timers run again only when none is left
+  let pauses = 0;
   let takingTheirs = false;
   let inFlight: Promise<void> | null = null;
   let deferred = false;
@@ -183,7 +185,7 @@ function createEngine(options: EngineOptions) {
 
   /** A timer fired: save now, or note that a follow-up is wanted when one is in flight. */
   const trySave = (): Promise<void> => {
-    if (inConflict || gone || paused || !dirty()) return Promise.resolve();
+    if (inConflict || gone || pauses > 0 || !dirty()) return Promise.resolve();
     if (inFlight) {
       deferred = true;
       return inFlight;
@@ -220,17 +222,18 @@ function createEngine(options: EngineOptions) {
     change(getter: GetMarkdown) {
       getMarkdown = getter;
       changeSeq += 1;
-      if (inConflict || gone || paused) return;
+      if (inConflict || gone || pauses > 0) return;
       armTimers();
     },
     /** Holds the timers (a rename is out). Edits are still counted; `flush()` still saves. */
     pause() {
-      paused = true;
+      pauses += 1;
       clearTimers();
     },
+    /** Lifts one hold; the timers restart when the last one is lifted. */
     resume() {
-      paused = false;
-      if (dirty() && !inConflict && !gone && !inFlight) armTimers();
+      pauses = Math.max(0, pauses - 1);
+      if (pauses === 0 && dirty() && !inConflict && !gone && !inFlight) armTimers();
     },
     flush,
     /** True while there is text not yet accepted by the server (unsaved, in flight or in conflict). */

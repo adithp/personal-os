@@ -342,6 +342,26 @@ describe('useAutosave pause, 404 and drafts', () => {
     expect(calls).toEqual([{ markdown: 'typed during a rename', base: 3, force: undefined }]);
   });
 
+  it('keeps holding the timers until every pause has been resumed', async () => {
+    const { save, calls } = makeSave();
+    const { result } = setup(NOTE, save);
+    act(() => {
+      result.current.pause(); // a version preview
+      result.current.pause(); // a rename
+      result.current.change(() => 'typed');
+    });
+    act(() => {
+      result.current.resume(); // the rename ends first
+    });
+    await tick(30_000);
+    expect(calls).toHaveLength(0);
+    act(() => {
+      result.current.resume();
+    });
+    await tick(1000);
+    expect(calls).toEqual([{ markdown: 'typed', base: 3, force: undefined }]);
+  });
+
   it('does not retry when the note no longer exists', async () => {
     const { save, calls, pending } = makeSave();
     const { result } = setup(NOTE, save);

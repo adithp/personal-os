@@ -57,7 +57,7 @@ const sectionOf = async (heading: string) => {
   return section;
 };
 
-const panel = () => screen.getByRole('complementary', { name: 'Links and outline' });
+const panel = () => screen.getByRole('complementary', { name: 'Links, outline and history' });
 
 async function openWithPanel(narrow = false) {
   setNarrow(narrow);
@@ -76,7 +76,7 @@ describe('the right panel', () => {
     const { alpha, beta } = sample();
     await openNotes(createFakeApi([], [], [], [], [alpha, beta]), `/notes?note=${alpha.id}`);
     await screen.findByTestId('editor');
-    expect(screen.queryByRole('complementary', { name: 'Links and outline' })).toBeNull();
+    expect(screen.queryByRole('complementary', { name: 'Links, outline and history' })).toBeNull();
   });
 
   it('opens and closes from the toggle and the choice is saved on this device', async () => {

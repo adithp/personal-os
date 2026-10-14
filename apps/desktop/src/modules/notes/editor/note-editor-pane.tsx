@@ -226,6 +226,15 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
   useEffect(() => {
     // false: do not report it as an edit (that would save an unchanged note)
     editor.setEditable(!readOnly && !previewing, false);
+    // Say what is on screen to a screen reader
+    editor.setOptions({
+      editorProps: {
+        attributes: {
+          class: 'note-editor',
+          'aria-label': previewing ? 'Note text, version preview, read only' : 'Note text',
+        },
+      },
+    });
   }, [editor, readOnly, previewing]);
 
   // Links: the latest titles for the callbacks, and a new look at every link when they change

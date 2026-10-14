@@ -5,6 +5,7 @@ import { useApi } from '../../api/api-context';
 import { SEARCH_KEY } from '../../commands/search-queries';
 import { useToasts } from '../../store/toast-store';
 import { TAGS_KEY } from '../tasks/tags-queries';
+import { closePreview } from './history/preview-store';
 import { noteKeys, NOTES_KEY } from './query-keys';
 
 /**
@@ -71,6 +72,9 @@ export function useRestoreVersion() {
       api.request<RestoreResult>('POST', `/notes/${id}/restore/${versionId}`),
     onSuccess: async ({ item, undo }) => {
       client.setQueryData(noteKeys.detail(item.id), item);
+      // At once, before the refresh is awaited: no flash of the old text, and it still happens if
+      // the preview bar is gone by now
+      closePreview(item.id);
       toast().show(
         'Version restored.',
         undo

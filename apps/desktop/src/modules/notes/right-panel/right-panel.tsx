@@ -249,7 +249,7 @@ export function RightPanel({ noteId }: { noteId: string }) {
 
   return (
     <aside
-      aria-label="Links and outline"
+      aria-label="Links, outline and history"
       onKeyDown={leavePanel}
       className="flex h-full min-h-0 w-[264px] shrink-0 flex-col gap-3 overflow-y-auto rounded-card glass p-3"
     >
