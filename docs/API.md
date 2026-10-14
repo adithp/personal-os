@@ -83,8 +83,8 @@ Goal details: `title` 1 to 200 characters, `description` up to 20,000 (or null),
 | GET | /notes?folderId=&trash=&sort=updated or title or created&limit=&offset= | Notes without their text (id, title, folderId, pinned, 140-character excerpt, dates); folderId none means no folder; pinned first |
 | GET | /notes/:id | One note with `contentMd` and `revision` (a trashed note too) |
 | POST | /notes | Create (title optional: Untitled, Untitled 2, ...); 201 |
-| PATCH | /notes/:id | Body `baseRevision` plus contentMd, folderId or pinned; `force: true` is Keep mine; 409 `note_conflict` when the revision is old (the 409 has no note in its body: fetch GET /notes/:id) |
-| POST | /notes/:id/rename | Body `title` (unique among live notes ignoring case, no [ ] \| #; 409 `note_title_taken`) |
+| PATCH | /notes/:id | Body `baseRevision` plus contentMd, folderId or pinned; `force: true` is Keep mine; the revision is only checked when `contentMd` is sent (pin and folder moves never conflict); 409 `note_conflict` when the revision is old (the 409 has no note in its body: fetch GET /notes/:id) |
+| POST | /notes/:id/rename | Answers `{ item, undo, updatedNoteIds }` (the ids are empty until links are rewritten in stage N2). Body `title` (unique among live notes ignoring case, no [ ] \| #; 409 `note_title_taken`) |
 | DELETE | /notes/:id | Move to the trash |
 | POST | /notes/:id/restore | Back from the trash (a taken title gets " (2)") |
 | DELETE | /notes/:id/forever | Delete a trashed note for good (a live note: 400); answers `{ item: { id } }` |
