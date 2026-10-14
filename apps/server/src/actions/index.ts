@@ -8,6 +8,9 @@ import { noteDailyImplementations } from './note-daily';
 import { noteTemplateImplementations } from './note-templates';
 import { noteVersionImplementations } from './note-version-actions';
 import { noteImplementations } from './notes';
+import { habitImplementations } from './habits';
+import { moneyImplementations } from './money-module';
+import { projectImplementations } from './projects';
 import { recurrenceImplementations } from './recurrence';
 import { searchImplementations } from './search';
 import { tagManagementImplementations } from './tag-management';
@@ -38,6 +41,9 @@ export function createRegistry(observers: readonly ActionObserver[] = []): Actio
       ...noteTemplateImplementations,
       ...noteDailyImplementations,
       ...noteVersionImplementations,
+      ...habitImplementations,
+      ...moneyImplementations,
+      ...projectImplementations,
     ],
     observers,
   );

@@ -1,7 +1,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { sql } from 'drizzle-orm';
 import { drizzle, type PgliteDatabase } from 'drizzle-orm/pglite';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import * as schema from './schema';
 
@@ -34,6 +34,29 @@ export function migrationFiles(): string[] {
     .sort();
 }
 
+/**
+ * SQL files a parallel lane keeps in packages/db/drizzle-pending/<lane>/ while it is built. They are
+ * applied after the real migrations (tests only) and never listed by migrationFiles(). The
+ * orchestrator replaces them by real, generated migrations at merge.
+ */
+export function pendingMigrationStatements(): string[] {
+  const root = `${MIGRATIONS_DIR}../drizzle-pending/`;
+  if (!existsSync(root)) return [];
+  return readdirSync(root)
+    .sort()
+    .flatMap((lane) =>
+      readdirSync(`${root}${lane}/`)
+        .filter((name) => name.endsWith('.sql'))
+        .sort()
+        .flatMap((name) =>
+          readFileSync(`${root}${lane}/${name}`, 'utf8')
+            .split('--> statement-breakpoint')
+            .map((statement) => statement.trim())
+            .filter(Boolean),
+        ),
+    );
+}
+
 /** The SQL of one migration, split into statements the way drizzle-kit does. */
 export function migrationStatements(file: string): string[] {
   return readFileSync(`${MIGRATIONS_DIR}${file}`, 'utf8')
@@ -57,6 +80,7 @@ export async function createTestDb(): Promise<TestDb> {
   for (const file of migrationFiles()) {
     for (const statement of migrationStatements(file)) await pg.exec(statement);
   }
+  for (const statement of pendingMigrationStatements()) await pg.exec(statement);
   // Supabase gives these roles table access by default; RLS then decides which rows they see.
   await pg.exec(`
     grant select, insert, update, delete on all tables in schema public to authenticated;

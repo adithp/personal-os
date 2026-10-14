@@ -23,6 +23,7 @@ import { ApiError, type ApiClient, type RequestOptions } from '../api/api-client
 import { positionBetween } from '../modules/tasks/drag/position';
 import { createNoteTemplatesFake } from './fake-note-templates';
 import { createNoteVersionsFake } from './fake-note-versions';
+import { createModuleFakes, NOT_HANDLED } from './fake-modules';
 import { createNotesFake, NOT_NOTES } from './fake-notes';
 
 export { makeFolder, makeNote } from './fake-notes';
@@ -172,6 +173,7 @@ export function createFakeApi(
     },
     (id) => tagStore.get(id)?.name,
   );
+  const moduleFakes = createModuleFakes();
   const templatesFake = createNoteTemplatesFake(notesFake);
   const versionsFake = createNoteVersionsFake(notesFake, templatesFake.handle);
   const deleted = new Set<string>();
@@ -334,6 +336,8 @@ export function createFakeApi(
 
     const noteAnswer = versionsFake.handle(method, path, options);
     if (noteAnswer !== NOT_NOTES) return noteAnswer;
+    const moduleAnswer = moduleFakes.handle(method, path, options);
+    if (moduleAnswer !== NOT_HANDLED) return moduleAnswer;
 
     if (method === 'GET' && path === '/tasks/report') {
       const period = options.query?.period === 'month' ? 'month' : 'week';

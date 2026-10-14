@@ -6,6 +6,9 @@ import { unauthorized } from '../lib/http-error';
 import type { Db } from '../lib/user-scope';
 import { favoriteRoutes } from './favorites';
 import { goalRoutes } from './goals';
+import { habitRoutes } from './habits';
+import { moneyRoutes } from './money';
+import { projectRoutes } from './projects';
 import { noteDailyRoutes } from './note-daily';
 import { noteTemplateRoutes } from './note-templates';
 import { noteVersionRoutes } from './note-versions';
@@ -49,6 +52,9 @@ export const v1Routes: FastifyPluginAsync<V1Options> = async (app, { verifier, d
       favoriteRoutes(protectedApp, { db, registry });
       goalRoutes(protectedApp, { db, registry });
       searchRoutes(protectedApp, { db, registry });
+      habitRoutes(protectedApp, { db, registry });
+      moneyRoutes(protectedApp, { db, registry });
+      projectRoutes(protectedApp, { db, registry });
       // Before noteRoutes so /notes/daily is never read as a note id
       noteDailyRoutes(protectedApp, { db, registry });
       // Before noteRoutes so the /notes/:id/... patterns never swallow the version routes

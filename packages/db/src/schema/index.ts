@@ -5,3 +5,7 @@ export * from './tags';
 export * from './favorites';
 export * from './goals';
 export * from './notes';
+export * from './habits';
+export * from './finance';
+export * from './subscriptions';
+export * from './projects';

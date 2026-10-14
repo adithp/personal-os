@@ -1,6 +1,9 @@
 import { REALTIME_TABLES, type RealtimeTable } from '@personal-os/shared';
 import type { QueryKey } from '@tanstack/react-query';
+import { habitsRealtimeKeys } from '../modules/habits/realtime-keys';
+import { moneyRealtimeKeys } from '../modules/money/realtime-keys';
 import { notesRealtimeKeys } from '../modules/notes/realtime-keys';
+import { projectsRealtimeKeys } from '../modules/projects/realtime-keys';
 import { tasksRealtimeKeys } from '../modules/tasks/realtime-keys';
 
 /** What one module contributes: for a table, the query keys to refresh when it changes. */
@@ -18,4 +21,10 @@ export function mergeRealtimeKeys(entries: readonly RealtimeKeys[]): RealtimeReg
 }
 
 /** A module that shows data from a realtime table adds its entry here. */
-export const realtimeRegistry = mergeRealtimeKeys([tasksRealtimeKeys, notesRealtimeKeys]);
+export const realtimeRegistry = mergeRealtimeKeys([
+  tasksRealtimeKeys,
+  notesRealtimeKeys,
+  habitsRealtimeKeys,
+  moneyRealtimeKeys,
+  projectsRealtimeKeys,
+]);
