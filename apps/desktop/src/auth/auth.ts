@@ -15,6 +15,8 @@ export type AuthStatus = 'loading' | 'signedOut' | 'signedIn' | 'misconfigured';
 export interface AuthState {
   status: AuthStatus;
   email: string | null;
+  /** The signed-in user's id (live updates filter on it), null when signed out. */
+  userId: string | null;
   /** Names of the env variables that are missing or wrong (never their values). */
   configIssues: string[];
 }
@@ -37,12 +39,13 @@ export type AuthSource = { client: AuthClient } | { issues: string[] };
 const WRONG_CREDENTIALS = 'Wrong email or password.';
 const GENERIC_ERROR = 'Could not sign in. Check your connection and try again.';
 
-type SessionLike = { user: { email?: string | null } } | null;
+type SessionLike = { user: { id?: string; email?: string | null } } | null;
 
 function stateFor(session: SessionLike): AuthState {
   return {
     status: session ? 'signedIn' : 'signedOut',
     email: session?.user.email ?? null,
+    userId: session?.user.id ?? null,
     configIssues: [],
   };
 }
@@ -58,8 +61,8 @@ function messageFor(error: { code?: string; status?: number; message: string }):
 export function createAuth(source: AuthSource): Auth {
   const store = createStore<AuthState>(() =>
     'issues' in source
-      ? { status: 'misconfigured', email: null, configIssues: source.issues }
-      : { status: 'loading', email: null, configIssues: [] },
+      ? { status: 'misconfigured', email: null, userId: null, configIssues: source.issues }
+      : { status: 'loading', email: null, userId: null, configIssues: [] },
   );
 
   let initialized: Promise<void> | undefined;

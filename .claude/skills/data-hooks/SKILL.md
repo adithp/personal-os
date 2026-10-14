@@ -28,5 +28,5 @@ The app talks only to the backend REST API (never to Supabase tables). UI state 
 - Optimistic patches must match what the server will return (status changes set `completedAt`).
 - New query hooks come with tests against the mock API (`src/test/fake-api.ts`; extend it when the server gains routes).
 
-## Later (not built yet)
-Realtime: subscribe to Supabase Realtime on the user's rows and call `invalidateQueries` for the matching key on a change event (roadmap Step 2, "Realtime updates"). Add the pattern here when it is built.
+## Live updates (Realtime)
+`src/realtime/` listens to Supabase Realtime on the user's rows and invalidates query keys; it never writes data into the cache and never reads or logs the event payload. A module that shows data from a table in `REALTIME_TABLES` (packages/shared) adds `modules/<module>/realtime-keys.ts` (table to the keys that go stale, as `RealtimeKeys`) and adds it to `mergeRealtimeKeys([...])` in `realtime/registry.ts`. Events are batched for 300 ms and wait while a mutation is pending. Tests use `src/test/fake-realtime.ts` (`emit(table)`, `setStatus(status)`) and fake timers; `AppProviders` starts the sync only when given `realtime={{ source, auth }}`, so `renderApp` tests have none.

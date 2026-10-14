@@ -10,6 +10,7 @@ import {
 } from '@personal-os/ui';
 import { useRouter } from '@tanstack/react-router';
 import { useAuthState } from '../../auth/use-auth-state';
+import { useRealtimeStore, type RealtimeStatus } from '../../realtime/realtime-store';
 import { useGlassSupport } from '../../store/glass-support-store';
 import { useSettings } from '../../store/settings-store';
 import { useWindowEffect } from '../../store/window-effect-store';
@@ -184,9 +185,17 @@ function DockSection() {
   );
 }
 
+const LIVE_LABELS: Record<RealtimeStatus, string> = {
+  live: 'On',
+  connecting: 'Connecting…',
+  reconnecting: 'Reconnecting…',
+  off: 'Off',
+};
+
 function AccountSection() {
   const { auth } = useRouter().options.context;
   const email = useAuthState(auth, (state) => state.email);
+  const liveStatus = useRealtimeStore((state) => state.status);
 
   return (
     <SettingsSection title="Account">
@@ -201,6 +210,9 @@ function AccountSection() {
             Log out
           </Button>
         )}
+      </SettingRow>
+      <SettingRow label="Live updates" description="Changes made elsewhere show up by themselves.">
+        {() => <span className="text-small text-fg-muted">{LIVE_LABELS[liveStatus]}</span>}
       </SettingRow>
     </SettingsSection>
   );

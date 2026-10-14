@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createAuthFromEnv } from './supabase-client';
+import { createAuthFromEnv, createClientsFromEnv } from './supabase-client';
 
 vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn(() => ({
@@ -29,6 +29,13 @@ describe('createAuthFromEnv', () => {
     expect(createClient).toHaveBeenCalledWith(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
     });
+  });
+
+  it('gives live updates the same client the auth uses, and none when the env is incomplete', () => {
+    const { realtime } = createClientsFromEnv(env);
+    const created = vi.mocked(createClient).mock.results[0]?.value as unknown;
+    expect(realtime).toBe(created);
+    expect(createClientsFromEnv({}).realtime).toBeNull();
   });
 
   it('shows a configuration error and creates no client when the env is incomplete', () => {

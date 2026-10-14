@@ -5,10 +5,10 @@ import { createRoot } from 'react-dom/client';
 import { createApiFromEnv } from './api/api-client';
 import { AppProviders } from './api/providers';
 import { createQueryClient } from './api/query-client';
-import { createAuthFromEnv } from './auth/supabase-client';
+import { createClientsFromEnv } from './auth/supabase-client';
 import { createAppRouter } from './router';
 
-const auth = createAuthFromEnv(import.meta.env);
+const { auth, realtime } = createClientsFromEnv(import.meta.env);
 const api = createApiFromEnv(import.meta.env, auth);
 const router = createAppRouter({ auth });
 const queryClient = createQueryClient();
@@ -22,7 +22,11 @@ if (!root) throw new Error('Missing #root element');
 
 createRoot(root).render(
   <StrictMode>
-    <AppProviders api={api} queryClient={queryClient}>
+    <AppProviders
+      api={api}
+      queryClient={queryClient}
+      realtime={realtime ? { source: realtime, auth } : undefined}
+    >
       <RouterProvider router={router} />
     </AppProviders>
   </StrictMode>,

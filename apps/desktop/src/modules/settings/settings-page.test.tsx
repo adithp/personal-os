@@ -2,6 +2,7 @@ import type * as TauriWindow from '@tauri-apps/api/window';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useRealtimeStore } from '../../realtime/realtime-store';
 import { useSettings } from '../../store/settings-store';
 import { useWindowEffect } from '../../store/window-effect-store';
 import { signedInAuth } from '../../test/fake-auth';
@@ -347,6 +348,19 @@ describe('Account', () => {
   it('shows who is signed in', async () => {
     await openSettings('adith@example.com');
     expect(screen.getByText('adith@example.com')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['live', 'On'],
+    ['connecting', 'Connecting…'],
+    ['reconnecting', 'Reconnecting…'],
+    ['off', 'Off'],
+  ] as const)('shows live updates as %s', async (status, label) => {
+    useRealtimeStore.setState({ status });
+    await openSettings();
+    const row = screen.getByText('Live updates').closest<HTMLElement>('div.justify-between');
+    if (!row) throw new Error('Live updates row not found');
+    expect(within(row).getByText(label)).toBeInTheDocument();
   });
 
   it('logs out on this device and returns to the login screen', async () => {
