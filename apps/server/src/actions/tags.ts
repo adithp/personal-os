@@ -3,6 +3,8 @@ import { nextTagColor, tagActions, type Tag } from '@personal-os/shared';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { HttpError } from '../lib/http-error';
 import type { UserScope } from '../lib/user-scope';
+import { withUserLock } from '../lib/user-lock';
+import { liveNoteCounts, rewriteNotesTag } from './note-tags';
 import { implement } from './registry';
 
 /**
@@ -78,7 +80,8 @@ export async function findOrCreateTag(
 
 /**
  * The user's live tags with taskCount (live tasks and subtasks of any status, archived too) and
- * favoriteCount (live favorites whose view uses the tag). Three queries, however many tags.
+ * favoriteCount (live favorites whose view uses the tag) and noteCount (live notes with the tag in
+ * their text). A few queries, however many tags.
  */
 async function listWithCounts(scope: UserScope): Promise<Tag[]> {
   const rows = await liveTags(scope);
@@ -91,6 +94,7 @@ async function listWithCounts(scope: UserScope): Promise<Tag[]> {
     ),
   });
   const favorites = await scope.select(taskFavorites, { where: scope.isLive(taskFavorites) });
+  const noteCounts = await liveNoteCounts(scope, ids);
   const taskCounts = new Map<string, number>();
   for (const link of links) taskCounts.set(link.tagId, (taskCounts.get(link.tagId) ?? 0) + 1);
   const favoriteCounts = new Map<string, number>();
@@ -103,6 +107,7 @@ async function listWithCounts(scope: UserScope): Promise<Tag[]> {
     ...toTag(row),
     taskCount: taskCounts.get(row.id) ?? 0,
     favoriteCount: favoriteCounts.get(row.id) ?? 0,
+    noteCount: noteCounts.get(row.id) ?? 0,
   }));
 }
 
@@ -141,6 +146,8 @@ export const tagImplementations = [
           and(eq(tags.id, id), tx.isLive(tags)) ?? eq(tags.id, id),
         );
         if (!updated) throw new HttpError(404, 'not_found', 'Tag not found');
+        // The tag lives in note text as #name, so a rename changes that text too (undo renames back)
+        if (values.name !== undefined) await rewriteNotesTag(tx, id, current.name, values.name);
         return {
           data: toTag(updated),
           undo: {
@@ -149,7 +156,8 @@ export const tagImplementations = [
           },
         };
       });
-    return run().catch((error: unknown) => {
+    // Same queue as note saves, so a save cannot slip a #old into a note while it is rewritten
+    return withUserLock('notes', scope.userId, run).catch((error: unknown) => {
       // A rename that races another rename or create onto the same name
       if (isUniqueViolation(error)) {
         throw new HttpError(409, 'conflict', 'A tag with this name already exists');

@@ -11,8 +11,10 @@ import {
 } from '@personal-os/shared';
 import { and, eq, inArray, ne, sql } from 'drizzle-orm';
 import { HttpError } from '../lib/http-error';
+import { withUserLock } from '../lib/user-lock';
 import type { UserScope } from '../lib/user-scope';
 import { liveTagIds, viewWithLiveTags, withFavoritesLock } from './favorites';
+import { liveNoteCount, rewriteNotesTag } from './note-tags';
 import { implement } from './registry';
 import { TAG_NAME_INDEX, isUniqueViolation, toTag } from './tags';
 
@@ -31,8 +33,10 @@ import { TAG_NAME_INDEX, isUniqueViolation, toTag } from './tags';
  * cannot know which of them had it before the merge); merge does not enforce the 20 tags per task
  * limit (a task keeps at most the tags it had, since its source link is replaced by the target).
  * Statements that list task ids work in batches of BATCH ids (Postgres allows 65,535 parameters
- * per statement). Only links of TASKS are touched: a later entity type such as notes keeps its own
- * tag links.
+ * per statement). Only links of TASKS are moved or removed directly. Notes (N3): delete is refused
+ * with 409 tag_in_notes while live notes contain the tag; merge rewrites `#source` to `#target` in
+ * the note text (note-tags.ts), and unmerge does not undo that text change (it cannot know which
+ * notes had the tag before).
  */
 
 const BATCH = 1000;
@@ -45,6 +49,13 @@ export function chunk<T>(items: T[], size = BATCH): T[][] {
   }
   return pieces;
 }
+
+/**
+ * Delete and merge take the notes queue (the same one note saves use), then the favorites queue,
+ * so a note save cannot add the tag back while it is being deleted or rewritten.
+ */
+const inNotesQueue = <T>(scope: UserScope, work: () => Promise<T>) =>
+  withUserLock('notes', scope.userId, () => withFavoritesLock(scope.userId, work));
 
 const notFound = () => new HttpError(404, 'not_found', 'Tag not found');
 
@@ -174,9 +185,18 @@ async function asConflict<T>(scope: UserScope, tagId: string, work: Promise<T>):
 
 export const tagManagementImplementations = [
   implement(tagManagementActions.delete, async ({ scope }, { id }) => {
-    const { tag, taskIds, touched } = await withFavoritesLock(scope.userId, () =>
+    const { tag, taskIds, touched } = await inNotesQueue(scope, () =>
       scope.transaction(async (tx) => {
         const found = await findLiveTag(tx, id);
+        // The #tag in the text would bring the tag back on the next save, so the notes go first
+        const used = await liveNoteCount(tx, id);
+        if (used > 0) {
+          throw new HttpError(
+            409,
+            'tag_in_notes',
+            `Remove #${found.name} from ${String(used)} ${used === 1 ? 'note' : 'notes'} first.`,
+          );
+        }
         const links = await tx.select(entityTags, { where: taskLinks(tx, id) });
         await tx.delete(entityTags, taskLinks(tx, id));
         await tx.softDelete(tags, eq(tags.id, id));
@@ -227,9 +247,9 @@ export const tagManagementImplementations = [
   }),
 
   implement(tagManagementActions.merge, async ({ scope }, { sourceId, targetId }) => {
-    const { target, taskIds, touched } = await withFavoritesLock(scope.userId, () =>
+    const { target, taskIds, touched } = await inNotesQueue(scope, () =>
       scope.transaction(async (tx) => {
-        await findLiveTag(tx, sourceId);
+        const sourceTag = await findLiveTag(tx, sourceId);
         const targetTag = await findLiveTag(tx, targetId);
         const links = await tx.select(entityTags, { where: taskLinks(tx, sourceId) });
         const ids = links.map((link) => link.entityId);
@@ -237,6 +257,8 @@ export const tagManagementImplementations = [
         await relinkTasks(tx, targetId, ids);
         await tx.delete(entityTags, taskLinks(tx, sourceId));
         await tx.softDelete(tags, eq(tags.id, sourceId));
+        // Notes with #source now say #target (unmerge brings the tag back, not the old text)
+        await rewriteNotesTag(tx, sourceId, sourceTag.name, targetTag.name);
         const touchedFavorites: TouchedFavorite[] = [];
         const live = await tx.select(taskFavorites, { where: tx.isLive(taskFavorites) });
         const liveViews = new Map(live.map((row) => [row.id, row.view]));
