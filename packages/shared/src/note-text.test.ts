@@ -79,7 +79,7 @@ describe('parseWikilinks', () => {
   });
 
   it('skips fenced and inline code and undoes escapes', () => {
-    const md = '```\n[[in fence]]\n```\nuse `[[inline]]` and [[real\_one]]';
+    const md = '```\n[[in fence]]\n```\nuse `[[inline]]` and [[real\\_one]]';
     expect(parseWikilinks(md).map((link) => link.target)).toEqual(['real_one']);
   });
 

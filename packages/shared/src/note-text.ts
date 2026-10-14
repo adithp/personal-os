@@ -134,7 +134,7 @@ export function parseWikilinks(markdown: string): Wikilink[] {
   for (const part of splitCode(markdown)) {
     if (part.code) continue;
     for (const match of part.text.matchAll(WIKILINK)) {
-      const link = readLink(match as RegExpExecArray);
+      const link = readLink(match);
       if (link) found.push(link);
     }
   }
