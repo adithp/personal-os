@@ -25,7 +25,7 @@ Summarize, rewrite, improve, extract key points, suggest tags and links, find re
 I write all my notes here and the AI answers "Show me everything I wrote about my cybersecurity projects."
 
 ## Stage N1: the Notes page (desktop foundation)
-The research memo with all decisions is `docs/design/research/notes.md`. This section describes what the desktop has for stage N1 (the editor itself is described by its own agent in `modules/notes/editor/`).
+The research memo with all decisions is `docs/design/research/notes.md`. This section describes what the desktop has for stage N1 (the editor is described in "The editor" below).
 
 ### Screens
 - **Three columns** on `/notes`: the inner side panel (224 px, collapsible to 56 px with tooltips), the note list (272 px glass card), and the editor (the rest). The right panel (links, outline) comes in N2.
@@ -42,8 +42,24 @@ The research memo with all decisions is `docs/design/research/notes.md`. This se
 ### Keyboard (Notes page only; plain keys, never with Ctrl, Alt or Meta; ignored while typing in a field or the editor, in a menu or dialog, and while the command palette is open)
 N new note (in the folder being shown), Up and Down between notes, Enter opens the focused note and puts the cursor in the editor body, Delete moves the focused note to Trash, Esc inside the editor (with no popup open) puts the focus back on the note's row, ? shows the shortcut help. In Trash, Enter restores and Delete asks to delete forever. One list row is the Tab stop (arrows move between rows).
 
+### The editor (stage N1)
+- Extensions (`editor/extensions.ts`): TipTap with StarterKit (headings 1 to 3 only, underline off, link autolink on and no open on click), nested task lists, tables (they keep their content but there is no insert button), the placeholder "Start writing…" and a word count. The text is stored as Markdown (`contentMd`, @tiptap/markdown with gfm). Underline, images and raw HTML are dropped on save; a bare URL becomes a link; a loose list becomes tight. Wikilinks, the raw Markdown mode, math and code colors are not built yet.
+- Title field: up to 200 characters, placeholder "Untitled"; typing removes `[ ] | #`. It renames on blur or Enter (Enter then moves into the body); Esc restores the saved title; an empty or unchanged title is not sent. 409 `note_title_taken` shows "A note with this title exists."; pending text is saved before a rename.
+- Autosave (`editor/use-autosave.ts`): saves 1 s after the last change and at most 10 s after the first unsaved change; at once on blur, when the window is hidden, when the note changes or the editor goes away, and when the window is closed (waits at most 3 s, Tauri only). One save runs at a time; changes made meanwhile go out in one follow-up save. A failed save shows "Not saved, retrying" and retries after 5 s. Status text: "Saved", "Saving…", "Not saved, retrying".
+- Drafts: unsent text is kept in localStorage under `personal-os.notes-draft.<noteId>` (the Markdown and the base revision) until the server accepts it. Opening a note with a draft puts it in the editor and saves it when its base revision equals the note's revision; otherwise the conflict bar shows. Drafts are not encrypted.
+- Conflict: a 409 `note_conflict` shows "This note was changed on another device." with "Keep mine" (saves with `force: true`) and "Use theirs" (reloads the note and drops the draft); autosave stops while the bar is shown.
+- Footer: "N words · Edited just now / N min ago / N h ago / 13 Oct" (India time, refreshed every 30 s). Loading says "Loading note…"; a load error says the server message or "Could not load this note." with Try again.
+
+### The editor (stage N1)
+- Extensions (`editor/extensions.ts`): TipTap with StarterKit (headings 1 to 3 only, underline off, link autolink on and no open on click), nested task lists, tables (they keep their content but there is no insert button), the placeholder "Start writing…" and a word count. The text is stored as Markdown (`contentMd`, @tiptap/markdown with gfm). Underline, images and raw HTML are dropped on save; a bare URL becomes a link; a loose list becomes tight. Wikilinks, the raw Markdown mode, math and code colors are not built yet.
+- Title field: up to 200 characters, placeholder "Untitled"; typing removes `[ ] | #`. It renames on blur or Enter (Enter then moves into the body); Esc restores the saved title; an empty or unchanged title is not sent. 409 `note_title_taken` shows "A note with this title exists."; pending text is saved before a rename.
+- Autosave (`editor/use-autosave.ts`): saves 1 s after the last change and at most 10 s after the first unsaved change; at once on blur, when the window is hidden, when the note changes or the editor goes away, and when the window is closed (waits at most 3 s, Tauri only). One save runs at a time; changes made meanwhile go out in one follow-up save. A failed save shows "Not saved, retrying" and retries after 5 s. Status text: "Saved", "Saving…", "Not saved, retrying".
+- Drafts: unsent text is kept in localStorage under `personal-os.notes-draft.<noteId>` (the Markdown and the base revision) until the server accepts it. Opening a note with a draft puts it in the editor and saves it when its base revision equals the note's revision; otherwise the conflict bar shows. Drafts are not encrypted.
+- Conflict: a 409 `note_conflict` shows "This note was changed on another device." with "Keep mine" (saves with `force: true`) and "Use theirs" (reloads the note and drops the draft); autosave stops while the bar is shown.
+- Footer: "N words · Edited just now / N min ago / N h ago / 13 Oct" (India time, refreshed every 30 s). Loading says "Loading note…"; a load error says the server message or "Could not load this note." with Try again.
+
 ### Saved on this device (`personal-os.notes-ui`)
-The last place (so opening Notes with no link returns to it), the sort, whether the side panel is collapsed, whether the right panel is open, and the folded folders. The filter text and the open note are not saved.
+The last place (so opening Notes with no link returns to it), the sort, whether the side panel is collapsed, whether the right panel is open, and the folded folders. Unsent note text is also kept per note in `personal-os.notes-draft.<noteId>` (see The editor). Unsent note text is also kept per note in `personal-os.notes-draft.<noteId>` (see The editor). The filter text and the open note are not saved.
 
 ### Data hooks (`modules/notes/`)
 - Keys: `NOTES_KEY = ['notes']` (lists and single notes), `NOTE_FOLDERS_KEY = ['note-folders']` (`query-keys.ts`). Realtime: `notes` and `note_folders` events refresh both (`realtime-keys.ts`, registered in `realtime/registry.ts`).
@@ -55,4 +71,4 @@ The last place (so opening Notes with no link returns to it), the sort, whether 
 - The mock API (`src/test/fake-notes.ts`, wired into `fake-api.ts`) follows the rules above: unique titles ignoring case (409 `note_title_taken`), title characters, revision check (409 `note_conflict`, skipped with `force`), Trash, restore with " (2)", purge only from Trash, folders with unique names per parent, depth 3, delete only when empty, and the undo descriptors.
 
 ### Routes the desktop expects
-`GET /notes`, `GET/PATCH/DELETE /notes/:id`, `POST /notes`, `POST /notes/:id/rename`, `POST /notes/:id/restore`, `DELETE /notes/:id/forever`, `DELETE /notes/trash`, `GET/POST /note-folders`, `PATCH/DELETE /note-folders/:id`, `POST /note-folders/:id/restore`, `POST /undo`. (`POST /notes/:id/restore` and `POST /note-folders/:id/restore` are not in the route stub yet.)
+`GET /notes`, `GET/PATCH/DELETE /notes/:id`, `POST /notes`, `POST /notes/:id/rename`, `POST /notes/:id/restore`, `DELETE /notes/:id/forever`, `DELETE /notes/trash`, `GET/POST /note-folders`, `PATCH/DELETE /note-folders/:id`, `POST /note-folders/:id/restore`, `POST /undo`.

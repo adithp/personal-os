@@ -19,12 +19,12 @@ Laptop coding tools ──Tailscale──► OmniRoute
 ## 2. Data flow
 - Login: apps sign in with Supabase Auth and send the session JWT to the backend on every request.
 - Reads and writes: apps call the backend REST API only. The backend verifies the JWT, runs the action, and writes to Postgres.
-- Live updates (Step 2, built; desktop code in `apps/desktop/src/realtime/`): the desktop subscribes to Supabase Realtime (Postgres Changes) on its own rows, one channel with a listener per table in `REALTIME_TABLES`, each filtered by `user_id`. Realtime only says "something changed": events are batched for 300 ms, the payload is never read, and the affected TanStack Query keys are invalidated so the data is refetched from the backend. Each module lists its keys per table (Tasks: `modules/tasks/realtime-keys.ts`, merged in `realtime/registry.ts`). Invalidation waits while an own mutation is pending, and every re-subscribe after the first refreshes all registered keys. Realtime uses the same Supabase client as auth, so refreshed tokens reach the socket. Window focus refetch and the 15 s stale time stay as safety nets.
+- Live updates (Step 2, built; desktop code in `apps/desktop/src/realtime/`): the desktop subscribes to Supabase Realtime (Postgres Changes) on its own rows, one channel with a listener per table in `REALTIME_TABLES`, each filtered by `user_id`. Realtime only says "something changed": events are batched for 300 ms, the payload is never read, and the affected TanStack Query keys are invalidated so the data is refetched from the backend. Each module lists its keys per table (Tasks: `modules/tasks/realtime-keys.ts`; Notes: `modules/notes/realtime-keys.ts`; merged in `realtime/registry.ts`). Invalidation waits while an own mutation is pending, and every re-subscribe after the first refreshes all registered keys. Realtime uses the same Supabase client as auth, so refreshed tokens reach the socket. Window focus refetch and the 15 s stale time stay as safety nets.
 - AI: the backend calls OmniRoute; OmniRoute calls the configured AI provider.
 - Google: the backend holds encrypted Google tokens and calls Google APIs. Apps never talk to Google directly.
 
 ## 3. Tech stack
-Libraries not installed yet (planned): TipTap, CodeMirror, KaTeX, Shiki, Sigma.js, graphology, react-grid-layout, Schedule-X, TanStack Table, Vercel AI SDK, croner, googleapis.
+Libraries not installed yet (planned): CodeMirror, KaTeX, Shiki, Sigma.js, graphology, react-grid-layout, Schedule-X, TanStack Table, Vercel AI SDK, croner, googleapis.
 
 | Area | Choice |
 |---|---|
@@ -35,7 +35,7 @@ Libraries not installed yet (planned): TipTap, CodeMirror, KaTeX, Shiki, Sigma.j
 | Routing | TanStack Router |
 | State | Zustand (UI state), TanStack Query (server data) |
 | Animation | Motion (formerly Framer Motion) |
-| Note editor | TipTap, CodeMirror 6 (raw markdown), KaTeX, Shiki |
+| Note editor | TipTap 3.31.4 (installed in apps/desktop: starter-kit, markdown, extension-list, extension-table, extensions, react, pm, core; the editor text is Markdown), CodeMirror 6 (raw markdown, planned), KaTeX (planned), Shiki (planned) |
 | Knowledge graph | Sigma.js + graphology |
 | Dashboard grid | react-grid-layout |
 | Desktop plugins | @tauri-apps/plugin-dialog and @tauri-apps/plugin-fs (wallpaper upload, limited to $APPDATA/wallpapers) |

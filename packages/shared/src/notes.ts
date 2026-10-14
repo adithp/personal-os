@@ -78,7 +78,14 @@ export const listNotesInput = z.object({
   limit: z.coerce.number().int().min(1).max(NOTE_LIST_LIMIT_MAX).default(NOTE_LIST_LIMIT_DEFAULT),
   offset: z.coerce.number().int().min(0).default(0),
 });
-export type ListNotesInput = z.input<typeof listNotesInput>;
+/** What the app sends: the schema also reads query strings, so its own input type is unknown. */
+export interface ListNotesInput {
+  folderId?: string;
+  trash?: boolean;
+  sort?: NoteSort;
+  limit?: number;
+  offset?: number;
+}
 
 export const noteIdInput = z.object({ id });
 

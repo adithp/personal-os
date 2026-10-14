@@ -179,7 +179,7 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
           onRenamed={async (title) => {
             // Save the text first, so the rename does not meet a half-saved note
             await autosave.flush();
-            const renamed = await rename.mutateAsync({ id: note.id, title });
+            const { item: renamed } = await rename.mutateAsync({ id: note.id, title });
             autosave.setRevision(renamed.revision);
             setEditedAt(renamed.updatedAt);
           }}
