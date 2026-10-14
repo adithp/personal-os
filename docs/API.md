@@ -19,6 +19,7 @@ CORS: the allowed origins come from CORS_ORIGINS (comma-separated); the default 
 | 404 | unknown_action | POST /undo with an action name that does not exist |
 | 409 | conflict | A tag rename onto an existing name, or restoring a tag whose name exists again |
 | 409 | favorites_limit | More than 12 favorites |
+| 409 | tag_not_note_safe | Renaming or merging a tag that notes carry to a name a note cannot hold (only letters, numbers, _, - and / are allowed in a note tag) |
 | 409 | tag_in_notes | Deleting a tag that a live note still has in its text; the message gives the count |
 | 409 | template_name_taken | A template name that another live template has (ignoring case) |
 | 409 | goal_full | A goal already has 500 tasks |
