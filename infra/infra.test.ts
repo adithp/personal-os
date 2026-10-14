@@ -17,6 +17,7 @@ const dockerfile = read('apps/server/Dockerfile');
 const dockerignore = read('.dockerignore');
 const backup = read('infra/scripts/backup.sh');
 const duckdns = read('infra/scripts/duckdns-update.sh');
+const autoDeploy = read('infra/scripts/auto-deploy.sh');
 const cron = read('infra/scripts/cron.example');
 const envExample = read('.env.example');
 
@@ -195,6 +196,7 @@ describe('.dockerignore', () => {
 describe.each([
   ['backup.sh', backup],
   ['duckdns-update.sh', duckdns],
+  ['auto-deploy.sh', autoDeploy],
 ])('%s', (_name, script) => {
   it('is a bash script that stops on errors, with Unix line endings', () => {
     expect(script.startsWith('#!/usr/bin/env bash\n')).toBe(true);
@@ -327,5 +329,32 @@ describe('.env.example has every setting the infra files need', () => {
 
   it('does not contain the removed JWT secret', () => {
     expect(envExample).not.toContain('SUPABASE_JWT_SECRET');
+  });
+});
+
+describe('auto-deploy.sh', () => {
+  it('deploys main by default, fast-forward only, one deploy at a time', () => {
+    expect(autoDeploy).toContain('BRANCH="${DEPLOY_BRANCH:-main}"');
+    expect(autoDeploy).toContain('git merge --ff-only');
+    expect(autoDeploy).toContain('flock -n');
+  });
+
+  it('never applies migrations itself, only tells the owner', () => {
+    expect(autoDeploy).not.toMatch(/^\s*(pnpm|npx|drizzle-kit)/m);
+    expect(autoDeploy).toContain('run pnpm db:migrate from your PC');
+  });
+
+  it('waits for the container to be healthy, rolls back, and remembers a failed commit', () => {
+    expect(autoDeploy).toContain('.State.Health.Status');
+    expect(autoDeploy).toContain('going back to');
+    expect(autoDeploy).toContain('"$STATE_DIR/failed"');
+  });
+
+  it('can be tried without changing anything', () => {
+    expect(autoDeploy).toContain('DRY_RUN');
+  });
+
+  it('is scheduled in the cron example', () => {
+    expect(cron).toContain('auto-deploy.sh');
   });
 });

@@ -9,3 +9,7 @@
 
 # Database backup at 02:00 India time (20:30 UTC), kept for 30 days in the S3-compatible bucket (Oracle Object Storage is the planned target)
 30 20 * * * /opt/personal-os/infra/scripts/backup.sh >> /var/log/personal-os/backup.log 2>&1
+
+# Deploy new commits of the main branch by itself (every 5 minutes; see docs/DEPLOYMENT.md, Auto deploy).
+# The AWS clone is at ~/personal-os. Try first:  DRY_RUN=1 ~/personal-os/infra/scripts/auto-deploy.sh
+*/5 * * * * /opt/personal-os/infra/scripts/auto-deploy.sh >> /var/log/personal-os/deploy.log 2>&1

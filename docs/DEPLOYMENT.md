@@ -49,7 +49,13 @@ AWS is current: see section 0.
 - OmniRoute settings: login required, API keys required for /v1.
 - If the official OmniRoute image has no ARM64 build, build it from source with Node 22.
 
-### Redeploy
+### Auto deploy (decision 69)
+- `infra/scripts/auto-deploy.sh` runs from host cron every 5 minutes (line in `infra/scripts/cron.example`). When `origin/main` has a new commit it fast-forwards the clone, runs `docker compose up -d --build` in `infra/`, waits up to 3 minutes for the server container to be healthy and logs `OK deployed <sha>`. If the container is not healthy it goes back to the previous commit, rebuilds that, writes the bad commit to `~/.personal-os-deploy/failed` (it is not tried again until a newer commit arrives) and exits with an error. The server pulls with its read-only deploy key, so GitHub never logs in to the server and no deploy secret is stored in GitHub; locking SSH to your IP does not matter for it.
+- It never applies migrations. If a deploy contains new files under `packages/db/drizzle` it logs a note; run `pnpm db:migrate` from your PC (until then the app shows "Database update needed").
+- Only the `main` branch deploys (`DEPLOY_BRANCH` in `infra/.env` can change it). CI runs on every push but does not gate the deploy by itself: in GitHub, turn on a branch protection rule for `main` that requires the CI check, so only checked code reaches `main`.
+- Set up once on the server: `chmod +x ~/personal-os/infra/scripts/auto-deploy.sh`, create the log folder (see cron.example), try `DRY_RUN=1 ~/personal-os/infra/scripts/auto-deploy.sh`, then add the cron line. The first run switches the clone from `step-1-foundation` to `main` (it refuses if the clone has local changes). Needs `apps/server/.env` (with `DATABASE_URL`) and `infra/.env` on the server. Check `/var/log/personal-os/deploy.log`.
+
+### Redeploy (by hand)
 - On the server: `cd ~/personal-os && git pull`, make sure apps/server/.env has the settings the new code needs (for example DATABASE_URL), then `cd infra && docker compose up -d --build`. The server reads apps/server/.env only when the container starts. Check /api/v1/health. To roll back, check out the previous commit and run the same compose command. The clone on the server is on branch step-1-foundation until a redeploy of Step 2 is done.
 
 ## 4. Caddyfile
