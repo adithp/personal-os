@@ -15,3 +15,9 @@ _No lessons yet._
 - Cause: The check and the insert are separate statements and actions cannot run raw SQL locks
 - Fix: withFavoritesLock queues writes per user in the server process; a lock helper in UserScope is the real fix for several instances
 - Prevention: documented, tasks-redesign.md Feature 5 known limits
+
+### 2026-10-14: Move links must not delete links to deleted goals; limits need the lock helper
+- Symptom: Moving a task out of a deleted goal lost it for good, and two quick links could break one-goal-per-task
+- Cause: The move soft-deleted every goal link, and the check and insert were separate statements
+- Fix: Only links to live goals are removed; setTaskGoal runs in withUserLock (lib/user-lock.ts)
+- Prevention: guarded, apps/server/src/actions/goals.test.ts

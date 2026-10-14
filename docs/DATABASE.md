@@ -15,7 +15,7 @@ Supabase Postgres (free plan, Mumbai). Schema and migrations are written with Dr
 ## 2. Connections model
 Every item is an entity, and any two entities can be linked. This powers project pages, backlinks, the knowledge graph, global search, and AI context.
 
-entities: id, user_id, type (task, note, project, habit, event, email, file, transaction, subscription, person, client; the enum also has tag, which is unused because tags are a plain table), title, search_vector (tsvector), created_at, updated_at, deleted_at
+entities: id, user_id, type (task, note, project, habit, event, email, file, transaction, subscription, person, client, goal; the enum also has tag, which is unused because tags are a plain table), title, search_vector (tsvector), created_at, updated_at, deleted_at
 
 links: id, user_id, source_id → entities, target_id → entities, relation (mentions, belongs_to, blocks, derived_from, attached, related), created_at, updated_at, deleted_at
 
@@ -26,9 +26,9 @@ Each module table uses the same id as its entity row.
 - A link cannot join an item to itself (links_no_self_link).
 - There is at most one live link per user, source, target, and relation. A soft-deleted link does not block creating the same link again.
 - Deleting an entity deletes its links; deleting a user deletes their entities and links.
-- updated_at is refreshed by a trigger (set_updated_at(), migration 0001) on every update of entities, links, tasks, tags, and entity_tags.
+- updated_at is refreshed by a trigger (set_updated_at(), migration 0001) on every update of entities, links, tasks, tags, entity_tags, task_favorites, and goals.
 - Each table has one policy, "<table>_own_rows", for the authenticated role: user_id = (select auth.uid()) for both reading and writing. The anon role has no access.
-- Migrations live in packages/db/drizzle. They are generated with pnpm db:generate and applied only by the owner with pnpm db:migrate. Migrations 0001, 0003, and 0005 (the updated_at triggers) are written by hand because drizzle-kit cannot describe functions and triggers. The server reads the migration list at startup and warns (and answers 503 schema_behind) while the database is missing migrations; it never applies them.
+- Migrations live in packages/db/drizzle. They are generated with pnpm db:generate and applied only by the owner with pnpm db:migrate. Migrations 0001, 0003, 0005, 0007, and 0009 (the updated_at triggers) are written by hand because drizzle-kit cannot describe functions and triggers. The server reads the migration list at startup and warns (and answers 503 schema_behind) while the database is missing migrations; it never applies them.
 
 ## 3. Tables
 ### Tasks
@@ -57,7 +57,7 @@ Each module table uses the same id as its entity row.
 - entity_tags: entity_id, tag_id (a task can only get tags of the same user, enforced by composite foreign keys; each pair once). entity_tags rows are hard-deleted (no deleted_at); soft-deleting a tag does not remove its rows, and task reads ignore tags that are soft-deleted. tags.delete and tags.merge do remove the task links of the tag (hard delete, only rows of tasks) in the same step, and the undo re-creates them from the task ids it carries; they also edit the view of favorites: a deleted tag id is removed from the view (a favorite left with an empty view is soft-deleted) and a merge replaces the id with the target id
 
 ### Goals
-- goals: id (the id of its entities row, type `goal`; composite foreign key with cascade), user_id, title, description (the notes), target_at (the start of the target day in India time), status (`active`, `achieved`, `dropped`), closed_at, created_at, updated_at, deleted_at. RLS own rows; updated_at trigger (migration 0009). A task joins a goal through a live `belongs_to` link (task to goal); one goal per task, top-level tasks only; the server checks that the link target is a goal because projects (Step 5) will share `belongs_to`. Progress is computed from the linked tasks, never stored. Migrations 0008 (enum value `goal`, enum `goal_status`, table) and 0009.
+- goals: id (the id of its entities row, type `goal`; composite foreign key with cascade), user_id, title, description (the notes), target_at (the start of the target day in India time), status (`active`, `achieved`, `dropped`), closed_at, created_at, updated_at, deleted_at. RLS own rows; updated_at trigger (migration 0009). A task joins a goal through a live `belongs_to` link (task to goal); one goal per task, top-level tasks only; the server checks that the link target is a goal because projects (Step 5) will share `belongs_to`. Progress is computed from the linked tasks, never stored. Migrations 0008 (enum value `goal`, enum `goal_status`, table; the new enum value is not used in that file, and a later migration must not use `'goal'` in the same run) and 0009 (the trigger). Indexes `goals_user_id_idx` and `goals_user_status_idx`; the id has a unique (id, user_id) pair and cascades with its entities row and its user; the status defaults to `active`. Deleting a goal soft-deletes the goals row and its entities row and keeps the links, restoring brings both back; renaming a goal updates `entities.title`; linking a task to another live goal soft-deletes the old link (links to a deleted goal stay).
 
 ### Task favorites
 - task_favorites: id, user_id, name (1 to 40), color (a palette color), icon (one of 12 icon names), view (jsonb: the saved My tasks view: status, priority, tagIds, due, archived, group, sort; at least one key; checked by the shared favoriteViewSchema), position (a number between neighbours, like tasks.position), created_at, updated_at, deleted_at. A plain table (not an entity); RLS own rows; at most 12 live favorites per user (checked by the server); updated_at trigger (migration 0007). Migrations 0006 and 0007.

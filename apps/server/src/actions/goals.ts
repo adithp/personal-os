@@ -1,4 +1,4 @@
-import { entities, goals, links, tasks, type GoalRow } from '@personal-os/db';
+import { entities, goals, links, tasks, type GoalRow, type TaskRow } from '@personal-os/db';
 import {
   MAX_TASKS_PER_GOAL,
   goalActions,
@@ -9,6 +9,7 @@ import {
 } from '@personal-os/shared';
 import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import { HttpError } from '../lib/http-error';
+import { withUserLock } from '../lib/user-lock';
 import type { UserScope } from '../lib/user-scope';
 import { implement } from './registry';
 
@@ -28,6 +29,14 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** The start of the India calendar day that contains this time (a target date is stored so). */
 const istDayStart = (isoTime: string) =>
   new Date(Math.floor((Date.parse(isoTime) + IST_MS) / DAY_MS) * DAY_MS - IST_MS);
+
+const BATCH = 1000;
+function chunk<T>(items: readonly T[], size: number): T[][] {
+  const parts: T[][] = [];
+  for (let index = 0; index < items.length; index += size)
+    parts.push(items.slice(index, index + size));
+  return parts;
+}
 
 const iso = (date: Date | null) => (date ? date.toISOString() : null);
 
@@ -54,23 +63,34 @@ export async function loadGoalProgress(
 ): Promise<Map<string, GoalProgress>> {
   const result = new Map<string, GoalProgress>(goalIds.map((id) => [id, { done: 0, total: 0 }]));
   if (goalIds.length === 0) return result;
-  const rows = await scope.select(links, {
-    where: and(
-      scope.isLive(links),
-      eq(links.relation, 'belongs_to'),
-      inArray(links.targetId, [...goalIds]),
-    ),
-  });
+  // In batches: one statement can hold at most 65,535 values (scope.select cannot pick columns)
+  const rows: Awaited<ReturnType<typeof taskLinks>> = [];
+  for (const batch of chunk(goalIds, BATCH)) {
+    rows.push(
+      ...(await scope.select(links, {
+        where: and(
+          scope.isLive(links),
+          eq(links.relation, 'belongs_to'),
+          inArray(links.targetId, batch),
+        ),
+      })),
+    );
+  }
   if (rows.length === 0) return result;
   // Top-level, live tasks that are open and not archived, or done (an archived done task counts)
-  const counted = await scope.select(tasks, {
-    where: and(
-      scope.isLive(tasks),
-      isNull(tasks.parentTaskId),
-      or(isNull(tasks.archivedAt), eq(tasks.status, 'done')),
-      inArray(tasks.id, [...new Set(rows.map((row) => row.sourceId))]),
-    ),
-  });
+  const counted: TaskRow[] = [];
+  for (const batch of chunk([...new Set(rows.map((row) => row.sourceId))], BATCH)) {
+    counted.push(
+      ...(await scope.select(tasks, {
+        where: and(
+          scope.isLive(tasks),
+          isNull(tasks.parentTaskId),
+          or(isNull(tasks.archivedAt), eq(tasks.status, 'done')),
+          inArray(tasks.id, batch),
+        ),
+      })),
+    );
+  }
   const byId = new Map(counted.map((task) => [task.id, task]));
   for (const row of rows) {
     const task = byId.get(row.sourceId);
@@ -200,17 +220,20 @@ async function putTaskInGoal(
     );
   }
 
-  if (goalLinks.length > 0) {
+  // Move: leave the task's other goals. Links to DELETED goals stay, so restoring such a goal (or the
+  // undo of this move) can still bring the task back there
+  const liveLinks = goalLinks.filter((link) => goalById.get(link.targetId)?.deletedAt === null);
+  if (liveLinks.length > 0) {
     await scope.softDelete(
       links,
       inArray(
         links.id,
-        goalLinks.map((link) => link.id),
+        liveLinks.map((link) => link.id),
       ),
     );
   }
   await scope.insert(links, { sourceId: taskId, targetId: goalId, relation: 'belongs_to' });
-  const previous = goalLinks.find((link) => goalById.get(link.targetId)?.deletedAt === null);
+  const previous = liveLinks[0];
   return { changed: true, previousGoalId: previous?.targetId ?? null };
 }
 
@@ -311,6 +334,13 @@ export const goalImplementations = [
     scope.transaction(async (tx) => {
       const current = await findGoal(tx, id);
       if (current.status === status) return { data: await present(tx, current), undo: null };
+      // closedAt is only sent by the undo: it cannot be in the future or before the goal existed
+      if (
+        closedAt &&
+        (Date.parse(closedAt) > Date.now() || Date.parse(closedAt) < current.createdAt.getTime())
+      ) {
+        throw new HttpError(400, 'validation_error', 'The closing time is not valid');
+      }
       const [updated] = await tx.update(
         goals,
         {
@@ -357,38 +387,40 @@ export const goalImplementations = [
     };
   }),
 
-  implement(goalActions.setTaskGoal, async ({ scope }, { taskId, goalId }) =>
-    scope.transaction(async (tx) => {
-      if (goalId !== null) {
-        const { changed, previousGoalId } = await putTaskInGoal(tx, taskId, goalId);
+  implement(goalActions.setTaskGoal, ({ scope }, { taskId, goalId }) =>
+    withUserLock('goals', scope.userId, () =>
+      scope.transaction(async (tx) => {
+        if (goalId !== null) {
+          const { changed, previousGoalId } = await putTaskInGoal(tx, taskId, goalId);
+          return {
+            data: await present(tx, await findGoal(tx, goalId)),
+            undo: changed
+              ? { action: 'goals.setTaskGoal', input: { taskId, goalId: previousGoalId } }
+              : null,
+          };
+        }
+        // Take the task out of the goal it is in (its link is soft-deleted)
+        const [task] = await tx.select(tasks, {
+          where: and(eq(tasks.id, taskId), scope.isLive(tasks)),
+          limit: 1,
+        });
+        if (!task) throw taskNotFound();
+        const goalOf = (await loadTaskGoals(tx, [taskId])).get(taskId);
+        if (!goalOf) throw new HttpError(404, 'not_found', 'The task is not in a goal');
+        await tx.softDelete(
+          links,
+          and(
+            scope.isLive(links),
+            eq(links.relation, 'belongs_to'),
+            eq(links.sourceId, taskId),
+            eq(links.targetId, goalOf.id),
+          ) ?? eq(links.sourceId, taskId),
+        );
         return {
-          data: await present(tx, await findGoal(tx, goalId)),
-          undo: changed
-            ? { action: 'goals.setTaskGoal', input: { taskId, goalId: previousGoalId } }
-            : null,
+          data: await present(tx, await findGoal(tx, goalOf.id)),
+          undo: { action: 'goals.setTaskGoal', input: { taskId, goalId: goalOf.id } },
         };
-      }
-      // Take the task out of the goal it is in (its link is soft-deleted)
-      const [task] = await tx.select(tasks, {
-        where: and(eq(tasks.id, taskId), scope.isLive(tasks)),
-        limit: 1,
-      });
-      if (!task) throw taskNotFound();
-      const goalOf = (await loadTaskGoals(tx, [taskId])).get(taskId);
-      if (!goalOf) throw new HttpError(404, 'not_found', 'The task is not in a goal');
-      await tx.softDelete(
-        links,
-        and(
-          scope.isLive(links),
-          eq(links.relation, 'belongs_to'),
-          eq(links.sourceId, taskId),
-          eq(links.targetId, goalOf.id),
-        ) ?? eq(links.sourceId, taskId),
-      );
-      return {
-        data: await present(tx, await findGoal(tx, goalOf.id)),
-        undo: { action: 'goals.setTaskGoal', input: { taskId, goalId: goalOf.id } },
-      };
-    }),
+      }),
+    ),
   ),
 ];

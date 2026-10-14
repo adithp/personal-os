@@ -630,3 +630,78 @@ describe('user isolation', () => {
     });
   });
 });
+
+describe('goals review fixes', () => {
+  it('two setTaskGoal calls at once leave one live goal and no 500', async () => {
+    const a = await goalOf(alice(), 'A');
+    const b = await goalOf(alice(), 'B');
+    const task = await taskOf(alice(), 'Task');
+    await Promise.all([setGoal(alice(), task.id, a.id), setGoal(alice(), task.id, b.id)]);
+    const now = await taskGoal(alice(), task.id);
+    expect([a.id, b.id]).toContain(now?.id);
+    const live = (await progressOf(alice(), a.id)).total + (await progressOf(alice(), b.id)).total;
+    expect(live).toBe(1);
+  });
+
+  it('the same link twice at once is not an error', async () => {
+    const a = await goalOf(alice(), 'A');
+    const task = await taskOf(alice(), 'Task');
+    const results = await Promise.all([
+      setGoal(alice(), task.id, a.id),
+      setGoal(alice(), task.id, a.id),
+    ]);
+    expect(results.filter((result) => result.undo).length).toBe(1);
+    expect((await progressOf(alice(), a.id)).total).toBe(1);
+  });
+
+  it('moving a task out of a deleted goal keeps that link, so restoring the goal brings it back', async () => {
+    const old = await goalOf(alice(), 'Old');
+    const next = await goalOf(alice(), 'Next');
+    const task = await taskOf(alice(), 'Task', { goalId: old.id });
+    await run(alice(), 'goals.delete', { id: old.id });
+    const moved = await setGoal(alice(), task.id, next.id);
+    // Undo of the move: the old goal is deleted, so the undo takes the task out of the new goal
+    const undo = undoOf(moved);
+    await run(alice(), undo.action, undo.input);
+    expect(await taskGoal(alice(), task.id)).toBeNull();
+    await run(alice(), 'goals.restore', { id: old.id });
+    expect((await taskGoal(alice(), task.id))?.id).toBe(old.id);
+  });
+
+  it('the next copy of a repeating task is not in the goal', async () => {
+    const goal = await goalOf(alice(), 'Read');
+    const task = await taskOf(alice(), 'Read a page', {
+      goalId: goal.id,
+      dueAt: new Date(Date.now() - 3_600_000).toISOString(),
+      recurrenceRule: 'FREQ=DAILY',
+    });
+    await run(alice(), 'tasks.complete', { id: task.id });
+    expect(await progressOf(alice(), goal.id)).toEqual({ done: 1, total: 1 });
+    const open = (await run<Task[]>(alice(), 'tasks.list', { status: ['todo', 'doing'] })).data;
+    expect(open).toHaveLength(1);
+    expect(open[0]?.goal).toBeNull();
+  });
+
+  it('refuses a closedAt in the future or before the goal existed', async () => {
+    const goal = await goalOf(alice(), 'G');
+    const future = new Date(Date.now() + 86_400_000).toISOString();
+    expect(
+      await statusCode(
+        registry.run(alice(), 'goals.setStatus', {
+          id: goal.id,
+          status: 'achieved',
+          closedAt: future,
+        }),
+      ),
+    ).toBe(400);
+    expect(
+      await statusCode(
+        registry.run(alice(), 'goals.setStatus', {
+          id: goal.id,
+          status: 'achieved',
+          closedAt: '2001-01-01T00:00:00.000Z',
+        }),
+      ),
+    ).toBe(400);
+  });
+});

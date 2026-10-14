@@ -72,3 +72,5 @@ Every time something cost a retry or a fix, we record it here so it never happen
 | 2026-10-13 | testing-patterns | A test that fakes the clock must sign its login token after setting the time | documented | testing-patterns pitfalls |
 | 2026-10-13 | testing-patterns | failNext hit the first request of the page, not the one under test | guarded | apps/desktop/src/test/fake-api.ts |
 | 2026-10-13 | testing-patterns | Vitest passed but the real server crashed on a CommonJS named import (rrule) | guarded | apps/server/src/startup-imports.test.ts |
+| 2026-10-14 | new-action | Move links must not delete links to deleted goals; limits need the lock helper | guarded | apps/server/src/actions/goals.test.ts |
+| 2026-10-14 | db-change | New tables need explicit privileges (Supabase stops auto-granting on 30 Oct 2026) | documented | db-change pitfalls; docs/design/research/realtime.md |
