@@ -121,7 +121,7 @@ describe('Notes keys', () => {
     const { user } = await open();
     focusRow('One');
     await user.keyboard('{Delete}');
-    await findToast('Moved to Trash.');
+    await findToast('Moved to trash.');
     expect(rowTitles()).toEqual(['Two', 'Three']);
     expect(rowOf('Two')).toHaveFocus();
   });

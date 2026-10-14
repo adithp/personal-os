@@ -176,6 +176,48 @@ describe('the list states', () => {
     expect(await screen.findByText('Alpha')).toBeInTheDocument();
   });
 
+  it('keeps the rows on screen while a new sort loads', async () => {
+    const fake = createFakeApi([], [], [], [], sample());
+    const { user } = await openNotes(fake);
+    await screen.findByText('Alpha');
+    fake.slow(200);
+    await user.click(screen.getByRole('button', { name: 'Sort notes' }));
+    await user.click(screen.getByRole('menuitemradio', { name: 'Title' }));
+    expect(rowTitles()).toHaveLength(3);
+    expect(screen.queryByText('Loading notes…')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(rowTitles()).toEqual(['Gamma', 'Alpha', 'Beta']);
+    });
+  });
+
+  it('shows an error bar above the rows when a refresh fails, and keeps the rows', async () => {
+    const { user, fake } = await openNotes(
+      createFakeApi([], [], [], [], sample(), [makeFolder({ name: 'Ideas' })]),
+    );
+    await screen.findByText('Alpha');
+    // Renaming a folder refreshes the list (still All notes); that refresh fails
+    fake.failNext(500, 'internal', 'The list is tired', '/notes');
+    await user.click(await screen.findByRole('button', { name: 'More options for Ideas' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Rename' }));
+    await user.type(screen.getByRole('textbox', { name: 'Rename folder Ideas' }), '2{Enter}');
+    expect(await screen.findByText('The list is tired')).toBeInTheDocument();
+    expect(rowTitles()).toHaveLength(3);
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => {
+      expect(screen.queryByText('The list is tired')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows the shortcuts help through the body, not inside the glass list panel', async () => {
+    const { user } = await openNotes(createFakeApi([], [], [], [], sample()));
+    await screen.findByText('Alpha');
+    await user.click(screen.getByRole('button', { name: 'Keyboard shortcuts' }));
+    const dialog = screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
+    expect(dialog.parentElement?.parentElement).toBe(document.body);
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Keyboard shortcuts' })).toHaveFocus();
+  });
+
   it.each(['dark', 'light'] as const)(
     'shows the list in %s mode with no hard-coded colors',
     async (theme) => {

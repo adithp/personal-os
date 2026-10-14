@@ -1,6 +1,12 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { readDraft, useAutosave, type SaveFn, type SaveOutcome } from './use-autosave';
+import {
+  clearAllDrafts,
+  readDraft,
+  useAutosave,
+  type SaveFn,
+  type SaveOutcome,
+} from './use-autosave';
 
 const NOTE = 'note-1';
 const DRAFT_KEY = `personal-os.notes-draft.${NOTE}`;
@@ -21,7 +27,7 @@ function makeSave() {
   return { save, calls, pending };
 }
 
-function setup(noteId = NOTE, save: SaveFn, onTakeTheirs = vi.fn()) {
+function setup(noteId = NOTE, save: SaveFn, onTakeTheirs = vi.fn(() => Promise.resolve(true))) {
   return renderHook(
     (props: { noteId: string }) =>
       useAutosave({ noteId: props.noteId, baseRevision: 3, save, onTakeTheirs }),
@@ -251,7 +257,26 @@ describe('useAutosave conflicts', () => {
 
   it('Use theirs drops the draft, clears the conflict and tells the caller', async () => {
     const { save, pending } = makeSave();
-    const onTakeTheirs = vi.fn();
+    const onTakeTheirs = vi.fn(() => Promise.resolve(true));
+    const { result } = setup(NOTE, save, onTakeTheirs);
+    act(() => {
+      result.current.change(() => 'mine');
+    });
+    await tick(1000);
+    at(pending, 0).resolve({ conflict: true });
+    await settle();
+    await act(async () => {
+      await result.current.takeTheirs();
+    });
+    expect(onTakeTheirs).toHaveBeenCalledOnce();
+    expect(result.current.conflict).toBe(false);
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+  });
+
+  it('Use theirs stays in the conflict until the server version has been loaded', async () => {
+    const { save, pending } = makeSave();
+    let finish: (loaded: boolean) => void = () => undefined;
+    const onTakeTheirs = vi.fn(() => new Promise<boolean>((resolve) => (finish = resolve)));
     const { result } = setup(NOTE, save, onTakeTheirs);
     act(() => {
       result.current.change(() => 'mine');
@@ -260,11 +285,24 @@ describe('useAutosave conflicts', () => {
     at(pending, 0).resolve({ conflict: true });
     await settle();
     act(() => {
-      result.current.takeTheirs();
+      void result.current.takeTheirs();
     });
-    expect(onTakeTheirs).toHaveBeenCalledOnce();
+    expect(result.current.conflict).toBe(true);
+    await act(async () => {
+      finish(false);
+      await Promise.resolve();
+    });
+    // The refetch failed: still in the conflict, the draft is kept
+    expect(result.current.conflict).toBe(true);
+    expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull();
+    act(() => {
+      void result.current.takeTheirs();
+    });
+    await act(async () => {
+      finish(true);
+      await Promise.resolve();
+    });
     expect(result.current.conflict).toBe(false);
-    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
   });
 
   it('a leftover draft with the same revision is saved silently', () => {
@@ -284,5 +322,51 @@ describe('useAutosave conflicts', () => {
     });
     expect(calls).toHaveLength(0);
     expect(result.current.conflict).toBe(true);
+  });
+});
+
+describe('useAutosave pause, 404 and drafts', () => {
+  it('holds the timers while paused and saves after resume', async () => {
+    const { save, calls } = makeSave();
+    const { result } = setup(NOTE, save);
+    act(() => {
+      result.current.pause();
+      result.current.change(() => 'typed during a rename');
+    });
+    await tick(30_000);
+    expect(calls).toHaveLength(0);
+    act(() => {
+      result.current.resume();
+    });
+    await tick(1000);
+    expect(calls).toEqual([{ markdown: 'typed during a rename', base: 3, force: undefined }]);
+  });
+
+  it('does not retry when the note no longer exists', async () => {
+    const { save, calls, pending } = makeSave();
+    const { result } = setup(NOTE, save);
+    act(() => {
+      result.current.change(() => 'a');
+    });
+    await tick(1000);
+    at(pending, 0).resolve({ gone: true });
+    await settle();
+    expect(result.current.gone).toBe(true);
+    expect(result.current.status).toBe('failed');
+    act(() => {
+      result.current.change(() => 'b');
+    });
+    await tick(60_000);
+    expect(calls).toHaveLength(1);
+  });
+
+  it('clearAllDrafts removes every draft and nothing else', () => {
+    localStorage.setItem('personal-os.notes-draft.a', '{}');
+    localStorage.setItem('personal-os.notes-draft.b', '{}');
+    localStorage.setItem('personal-os.other', 'keep');
+    clearAllDrafts();
+    expect(localStorage.getItem('personal-os.notes-draft.a')).toBeNull();
+    expect(localStorage.getItem('personal-os.notes-draft.b')).toBeNull();
+    expect(localStorage.getItem('personal-os.other')).toBe('keep');
   });
 });

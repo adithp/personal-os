@@ -17,6 +17,8 @@ const STATUS_TEXT: Record<SaveStatus, string> = {
   failed: 'Not saved, retrying',
 };
 
+const GONE_TEXT = 'This note no longer exists.';
+
 /** Loads one note and shows the editor for it. */
 export function NoteEditorPane({ noteId }: { noteId: string }) {
   const query = useNote(noteId);
@@ -28,6 +30,14 @@ export function NoteEditorPane({ noteId }: { noteId: string }) {
     );
   }
   if (query.isError) {
+    // The note is gone (deleted for good elsewhere): trying again cannot help
+    if (query.error instanceof ApiError && query.error.status === 404) {
+      return (
+        <div className="p-6 text-body text-fg-secondary" role="alert">
+          {GONE_TEXT}
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col items-start gap-3 p-6" role="alert">
         <p className="text-body text-fg-secondary">
@@ -59,8 +69,11 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
   const [editedAt, setEditedAt] = useState(note.updatedAt);
   const [now, setNow] = useState(() => Date.now());
   const editorRef = useRef<ReturnType<typeof useEditor>>(null);
+  // The text this editor last loaded, sent or took from the server (see the revision effect)
+  const knownContent = useRef(note.contentMd);
 
   const save: SaveFn = async (markdown, baseRevision, options) => {
+    knownContent.current = markdown;
     try {
       const saved = await update.mutateAsync({
         id: note.id,
@@ -74,6 +87,7 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
       if (error instanceof ApiError && error.status === 409 && error.code === 'note_conflict') {
         return { conflict: true };
       }
+      if (error instanceof ApiError && error.status === 404) return { gone: true };
       throw error;
     }
   };
@@ -82,24 +96,36 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
     noteId: note.id,
     baseRevision: note.revision,
     save,
-    onTakeTheirs: () => {
-      void refetch().then((result) => {
-        const theirs = result.data;
-        if (!theirs) return;
-        editorRef.current?.commands.setContent(theirs.contentMd, {
-          contentType: 'markdown',
-          emitUpdate: false,
-        });
-        autosave.setRevision(theirs.revision);
-        setEditedAt(theirs.updatedAt);
+    onTakeTheirs: async () => {
+      // The conflict bar stays until the server's version is really loaded
+      const theirs = (await refetch()).data;
+      if (!theirs) return false;
+      knownContent.current = theirs.contentMd;
+      editorRef.current?.commands.setContent(theirs.contentMd, {
+        contentType: 'markdown',
+        emitUpdate: false,
       });
+      autosave.setRevision(theirs.revision);
+      setEditedAt(theirs.updatedAt);
+      return true;
     },
   });
+
+  // Something else raised the revision without changing the text (a rename, or its undo from the
+  // toast): follow it, so the next save is not a false conflict. A changed text is a real edit from
+  // another device, so that stays a conflict for the server to report.
+  const { setRevision } = autosave;
+  useEffect(() => {
+    if (note.contentMd === knownContent.current) setRevision(note.revision);
+  }, [note.revision, note.contentMd, setRevision]);
+
+  const readOnly = note.deletedAt !== null || autosave.gone;
 
   const editor = useEditor({
     extensions: createNoteExtensions(),
     content: note.contentMd,
     contentType: 'markdown',
+    editable: note.deletedAt === null,
     editorProps: { attributes: { class: 'note-editor', 'aria-label': 'Note text' } },
     onUpdate: ({ editor: current }) => {
       autosave.change(() => (current.isDestroyed ? null : serializeNote(current)));
@@ -111,6 +137,10 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
   useEffect(() => {
     editorRef.current = editor;
   });
+  useEffect(() => {
+    // false: do not report it as an edit (that would save an unchanged note)
+    editor.setEditable(!readOnly, false);
+  }, [editor, readOnly]);
 
   // Unsent text from an earlier session
   useEffect(() => {
@@ -141,22 +171,25 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
   });
 
   return (
-    <section className="flex h-full min-h-0 flex-col" aria-label="Note editor">
+    <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-10 shrink-0 items-center justify-end px-6">
-        <span
-          className={
-            autosave.status === 'failed' ? 'text-small text-danger' : 'text-small text-fg-muted'
-          }
-          role="status"
-          aria-live="polite"
-        >
-          {STATUS_TEXT[autosave.status]}
-        </span>
+        {autosave.gone ? (
+          <span className="text-small text-danger" role="alert">
+            {GONE_TEXT}
+          </span>
+        ) : autosave.status === 'failed' ? (
+          <span className="text-small text-danger" role="alert">
+            {STATUS_TEXT.failed}
+          </span>
+        ) : (
+          // Saving and Saved are only for the eyes; a screen reader hears only the failure
+          <span className="text-small text-fg-muted">{STATUS_TEXT[autosave.status]}</span>
+        )}
       </div>
       {autosave.conflict ? (
         <div
           role="alert"
-          className="mx-6 mb-2 flex shrink-0 items-center gap-3 rounded-control glass px-3 py-2"
+          className="mx-6 mb-2 flex shrink-0 items-center gap-3 rounded-control bg-input px-3 py-2"
         >
           <p className="flex-1 text-body text-fg">This note was changed on another device.</p>
           <Button
@@ -168,7 +201,13 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
           >
             Keep mine
           </Button>
-          <Button variant="secondary" className="h-7 px-3" onClick={autosave.takeTheirs}>
+          <Button
+            variant="secondary"
+            className="h-7 px-3"
+            onClick={() => {
+              void autosave.takeTheirs();
+            }}
+          >
             Use theirs
           </Button>
         </div>
@@ -176,12 +215,18 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
       <div className="min-h-0 flex-1 overflow-y-auto px-6">
         <TitleField
           note={note}
+          readOnly={readOnly}
           onRenamed={async (title) => {
-            // Save the text first, so the rename does not meet a half-saved note
+            // Save the text first, so the rename does not meet a half-saved note; the timers wait
+            // until the rename is answered (the revision effect above follows its new revision)
             await autosave.flush();
-            const { item: renamed } = await rename.mutateAsync({ id: note.id, title });
-            autosave.setRevision(renamed.revision);
-            setEditedAt(renamed.updatedAt);
+            autosave.pause();
+            try {
+              const { item: renamed } = await rename.mutateAsync({ id: note.id, title });
+              setEditedAt(renamed.updatedAt);
+            } finally {
+              autosave.resume();
+            }
           }}
           onEnter={() => editor.commands.focus('start')}
         />
@@ -190,25 +235,35 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
       <p className="shrink-0 px-6 py-2 text-small text-fg-muted">
         {words === 1 ? '1 word' : `${String(words)} words`} · {editedLabel(editedAt, now)}
       </p>
-    </section>
+    </div>
   );
 }
 
 interface TitleFieldProps {
   note: Note;
+  readOnly: boolean;
   onRenamed: (title: string) => Promise<void>;
   onEnter: () => void;
 }
 
 /** The note title: 22 semibold, no border. Saved on blur or Enter; Escape puts the old one back. */
-function TitleField({ note, onRenamed, onEnter }: TitleFieldProps) {
+function TitleField({ note, readOnly, onRenamed, onEnter }: TitleFieldProps) {
   // A ref, so a blur right after Enter does not rename twice
   const saved = useRef(note.title);
+  // The rename in flight: a blur while it is out (Enter, then a click into the text) joins it
+  const pending = useRef<Promise<boolean> | null>(null);
   const [title, setTitle] = useState(note.title);
   const [error, setError] = useState<string | null>(null);
 
   /** True when the field holds a title the server has. */
-  const commit = async (): Promise<boolean> => {
+  const commit = (): Promise<boolean> => {
+    pending.current ??= run().finally(() => {
+      pending.current = null;
+    });
+    return pending.current;
+  };
+
+  const run = async (): Promise<boolean> => {
     const next = title.trim();
     if (next === saved.current || next === '') {
       setTitle(saved.current);
@@ -235,6 +290,7 @@ function TitleField({ note, onRenamed, onEnter }: TitleFieldProps) {
     <div className="pb-2">
       <input
         value={title}
+        readOnly={readOnly}
         aria-label="Title"
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? 'note-title-error' : undefined}

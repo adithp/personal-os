@@ -165,6 +165,16 @@ describe('signOut', () => {
     expect(localStorage.getItem(RECENT_STORAGE_KEY)).toBeNull();
   });
 
+  it('forgets the unsent note drafts of this device', async () => {
+    const { client } = createFakeClient({ user: { email: 'me@example.com' } });
+    const auth = createAuth({ client });
+    await auth.initialize();
+    localStorage.setItem('personal-os.notes-draft.abc', '{"markdown":"secret","baseRevision":1}');
+
+    await auth.signOut();
+    expect(localStorage.getItem('personal-os.notes-draft.abc')).toBeNull();
+  });
+
   it('still forgets the session when the server call fails', async () => {
     const { client, mocks } = createFakeClient({ user: { email: 'me@example.com' } });
     mocks.signOut.mockRejectedValueOnce(new Error('offline'));

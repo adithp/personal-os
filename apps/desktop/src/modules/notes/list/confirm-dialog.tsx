@@ -1,5 +1,6 @@
 import { Button } from '@personal-os/ui';
 import { useEffect, useRef, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { trapTab } from '../../tasks/inbox/trap-tab';
 
 export interface ConfirmDialogProps {
@@ -10,7 +11,11 @@ export interface ConfirmDialogProps {
   onCancel: () => void;
 }
 
-/** "Are you sure?" for something that cannot be undone. Focus starts on Cancel; Escape cancels. */
+/**
+ * "Are you sure?" for something that cannot be undone. Focus starts on Cancel; Escape cancels.
+ * Rendered through the body: the glass panel around the list has a backdrop filter, which would
+ * turn position: fixed into "fixed inside the panel".
+ */
 export function ConfirmDialog({
   title,
   message,
@@ -41,7 +46,7 @@ export function ConfirmDialog({
     trapTab(event, box.current);
   };
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-40 flex items-center justify-center"
       onMouseDown={(event) => {
@@ -66,6 +71,7 @@ export function ConfirmDialog({
           <Button onClick={onConfirm}>{confirmLabel}</Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

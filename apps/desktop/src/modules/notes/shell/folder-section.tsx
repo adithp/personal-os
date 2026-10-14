@@ -1,5 +1,5 @@
 import { FOLDER_DEPTH_MAX, FOLDER_NAME_MAX, type NoteFolder } from '@personal-os/shared';
-import { cx, Tooltip } from '@personal-os/ui';
+import { cx, Input, Tooltip } from '@personal-os/ui';
 import {
   IconChevronDown,
   IconChevronRight,
@@ -8,7 +8,7 @@ import {
   IconPlus,
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
-import { useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { AnchoredMenu, MenuItem } from '../../tasks/favorites/anchored-menu';
 import { useFolderActions } from '../folders-queries';
 import { useNotesUi } from '../notes-ui-store';
@@ -29,16 +29,17 @@ function NameBox({
   initial: string;
   label: string;
   depth: number;
-  onDone: (name: string | null) => Promise<void> | void;
+  /** `byKey`: Enter or Escape ended it (a click elsewhere did not, and keeps its own focus). */
+  onDone: (name: string | null, byKey: boolean) => Promise<void> | void;
 }) {
   const [value, setValue] = useState(initial);
   const finished = useRef(false);
 
-  const finish = async (name: string | null) => {
+  const finish = async (name: string | null, byKey: boolean) => {
     if (finished.current) return;
     finished.current = true;
     try {
-      await onDone(name);
+      await onDone(name, byKey);
     } catch {
       // The hook showed the server's message; let the person fix the name
       finished.current = false;
@@ -46,8 +47,8 @@ function NameBox({
   };
 
   return (
-    <li style={{ paddingLeft: (depth - 1) * 12 }} className="flex h-8 items-center">
-      <input
+    <li style={{ paddingLeft: (depth - 1) * 12 }} className="flex min-h-8 items-center">
+      <Input
         autoFocus
         aria-label={label}
         value={value}
@@ -58,17 +59,17 @@ function NameBox({
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
             event.preventDefault();
-            void finish(value.trim() === '' ? null : value.trim());
+            void finish(value.trim() === '' ? null : value.trim(), true);
           } else if (event.key === 'Escape') {
             event.preventDefault();
             event.stopPropagation();
-            void finish(null);
+            void finish(null, true);
           }
         }}
         onBlur={() => {
-          void finish(value.trim() === '' ? null : value.trim());
+          void finish(value.trim() === '' ? null : value.trim(), false);
         }}
-        className="h-7 min-w-0 flex-1 rounded-chip border-[0.5px] border-transparent bg-input px-2 text-body text-fg focus-ring focus-visible:border-accent"
+        className="min-w-0 flex-1"
       />
     </li>
   );
@@ -85,11 +86,14 @@ export function FolderSection({
   folders,
   isPending,
   isError,
+  errorMessage = null,
   onRetry,
 }: {
   folders: readonly NoteFolder[];
   isPending: boolean;
   isError: boolean;
+  /** The server's message for a failed load, when it gave one. */
+  errorMessage?: string | null;
   onRetry: () => void;
 }) {
   const nav = useNotesNav();
@@ -100,6 +104,22 @@ export function FolderSection({
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
+  const listRoot = useRef<HTMLUListElement>(null);
+  // Where the focus goes once the next render has put the rows in place ('add': New folder)
+  const focusNext = useRef<string | null>(null);
+
+  const rowLinks = () =>
+    Array.from(listRoot.current?.querySelectorAll<HTMLElement>('[data-folder-row]') ?? []);
+  useEffect(() => {
+    const target = focusNext.current;
+    if (target === null) return;
+    focusNext.current = null;
+    if (target === 'add') addButton.current?.focus();
+    else
+      rowLinks()
+        .find((link) => link.dataset.folderRow === target)
+        ?.focus();
+  });
 
   const tree = buildTree(folders);
   const everyNode = allNodes(tree);
@@ -120,11 +140,11 @@ export function FolderSection({
     nav.showPlace(id);
   };
 
-  const finishCreate = async (name: string | null) => {
+  const finishCreate = async (name: string | null, byKey: boolean) => {
     const parentId = creating?.parentId ?? null;
     if (name === null) {
       setCreating(null);
-      addButton.current?.focus();
+      if (byKey) addButton.current?.focus();
       return;
     }
     const folder = await create.mutateAsync({ name, parentId });
@@ -132,14 +152,30 @@ export function FolderSection({
     showFolder(folder.id);
   };
 
-  const finishRename = async (node: FolderNode, name: string | null) => {
+  const finishRename = async (node: FolderNode, name: string | null, byKey: boolean) => {
     if (name !== null && name !== node.folder.name) {
       await rename.mutateAsync({ id: node.folder.id, name });
     }
     setRenamingId(null);
+    if (byKey) focusNext.current = node.folder.id;
   };
 
-  const onRowKey = (event: KeyboardEvent, node: FolderNode) => {
+  const deleteFolder = (node: FolderNode) => {
+    // The row below, else the one above, else the New folder button
+    const links = rowLinks();
+    const index = links.findIndex((link) => link.dataset.folderRow === node.folder.id);
+    const neighbor = links[index + 1] ?? links[index - 1];
+    remove.mutate(node.folder.id, {
+      onSuccess: () => {
+        focusNext.current = neighbor?.dataset.folderRow ?? 'add';
+      },
+      onError: () => {
+        focusNext.current = node.folder.id;
+      },
+    });
+  };
+
+  const onRowKey = (event: KeyboardEvent<HTMLElement>, node: FolderNode) => {
     const open = collapsed[node.folder.id] !== true;
     if (event.key === 'ArrowRight' && node.children.length > 0 && !open) {
       event.preventDefault();
@@ -147,6 +183,15 @@ export function FolderSection({
     } else if (event.key === 'ArrowLeft' && node.children.length > 0 && open) {
       event.preventDefault();
       setFolderCollapsed(node.folder.id, true);
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const links = rowLinks();
+      const index = links.findIndex((link) => link.dataset.folderRow === node.folder.id);
+      links[index + (event.key === 'ArrowDown' ? 1 : -1)]?.focus();
+    } else if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
+      event.preventDefault();
+      const anchor = event.currentTarget.querySelector<HTMLElement>('[data-menu-trigger]');
+      if (anchor) setMenu({ id: node.folder.id, anchor, mode: 'actions' });
     }
   };
 
@@ -168,7 +213,7 @@ export function FolderSection({
             initial={folder.name}
             label={`Rename folder ${folder.name}`}
             depth={node.depth}
-            onDone={(name) => finishRename(node, name)}
+            onDone={(name, byKey) => finishRename(node, name, byKey)}
           />
         );
       }
@@ -186,6 +231,7 @@ export function FolderSection({
                 type="button"
                 aria-label={`${open ? 'Fold' : 'Unfold'} ${folder.name}`}
                 aria-expanded={open}
+                tabIndex={-1}
                 onClick={() => {
                   setFolderCollapsed(folder.id, open);
                 }}
@@ -206,6 +252,7 @@ export function FolderSection({
                 ...(previous.note ? { note: previous.note } : {}),
                 folder: folder.id,
               })}
+              data-folder-row={folder.id}
               aria-label={`${folder.name}, ${String(folder.noteCount)} ${folder.noteCount === 1 ? 'note' : 'notes'}`}
               aria-current={active ? 'page' : undefined}
               className={cx(
@@ -225,6 +272,7 @@ export function FolderSection({
             <button
               type="button"
               data-menu-trigger
+              tabIndex={-1}
               aria-haspopup="menu"
               aria-label={`More options for ${folder.name}`}
               onClick={(event) => {
@@ -276,7 +324,7 @@ export function FolderSection({
       ) : null}
       {isError ? (
         <p role="alert" className="flex flex-col items-start gap-1 px-2.5 text-small text-fg-muted">
-          Could not load folders.
+          {errorMessage ?? 'Could not load folders.'}
           <button
             type="button"
             onClick={onRetry}
@@ -290,7 +338,7 @@ export function FolderSection({
         <p className="px-2.5 text-small text-fg-muted">No folders yet.</p>
       ) : null}
 
-      <ul aria-label="Folder list">
+      <ul ref={listRoot} aria-label="Folder list">
         {renderNodes(tree)}
         {creatorAt(null, 1)}
       </ul>
@@ -329,7 +377,7 @@ export function FolderSection({
           <MenuItem
             onSelect={() => {
               setMenu(null);
-              remove.mutate(menuNode.folder.id);
+              deleteFolder(menuNode);
             }}
           >
             <span className="text-danger">Delete folder</span>

@@ -75,13 +75,14 @@ export function NoteRow({
         <span className="flex items-center gap-1.5">
           {note.pinned ? (
             <>
-              <IconPin
-                size={12}
-                stroke={1.75}
-                aria-hidden
-                className="shrink-0"
-                style={{ color: moduleColorVar('notes') }}
-              />
+              {/* Dark icon with a peach dot: peach alone is too pale on the light theme */}
+              <span aria-hidden className="relative shrink-0">
+                <IconPin size={12} stroke={1.75} className="text-fg" />
+                <span
+                  className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full"
+                  style={{ backgroundColor: moduleColorVar('notes') }}
+                />
+              </span>
               <span className="sr-only">Pinned: </span>
             </>
           ) : null}

@@ -88,6 +88,12 @@ describe('NoteEditorPane', () => {
     expect(screen.getByText('Saved')).toBeInTheDocument();
   });
 
+  it('saves nothing just because the note was opened', async () => {
+    render(<NoteEditorPane noteId="n1" />);
+    await tick(3000);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
   it('saves the Markdown one second after a change and shows the status', async () => {
     render(<NoteEditorPane noteId="n1" />);
     typeText(' again');
@@ -111,11 +117,14 @@ describe('NoteEditorPane', () => {
     expect(mocks.update).toHaveBeenCalledTimes(2);
   });
 
-  it('saves when the editor is left (unmount)', () => {
+  it('saves when the editor is left (unmount), with the text typed so far', () => {
     const { unmount } = render(<NoteEditorPane noteId="n1" />);
     typeText('!');
     unmount();
     expect(mocks.update).toHaveBeenCalledOnce();
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ contentMd: 'Hello world!', baseRevision: 3 }),
+    );
   });
 
   it('asks Keep mine or Use theirs after a conflict, and Keep mine saves with force', async () => {
@@ -147,7 +156,7 @@ describe('NoteEditorPane', () => {
   });
 
   it('renames on Enter and moves into the text', async () => {
-    mocks.rename.mockResolvedValue(makeNote({ title: 'New name', revision: 4 }));
+    mocks.rename.mockResolvedValue({ item: makeNote({ title: 'New name', revision: 4 }) });
     render(<NoteEditorPane noteId="n1" />);
     const title = screen.getByRole('textbox', { name: 'Title' });
     fireEvent.change(title, { target: { value: 'New name' } });
@@ -159,16 +168,94 @@ describe('NoteEditorPane', () => {
     });
   });
 
-  it('uses the revision from a rename as the base of the next save', async () => {
-    mocks.rename.mockResolvedValue(makeNote({ title: 'New name', revision: 4 }));
-    render(<NoteEditorPane noteId="n1" />);
-    const title = screen.getByRole('textbox', { name: 'Title' });
-    fireEvent.change(title, { target: { value: 'New name' } });
-    fireEvent.blur(title);
-    await tick(0);
+  it('follows a revision raised without a text change (a rename, or its undo) as the next base', async () => {
+    const { rerender } = render(<NoteEditorPane noteId="n1" />);
+    // The cached note now has revision 4 and the same text, like after a rename or its undo
+    mocks.note = makeNote({ title: 'New name', revision: 4 });
+    rerender(<NoteEditorPane noteId="n1" />);
     typeText('!');
     await tick(1000);
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ baseRevision: 4 }));
+  });
+
+  it('does not follow a revision that came with another text: that stays a conflict', async () => {
+    const { rerender } = render(<NoteEditorPane noteId="n1" />);
+    mocks.note = makeNote({ revision: 6, contentMd: 'Changed on the phone' });
+    rerender(<NoteEditorPane noteId="n1" />);
+    typeText('!');
+    await tick(1000);
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ baseRevision: 3 }));
+  });
+
+  it('holds the autosave timers while a rename request is pending', async () => {
+    let answer: (value: { item: Note }) => void = () => undefined;
+    mocks.rename.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    render(<NoteEditorPane noteId="n1" />);
+    const title = screen.getByRole('textbox', { name: 'Title' });
+    fireEvent.change(title, { target: { value: 'New name' } });
+    fireEvent.keyDown(title, { key: 'Enter' });
+    await tick(0);
+    typeText('!');
+    await tick(30_000);
+    expect(mocks.update).not.toHaveBeenCalled();
+    await act(async () => {
+      answer({ item: makeNote({ title: 'New name', revision: 4 }) });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await tick(1000);
+    expect(mocks.update).toHaveBeenCalledOnce();
+  });
+
+  it('is read-only for a note in the trash', () => {
+    mocks.note = makeNote({ deletedAt: '2025-10-07T06:20:00.000Z' });
+    render(<NoteEditorPane noteId="n1" />);
+    expect(document.querySelector('.ProseMirror')).toHaveAttribute('contenteditable', 'false');
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveAttribute('readonly');
+  });
+
+  it('says the note no longer exists on a 404 and stops retrying', async () => {
+    mocks.update.mockRejectedValue(new ApiError(404, 'not_found', 'Note not found'));
+    render(<NoteEditorPane noteId="n1" />);
+    typeText('!');
+    await tick(1000);
+    expect(screen.getByRole('alert')).toHaveTextContent('This note no longer exists.');
+    expect(document.querySelector('.ProseMirror')).toHaveAttribute('contenteditable', 'false');
+    await tick(60_000);
+    expect(mocks.update).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the conflict bar until the refetch for Use theirs has answered', async () => {
+    mocks.update.mockRejectedValueOnce(new ApiError(409, 'note_conflict', 'changed'));
+    let answer: (value: { data: Note }) => void = () => undefined;
+    mocks.refetch.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    render(<NoteEditorPane noteId="n1" />);
+    typeText('!');
+    await tick(1000);
+    fireEvent.click(screen.getByRole('button', { name: 'Use theirs' }));
+    await tick(0);
+    expect(screen.getByText('This note was changed on another device.')).toBeInTheDocument();
+    await act(async () => {
+      answer({ data: makeNote({ contentMd: 'Their text', revision: 9 }) });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(screen.queryByText('This note was changed on another device.')).toBeNull();
+    expect(screen.getByText('Their text')).toBeInTheDocument();
+  });
+
+  it('announces only a failed save: Saving and Saved are visual', async () => {
+    mocks.update.mockRejectedValueOnce(new ApiError(0, 'network', 'offline'));
+    render(<NoteEditorPane noteId="n1" />);
+    expect(screen.getByText('Saved')).not.toHaveAttribute('role');
+    typeText('!');
+    await tick(1000);
+    expect(screen.getByRole('alert')).toHaveTextContent('Not saved, retrying');
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('has one landmark named Note text, not a second Note editor label', () => {
+    render(<NoteEditorPane noteId="n1" />);
+    expect(screen.queryByLabelText('Note editor')).toBeNull();
+    expect(screen.getAllByLabelText('Note text')).toHaveLength(1);
   });
 
   it('says so when the title is taken and keeps what was typed', async () => {
