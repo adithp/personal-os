@@ -16,6 +16,7 @@ CRON_MARK="# personal-os auto deploy"
 log() { printf '%s\n' "$*"; }
 
 [[ -f "$REPO_DIR/apps/server/.env" ]] || { log "STOP: $REPO_DIR/apps/server/.env is missing (it needs SUPABASE_URL and DATABASE_URL)."; exit 1; }
+# infra/.env (../.env from this folder) holds DUCKDNS_DOMAIN and the optional DEPLOY_* settings
 [[ -f "$REPO_DIR/infra/.env" ]] || { log "STOP: $REPO_DIR/infra/.env is missing (it needs DUCKDNS_DOMAIN)."; exit 1; }
 command -v docker >/dev/null || { log "STOP: docker is not installed or not in PATH."; exit 1; }
 command -v flock >/dev/null || { log "STOP: flock is missing (sudo apt install util-linux)."; exit 1; }
