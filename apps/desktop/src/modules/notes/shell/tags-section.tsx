@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { ApiError } from '../../../api/api-client';
 import { useTags } from '../../tasks/tags-queries';
+import { useRovingList } from '../right-panel/use-roving-list';
 import { tagPlace } from '../notes-search';
 import { useNotesNav } from './use-notes-nav';
 
@@ -21,6 +22,8 @@ export function TagsSection() {
     [tags.data],
   );
 
+  const roving = useRovingList(used.length);
+
   return (
     <section aria-label="Tags" className="flex flex-col gap-0.5">
       <div className="flex h-7 items-center pl-2.5">
@@ -33,8 +36,10 @@ export function TagsSection() {
         </p>
       ) : null}
       {tags.isError ? (
-        <p role="alert" className="flex flex-col items-start gap-1 px-2.5 text-small text-fg-muted">
-          {tags.error instanceof ApiError ? tags.error.message : 'Could not load tags.'}
+        <div className="flex flex-col items-start gap-1 px-2.5 text-small text-fg-muted">
+          <p role="alert">
+            {tags.error instanceof ApiError ? tags.error.message : 'Could not load tags.'}
+          </p>
           <button
             type="button"
             onClick={() => {
@@ -44,15 +49,15 @@ export function TagsSection() {
           >
             Try again
           </button>
-        </p>
+        </div>
       ) : null}
       {tags.isSuccess && used.length === 0 ? (
         <p className="px-2.5 text-small text-fg-muted">Type #tag in a note to add one.</p>
       ) : null}
 
       {used.length > 0 ? (
-        <ul aria-label="Tag list">
-          {used.map((tag) => {
+        <ul aria-label="Tag list" {...roving.listProps}>
+          {used.map((tag, index) => {
             const count = tag.noteCount ?? 0;
             const place = tagPlace(tag.id);
             const active = nav.place === place;
@@ -64,10 +69,11 @@ export function TagsSection() {
                     ...(previous.note ? { note: previous.note } : {}),
                     folder: place,
                   })}
+                  {...roving.itemProps(index)}
                   aria-label={`#${tag.name}, ${String(count)} ${count === 1 ? 'note' : 'notes'}`}
                   aria-current={active ? 'page' : undefined}
                   className={cx(
-                    'flex h-8 min-w-0 items-center gap-2 rounded-chip px-2.5 text-body focus-ring transition-colors duration-150 ease-out',
+                    'flex h-8 min-w-0 items-center gap-2 rounded-chip px-2.5 text-body focus-ring transition-colors duration-150 ease-out motion-reduce:transition-none',
                     active
                       ? 'bg-tint font-medium text-fg'
                       : 'text-fg-secondary hover:bg-tint hover:text-fg',

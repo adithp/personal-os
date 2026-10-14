@@ -136,6 +136,27 @@ describe('the Daily notes list', () => {
     expect(fake.calls.find((c) => c.path === '/notes')?.query).toMatchObject({ dailyOnly: true });
   });
 
+  it('asks for a year of days so older ones are not cut', async () => {
+    const fake = createFakeApi();
+    await daily(fake, '2025-10-05');
+    renderWithApi(<DailyList />, fake);
+    await screen.findByRole('list', { name: 'Daily notes by day' });
+    expect(fake.calls.find((c) => c.path === '/notes')?.query).toMatchObject({ limit: 366 });
+  });
+
+  it('has one Tab stop and moves with the arrow keys', async () => {
+    const fake = createFakeApi();
+    await daily(fake, '2025-10-05');
+    await daily(fake, '2025-10-06');
+    const { user } = renderWithApi(<DailyList />, fake);
+    const first = await screen.findByRole('button', { name: /2025-10-06/ });
+    const second = screen.getByRole('button', { name: /2025-10-05/ });
+    expect(second).toHaveAttribute('tabindex', '-1');
+    first.focus();
+    await user.keyboard('{ArrowDown}');
+    expect(second).toHaveFocus();
+  });
+
   it('opens a day with a click', async () => {
     const fake = createFakeApi();
     const note = await daily(fake, '2025-10-05');

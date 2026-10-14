@@ -68,6 +68,7 @@ export function useNotes(filters: ListNotesInput = {}, options: { enabled?: bool
       const before = previousQuery?.queryKey[2];
       return before?.folderId === filters.folderId &&
         before?.tagId === filters.tagId &&
+        before?.dailyOnly === filters.dailyOnly &&
         before?.trash === filters.trash
         ? previous
         : undefined;

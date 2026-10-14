@@ -3,6 +3,7 @@ import { Button, cx, IconButton, Input, Switch, Tooltip } from '@personal-os/ui'
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../../api/api-client';
+import { useRovingList } from '../right-panel/use-roving-list';
 import { EmptyState } from '../list/empty-state';
 import { isNameTaken, useNoteTemplates, useTemplateActions } from '../templates-queries';
 import { TemplateBody } from './template-body';
@@ -84,9 +85,13 @@ export function TemplatesView() {
   const [fresh, setFresh] = useState<string | null>(null);
   const items = templates.data ?? [];
   const current = items.find((t) => t.id === chosen) ?? items[0] ?? null;
+  const roving = useRovingList(items.length);
+  const newButton = useRef<HTMLButtonElement>(null);
+  const list = useRef<HTMLUListElement | null>(null);
+  const canAdd = templates.isSuccess;
 
   const addTemplate = async () => {
-    if (create.isPending) return;
+    if (create.isPending || !canAdd) return;
     const names = new Set(items.map((t) => t.name.toLowerCase()));
     let name = 'Untitled template';
     for (let n = 2; names.has(name.toLowerCase()); n += 1) name = `Untitled template ${String(n)}`;
@@ -101,8 +106,14 @@ export function TemplatesView() {
 
   const deleteCurrent = (template: NoteTemplate) => {
     const index = items.findIndex((t) => t.id === template.id);
-    setChosen((items[index + 1] ?? items[index - 1])?.id ?? null);
+    const next = items[index + 1] ?? items[index - 1];
+    setChosen(next?.id ?? null);
     remove.mutate(template.id);
+    // The deleted row is going; focus the row that takes its place, or New template
+    setTimeout(() => {
+      const row = next ? list.current?.querySelector<HTMLElement>(`[data-id="${next.id}"]`) : null;
+      (row ?? newButton.current)?.focus();
+    }, 0);
   };
 
   return (
@@ -122,7 +133,9 @@ export function TemplatesView() {
           </div>
           <Tooltip label="New template">
             <IconButton
+              ref={newButton}
               aria-label="New template"
+              disabled={!canAdd}
               icon={<IconPlus size={16} stroke={1.5} aria-hidden />}
               onClick={() => {
                 void addTemplate();
@@ -170,11 +183,21 @@ export function TemplatesView() {
             />
           ) : null}
           {items.length > 0 ? (
-            <ul aria-label="Templates" className="flex flex-col">
-              {items.map((template) => (
+            <ul
+              aria-label="Templates"
+              className="flex flex-col"
+              {...roving.listProps}
+              ref={(element) => {
+                list.current = element;
+                roving.listProps.ref(element);
+              }}
+            >
+              {items.map((template, index) => (
                 <li key={template.id}>
                   <button
                     type="button"
+                    data-id={template.id}
+                    {...roving.itemProps(index)}
                     aria-current={current?.id === template.id ? 'true' : undefined}
                     onClick={() => {
                       setChosen(template.id);
@@ -186,7 +209,7 @@ export function TemplatesView() {
                   >
                     <span className="truncate text-body font-medium text-fg">{template.name}</span>
                     {template.isDailyDefault ? (
-                      <span className="border-border shrink-0 rounded-chip border-[0.5px] px-1.5 text-small text-fg-muted">
+                      <span className="shrink-0 rounded-chip bg-tint px-1.5 text-small text-fg-muted">
                         Daily
                       </span>
                     ) : null}
@@ -230,11 +253,7 @@ export function TemplatesView() {
             </div>
             <TemplateBody key={current.id} id={current.id} contentMd={current.contentMd} />
           </>
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-body text-fg-muted">Choose a template or make a new one.</p>
-          </div>
-        )}
+        ) : null}
       </section>
     </div>
   );

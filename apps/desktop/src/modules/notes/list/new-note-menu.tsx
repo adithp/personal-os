@@ -1,7 +1,7 @@
 import type { Note } from '@personal-os/shared';
 import { IconButton, Tooltip } from '@personal-os/ui';
 import { IconPlus } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AnchoredMenu, MenuItem } from '../../tasks/favorites/anchored-menu';
 import { useCreateNote } from '../notes-queries';
 import { useNoteTemplates } from '../templates-queries';
@@ -22,8 +22,9 @@ export function NewNoteMenu({ folderId, onCreated }: NewNoteMenuProps) {
   const create = useCreateNote();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const list = templates.data ?? [];
+  const button = useRef<HTMLButtonElement>(null);
 
-  const make = async (templateId?: string) => {
+  const make = async (templateId?: string, from?: HTMLElement | null) => {
     if (create.isPending) return;
     try {
       const note = await create.mutateAsync({
@@ -32,20 +33,22 @@ export function NewNoteMenu({ folderId, onCreated }: NewNoteMenuProps) {
       });
       onCreated(note);
     } catch {
-      // The hook showed the server's message
+      // The hook showed the server's message; keep the keyboard where it was
+      from?.focus();
     }
   };
 
   return (
     <>
-      <Tooltip label="New note">
+      <Tooltip label={list.length > 0 ? 'New note (choose a template)' : 'New note'}>
         <IconButton
+          ref={button}
           aria-label="New note"
           aria-haspopup={list.length > 0 ? 'menu' : undefined}
           aria-expanded={list.length > 0 ? anchor !== null : undefined}
           icon={<IconPlus size={16} stroke={1.5} aria-hidden />}
           onClick={(event) => {
-            if (list.length === 0) void make();
+            if (list.length === 0) void make(undefined, event.currentTarget);
             else setAnchor(anchor ? null : event.currentTarget);
           }}
         />
@@ -63,7 +66,7 @@ export function NewNoteMenu({ folderId, onCreated }: NewNoteMenuProps) {
           <MenuItem
             onSelect={() => {
               setAnchor(null);
-              void make();
+              void make(undefined, button.current);
             }}
           >
             Blank note
@@ -73,7 +76,7 @@ export function NewNoteMenu({ folderId, onCreated }: NewNoteMenuProps) {
               key={template.id}
               onSelect={() => {
                 setAnchor(null);
-                void make(template.id);
+                void make(template.id, button.current);
               }}
             >
               <span className="truncate">{template.name}</span>

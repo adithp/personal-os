@@ -4,7 +4,7 @@ import { DEFAULT_PLACE, type NotesPlace } from './notes-ui-store';
 export interface NotesSearch {
   /** The id of the open note. */
   note?: string;
-  /** 'trash', 'templates', `tag:<id>` or a folder id. Left out for All notes. */
+  /** 'trash', 'templates', 'daily', `tag:<id>` or a folder id. Left out for All notes. */
   folder?: string;
 }
 
@@ -12,6 +12,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** The place that shows the templates instead of the list and the editor (stage N3). */
 export const TEMPLATES_PLACE = 'templates';
+/** The place that lists the daily notes by day (stage N3). */
+export const DAILY_PLACE = 'daily';
 const TAG_PREFIX = 'tag:';
 
 /** The place that lists the notes with one tag (stage N3). */
@@ -26,6 +28,7 @@ export const isFolderPlace = (place: NotesPlace): boolean =>
   place !== DEFAULT_PLACE &&
   place !== 'trash' &&
   place !== TEMPLATES_PLACE &&
+  place !== DAILY_PLACE &&
   tagIdOf(place) === null;
 
 /** Keeps only valid params, so a bad or old link opens All notes instead of failing. */
@@ -37,6 +40,7 @@ export function validateNotesSearch(raw: Record<string, unknown>): NotesSearch {
     if (
       raw.folder === 'trash' ||
       raw.folder === TEMPLATES_PLACE ||
+      raw.folder === DAILY_PLACE ||
       UUID.test(raw.folder) ||
       (tagId !== null && UUID.test(tagId))
     ) {

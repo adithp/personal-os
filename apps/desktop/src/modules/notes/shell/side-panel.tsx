@@ -1,5 +1,6 @@
 import { cx, Tooltip } from '@personal-os/ui';
 import {
+  IconCalendar,
   IconCalendarEvent,
   IconFolder,
   IconLayoutSidebarLeftCollapse,
@@ -15,14 +16,14 @@ import { ApiError } from '../../../api/api-client';
 import { useNow } from '../../dashboard/greeting';
 import { useOpenDaily } from '../daily/use-open-daily';
 import { useNoteFolders } from '../folders-queries';
-import { TEMPLATES_PLACE } from '../notes-search';
+import { DAILY_PLACE, TEMPLATES_PLACE } from '../notes-search';
 import { useNotesUi } from '../notes-ui-store';
 import { FolderSection } from './folder-section';
 import { TagsSection } from './tags-section';
 import { useNotesNav } from './use-notes-nav';
 
 const rowClass =
-  'flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-body focus-ring transition-colors duration-150 ease-out';
+  'flex h-8 items-center gap-2.5 rounded-chip px-2.5 text-body focus-ring transition-colors duration-150 ease-out motion-reduce:transition-none';
 
 const iconOf = (Glyph: Icon) => <Glyph size={18} stroke={1.5} aria-hidden className="shrink-0" />;
 
@@ -40,13 +41,15 @@ function TodayRow({ collapsed }: { collapsed: boolean }) {
     <button
       type="button"
       aria-label={collapsed ? `Today, ${hint}` : undefined}
-      disabled={daily.isPending}
+      aria-disabled={daily.isPending || undefined}
       onClick={() => {
+        if (daily.isPending) return;
         void daily.open();
       }}
       className={cx(
         rowClass,
-        'w-full text-fg-secondary hover:bg-tint hover:text-fg disabled:opacity-60',
+        'w-full text-fg-secondary hover:bg-tint hover:text-fg',
+        daily.isPending && 'opacity-60',
       )}
     >
       {iconOf(IconCalendarEvent)}
@@ -61,7 +64,7 @@ function TodayRow({ collapsed }: { collapsed: boolean }) {
   return <li>{collapsed ? <Tooltip label={`Today, ${hint}`}>{button}</Tooltip> : button}</li>;
 }
 
-/** A link to All notes, Templates or Trash. The active one is marked with aria-current. */
+/** A link to All notes, Daily notes, Templates or Trash. The active one is marked with aria-current. */
 function PlaceRow({
   label,
   icon,
@@ -71,7 +74,7 @@ function PlaceRow({
 }: {
   label: string;
   icon: Icon;
-  place: 'all' | 'trash' | typeof TEMPLATES_PLACE;
+  place: 'all' | 'trash' | typeof TEMPLATES_PLACE | typeof DAILY_PLACE;
   active: boolean;
   collapsed: boolean;
 }) {
@@ -139,6 +142,13 @@ export function NotesSidePanel({ forceCollapsed = false }: { forceCollapsed?: bo
             collapsed={collapsed}
           />
           <TodayRow collapsed={collapsed} />
+          <PlaceRow
+            label="Daily notes"
+            icon={IconCalendar}
+            place={DAILY_PLACE}
+            active={nav.place === DAILY_PLACE}
+            collapsed={collapsed}
+          />
         </ul>
 
         {collapsed ? (

@@ -10,7 +10,9 @@ describe('the Notes mock API follows the real server', () => {
   it('GET /notes/:id returns a trashed note too', () => {
     const note = trashed('Old');
     const fake = createNotesFake([note]);
-    expect(fake.handle('GET', `/notes/${note.id}`, {})).toEqual({ item: note });
+    expect(fake.handle('GET', `/notes/${note.id}`, {})).toEqual({
+      item: { ...note, tagNames: [] },
+    });
   });
 
   it('GET /notes/:id answers 404 for an unknown note', () => {

@@ -56,6 +56,25 @@ async function open(path = '/notes') {
 const tagList = () => screen.getByRole('list', { name: 'Tag list' });
 
 describe('the Tags section of the side panel', () => {
+  it('has one Tab stop in the tag list and moves with the arrow keys', async () => {
+    const { user } = await open();
+    const links = within(tagList()).getAllByRole('link');
+    expect(links.map((l) => l.getAttribute('tabindex'))).toEqual(['0', '-1']);
+    links[0]?.focus();
+    await user.keyboard('{ArrowDown}');
+    expect(links[1]).toHaveFocus();
+  });
+
+  it('opens the Daily notes place from the side panel', async () => {
+    const { user } = await open();
+    await user.click(screen.getByRole('link', { name: 'Daily notes' }));
+    expect(await screen.findByRole('region', { name: 'Daily notes' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Daily notes' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
   it('lists only tags that notes use, with their note counts', async () => {
     await open();
     const links = await within(await screen.findByRole('region', { name: 'Tags' })).findAllByRole(
