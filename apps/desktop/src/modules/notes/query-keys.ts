@@ -4,6 +4,8 @@ import type { ListNotesInput } from '@personal-os/shared';
 export const NOTES_KEY = ['notes'] as const;
 /** Every cached folder list starts with this key. */
 export const NOTE_FOLDERS_KEY = ['note-folders'] as const;
+/** Every cached template list starts with this key. */
+export const NOTE_TEMPLATES_KEY = ['note-templates'] as const;
 
 export const noteKeys = {
   all: NOTES_KEY,
