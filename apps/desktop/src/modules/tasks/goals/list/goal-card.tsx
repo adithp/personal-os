@@ -44,6 +44,7 @@ export function GoalCard({ goal, now, tabbable, onFocusCard, onAchieve }: GoalCa
         <Link
           to="/tasks/goals/$goalId"
           params={{ goalId: goal.id }}
+          title={goal.title}
           data-item-key={key}
           tabIndex={tabbable ? 0 : -1}
           onFocus={() => {
@@ -56,15 +57,16 @@ export function GoalCard({ goal, now, tabbable, onFocusCard, onAchieve }: GoalCa
       </div>
 
       {percent === null ? (
-        <p className="text-small text-fg-muted">No tasks yet</p>
+        <p className="text-small text-fg-secondary">No tasks yet</p>
       ) : (
         <div className="flex flex-col gap-1.5">
           <ProgressBar
             tone="glass"
             value={percent}
             label={`Tasks done: ${String(progress.done)} of ${String(progress.total)}`}
+            valueText={progressText(progress)}
           />
-          <div className="flex items-center justify-between text-small text-fg-muted">
+          <div className="flex items-center justify-between text-small text-fg-secondary">
             <span>{progressText(progress)}</span>
             <span>{String(percent)}%</span>
           </div>
@@ -78,6 +80,7 @@ export function GoalCard({ goal, now, tabbable, onFocusCard, onAchieve }: GoalCa
           <span aria-hidden>·</span>
           <button
             type="button"
+            aria-label={`Mark as achieved: ${goal.title}`}
             onClick={() => {
               onAchieve(goal);
             }}
@@ -93,14 +96,14 @@ export function GoalCard({ goal, now, tabbable, onFocusCard, onAchieve }: GoalCa
           className={
             target.passed
               ? 'flex items-center gap-1.5 text-small text-danger'
-              : 'flex items-center gap-1.5 text-small text-fg-muted'
+              : 'flex items-center gap-1.5 text-small text-fg-secondary'
           }
         >
           {goal.targetAt ? <IconCalendar size={14} stroke={1.5} aria-hidden /> : null}
           {target.text}
         </p>
       ) : (
-        <p className="flex items-center gap-1.5 text-small text-fg-muted">
+        <p className="flex items-center gap-1.5 text-small text-fg-secondary">
           {goal.status === 'dropped' ? (
             <IconCircleX size={14} stroke={1.5} aria-hidden />
           ) : (

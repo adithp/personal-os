@@ -106,7 +106,8 @@ export function useGoalActions() {
     mutationFn: (id: string) => api.request<GoalWriteResult>('DELETE', `/goals/${id}`),
     onSuccess: ({ undo }) => {
       offerUndo('Goal deleted.', undo);
-      return refresh();
+      // Not awaited: the page leaves at once instead of waiting for a refetch of the deleted goal
+      void refresh();
     },
     onError: fail,
   });

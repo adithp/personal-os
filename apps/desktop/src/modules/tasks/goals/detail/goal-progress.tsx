@@ -2,6 +2,7 @@ import { canMarkAchieved, goalPercent, type Goal } from '@personal-os/shared';
 import { Button, GlassCard, ProgressBar } from '@personal-os/ui';
 import { IconCircleCheck, IconCircleX } from '@tabler/icons-react';
 import { useGoalPrompts } from '../prompt-store';
+import { progressText } from '../list/goal-format';
 import { shortDate } from './goal-dates';
 
 /** "3 of 8" with the percent and a bar; "No tasks yet" when nothing is linked; a quiet line when closed. */
@@ -14,20 +15,25 @@ export function GoalProgressCard({ goal, now }: { goal: Goal; now: Date }) {
       {percent === null ? (
         <div className="flex flex-col gap-1">
           <p className="text-section font-medium text-fg">No tasks yet</p>
-          <p className="text-small text-fg-muted">Link tasks to see your progress.</p>
+          <p className="text-small text-fg-secondary">Link tasks to see your progress.</p>
         </div>
       ) : (
         <>
           <div className="flex items-baseline gap-2">
             <span className="text-big font-semibold text-fg">{`${String(done)} of ${String(total)}`}</span>
-            <span className="text-small text-fg-muted">tasks done</span>
-            <span className="ml-auto text-small text-fg-muted">{`${String(percent)}%`}</span>
+            <span className="text-small text-fg-secondary">tasks done</span>
+            <span className="ml-auto text-small text-fg-secondary">{`${String(percent)}%`}</span>
           </div>
-          <ProgressBar tone="glass" value={percent} label="Tasks done" />
+          <ProgressBar
+            tone="glass"
+            value={percent}
+            label="Tasks done"
+            valueText={progressText(goal.progress)}
+          />
         </>
       )}
       {goal.status !== 'active' && closedAt ? (
-        <p className="flex items-center gap-1.5 text-small text-fg-muted">
+        <p className="flex items-center gap-1.5 text-small text-fg-secondary">
           {goal.status === 'achieved' ? (
             <IconCircleCheck size={13} stroke={1.5} aria-hidden />
           ) : (
@@ -52,7 +58,12 @@ export function AchievePrompt({ goal, onAchieve }: { goal: Goal; onAchieve: () =
       padding="none"
       className="flex items-center gap-3 px-4 py-3"
     >
-      <IconCircleCheck size={20} stroke={1.5} className="shrink-0 text-module-tasks" aria-hidden />
+      <span
+        aria-hidden
+        className="flex size-6 shrink-0 items-center justify-center rounded-chip bg-module-tasks text-on-tile"
+      >
+        <IconCircleCheck size={16} stroke={1.5} />
+      </span>
       <p className="flex-1 text-body text-fg">
         {`All ${String(total)} tasks are done. Mark this goal as achieved?`}
       </p>

@@ -22,7 +22,8 @@ import { shortDate } from './goal-dates';
 export interface GoalHeaderProps {
   goal: Goal;
   now: Date;
-  onTitle: (title: string) => void;
+  /** `onFail` drops the typed text when the save failed. */
+  onTitle: (title: string, onFail: () => void) => void;
   onTargetAt: (targetAt: string | null) => void;
   onAchieve: () => void;
   onDrop: () => void;
@@ -32,16 +33,36 @@ export interface GoalHeaderProps {
 }
 
 /** The title: a borderless box saved on blur or Enter. An empty title is refused and the old one returns. */
-function GoalTitle({ title, onSave }: { title: string; onSave: (title: string) => void }) {
+function GoalTitle({
+  title,
+  onSave,
+}: {
+  title: string;
+  onSave: (title: string, onFail: () => void) => void;
+}) {
   const draft = useDraft(title);
+  // Text typed but not handed to onSave yet; saved when the page closes while still editing
+  const unsaved = useRef<string | null>(null);
+  const latest = useRef({ title, onSave });
+  useEffect(() => {
+    latest.current = { title, onSave };
+  });
+  useEffect(
+    () => () => {
+      const next = unsaved.current?.trim();
+      if (next && next !== latest.current.title) latest.current.onSave(next, () => undefined);
+    },
+    [],
+  );
   const commit = () => {
     if (!draft.editing) return;
+    unsaved.current = null;
     const next = draft.value.trim();
     if (next === '') {
       draft.discard();
       useToasts.getState().show('Add a title', { tone: 'error' });
     } else if (next === title) draft.discard();
-    else onSave(next); // the draft stays until the saved title arrives, so the old one never flashes back
+    else onSave(next, draft.discard); // the draft stays until the saved title arrives, so the old one never flashes back
   };
   return (
     <input
@@ -51,6 +72,7 @@ function GoalTitle({ title, onSave }: { title: string; onSave: (title: string) =
       maxLength={GOAL_TITLE_MAX}
       spellCheck={false}
       onChange={(event) => {
+        unsaved.current = event.target.value;
         draft.set(event.target.value);
       }}
       onBlur={commit}
@@ -59,6 +81,7 @@ function GoalTitle({ title, onSave }: { title: string; onSave: (title: string) =
         else if (event.key === 'Escape' && draft.editing) {
           event.preventDefault();
           event.stopPropagation();
+          unsaved.current = null;
           draft.discard();
         }
       }}
@@ -79,8 +102,23 @@ function TargetDate({
 }) {
   const [editing, setEditing] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  // Set when the box closes by Enter or Escape; a click elsewhere keeps the focus where it went
+  const returnFocus = useRef(false);
   useEffect(() => {
-    if (editing) box.current?.querySelector('input')?.focus();
+    if (editing) {
+      box.current?.querySelector('input')?.focus();
+      return undefined;
+    }
+    if (!returnFocus.current) return undefined;
+    returnFocus.current = false;
+    // After the key press is over, so the Enter that closed the box cannot also click the button
+    const timer = setTimeout(() => {
+      trigger.current?.focus();
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [editing]);
 
   const quiet =
@@ -92,11 +130,15 @@ function TargetDate({
         ref={box}
         className="w-[150px]"
         onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) setEditing(false);
+          if (event.currentTarget.contains(event.relatedTarget)) return;
+          // Focus going nowhere (Enter, or a click on empty space) comes back to the button
+          if (event.relatedTarget === null) returnFocus.current = true;
+          setEditing(false);
         }}
         onKeyDown={(event) => {
           if (event.key === 'Escape') {
             event.stopPropagation();
+            returnFocus.current = true;
             setEditing(false);
           }
         }}
@@ -107,6 +149,7 @@ function TargetDate({
           value={targetAt}
           onCommit={(iso) => {
             onChange(iso);
+            returnFocus.current = true;
             setEditing(false);
           }}
         />
@@ -116,6 +159,7 @@ function TargetDate({
   return (
     <>
       <button
+        ref={trigger}
         type="button"
         className={quiet}
         onClick={() => {
@@ -194,6 +238,7 @@ export function GoalHeader({
         <Popover
           label="More"
           popupLabel="Goal actions"
+          align="end"
           triggerClassName="inline-flex size-[30px] items-center justify-center rounded-control glass text-fg transition-colors duration-150 ease-out hover:bg-input motion-reduce:transition-none"
           trigger={<IconDots size={16} stroke={1.5} aria-hidden />}
         >
@@ -252,7 +297,7 @@ export function GoalHeader({
           )}
         </Popover>
       </div>
-      <div className="ml-9 flex items-center gap-1 text-small text-fg-muted">
+      <div className="ml-[30px] flex items-center gap-1 text-small text-fg-secondary">
         <TargetDate targetAt={goal.targetAt} now={now} onChange={onTargetAt} />
       </div>
     </header>

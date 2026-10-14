@@ -98,9 +98,9 @@ export function GoalSection({ task }: { task: Task }) {
         {current ? (
           <GoalLink
             goalId={current.id}
-            className="inline-flex h-6 max-w-full items-center truncate rounded-[8px] bg-input px-2 text-small text-fg focus-ring hover:bg-glass"
+            className="inline-flex h-6 max-w-full items-center rounded-chip bg-input px-2 text-small text-fg focus-ring hover:bg-glass"
           >
-            {current.title}
+            <span className="truncate">{current.title}</span>
           </GoalLink>
         ) : (
           <span className="text-body text-fg-muted">No goal</span>

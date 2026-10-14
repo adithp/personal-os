@@ -57,19 +57,22 @@ export function NewGoalDialog({ onCreate, onClose }: NewGoalDialogProps) {
     <div
       className="fixed inset-0 z-40 flex items-center justify-center"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        // A click outside never throws away typed text; with an empty box it closes
+        if (event.target === event.currentTarget && title.trim() === '') onClose();
       }}
     >
       <div
         ref={box}
         role="dialog"
         aria-modal="true"
-        aria-label="New goal"
+        aria-labelledby="new-goal-heading"
         tabIndex={-1}
         onKeyDown={onKeyDown}
         className="flex w-[400px] max-w-[90vw] flex-col gap-4 rounded-card glass-strong p-4 outline-none"
       >
-        <h2 className="text-section font-semibold text-fg">New goal</h2>
+        <h2 id="new-goal-heading" className="text-section font-semibold text-fg">
+          New goal
+        </h2>
 
         <div className="flex flex-col gap-1.5">
           <label htmlFor="new-goal-title" className="text-small font-medium text-fg-muted">
@@ -94,11 +97,9 @@ export function NewGoalDialog({ onCreate, onClose }: NewGoalDialogProps) {
               }
             }}
           />
-          {error ? (
-            <p id="new-goal-error" role="alert" className="text-small text-danger">
-              {error}
-            </p>
-          ) : null}
+          <p id="new-goal-error" role="alert" className="min-h-[15px] text-small text-danger">
+            {error}
+          </p>
         </div>
 
         <div className="flex flex-col gap-1.5">

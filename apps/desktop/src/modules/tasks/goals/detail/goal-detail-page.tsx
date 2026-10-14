@@ -195,8 +195,8 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
         <GoalHeader
           goal={goal}
           now={now}
-          onTitle={(title) => {
-            update.mutate({ id: goal.id, title });
+          onTitle={(title, onFail) => {
+            update.mutate({ id: goal.id, title }, { onError: onFail });
           }}
           onTargetAt={(targetAt) => {
             update.mutate({ id: goal.id, targetAt });
@@ -211,7 +211,7 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
           onDelete={() => {
             setLeaving(true);
             remove.mutate(goal.id, {
-              onSuccess: backToList,
+              onSuccess: backToList, // the hook does not wait for its refresh, so we leave at once
               onError: () => {
                 setLeaving(false);
               },
@@ -222,11 +222,14 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
           }}
         />
         <GoalProgressCard goal={goal} now={now} />
-        <AchievePrompt goal={goal} onAchieve={achieve} />
+        {/* Always mounted, so the prompt is announced when it appears */}
+        <div role="status" className="empty:hidden">
+          <AchievePrompt goal={goal} onAchieve={achieve} />
+        </div>
         <GoalNotes
           description={goal.description}
-          onSave={(description) => {
-            update.mutate({ id: goal.id, description });
+          onSave={(description, onFail) => {
+            update.mutate({ id: goal.id, description }, { onError: onFail });
           }}
         />
         {tasksQuery.isError ? (
@@ -247,6 +250,7 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
           </GlassCard>
         ) : (
           <GoalTasksCard
+            loading={tasksQuery.isPending}
             goal={goal}
             open={open}
             done={done}
@@ -259,8 +263,9 @@ export function GoalDetailPage({ goalId }: { goalId: string }) {
             onToggleGroup={(id) => {
               setExpanded((current) => ({ ...current, [id]: !current[id] }));
             }}
-            onCreate={(title) => {
-              taskActions.create.mutate({ title, goalId: goal.id });
+            onCreate={(title, onCreated) => {
+              if (taskActions.create.isPending) return;
+              taskActions.create.mutate({ title, goalId: goal.id }, { onSuccess: onCreated });
             }}
             onRemove={unlink}
           />
