@@ -164,6 +164,9 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 - Overview favorite tiles: compact pastel tiles in the favorite's color with the name, the open count and one muted line ("2 overdue" or "Nothing overdue"); the whole tile is one link.
 - Manage tags dialog: glass-strong, 440 px wide, radius 16, dimmed page, focus trap, Esc closes; rows of 36 px with a 12 px color dot, the name, a muted usage count, and rename and delete icons on hover; rename, merge and delete questions are inline in the row (the answer that is not destructive has focus first). Icon buttons in rows are quiet ghost buttons (plain icon, hover tint, no glass chip) with a 24 px hit area; color and icon pickers have named swatches and move with the arrow keys, Home and End; after a delete or merge the dialog footer shows a status line with an Undo button inside the focus trap.
 
+### Goals (Tasks)
+- Goal card: glass, radius 16, padding 16, minimum column 260 px, 2 px lift on hover (none with reduced motion); a 26 px round Tasks-yellow square with a dark target icon, the title (13 medium, two lines), a `glass` progress bar with "3 of 8 tasks" and the percent, the target line (red "Target passed" only for an active goal), and a "Mark as achieved" text button above the stretched title link. The goal page uses a glass progress card, an inline "Mark as achieved?" row (not a dialog, no animation) and a Tasks card.
+
 ### Charts (Tasks Reporting)
 - Glass cards with a 13 px title, a muted 11 px subtitle and a "Show table" text button; stat cards have a 30 px number and one 11 px muted line.
 - One hue per chart (the module color `var(--module-tasks)`), columns at most 24 px wide with 4 px rounded tops, a hairline baseline and about 3 to 4 faint gridlines in `var(--glass-border)`, whole-number Y ticks, axis text 11 px muted, no legend. Tooltips are glass-strong, radius 8, 11 px, and never hold information that is not also in the table view.

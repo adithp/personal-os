@@ -37,7 +37,10 @@ describe('the goal header', () => {
   it('shows the title, the back link and no status chip for an active goal', async () => {
     await openGoal(goalWith({ title: 'Learn Rust' }));
     expect(title()).toHaveValue('Learn Rust');
-    expect(screen.getByRole('link', { name: 'Goals' })).toHaveAttribute('href', '/tasks/goals');
+    // The side panel has a Goals link too: this is the back link in the page
+    const links = screen.getAllByRole('link', { name: 'Goals' });
+    expect(links.every((link) => link.getAttribute('href') === '/tasks/goals')).toBe(true);
+    expect(links.length).toBeGreaterThan(0);
     expect(screen.queryByText('Achieved')).toBeNull();
     expect(screen.queryByText('Dropped')).toBeNull();
   });

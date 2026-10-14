@@ -47,7 +47,7 @@ describe('the Tasks side panel', () => {
       'My tasks',
       'Inbox',
       'Reporting',
-      'Goals' + 'Soon',
+      'Goals',
       'Portfolios' + 'Soon',
     ]);
     expect(screen.getByText('Favorites')).toBeInTheDocument();
@@ -64,7 +64,8 @@ describe('the Tasks side panel', () => {
       'href',
       '/tasks/reporting',
     );
-    for (const name of ['Goals', 'Portfolios']) {
+    expect(nav.getByRole('link', { name: 'Goals' })).toHaveAttribute('href', '/tasks/goals');
+    for (const name of ['Portfolios']) {
       expect(nav.queryByRole('link', { name: new RegExp(name) })).not.toBeInTheDocument();
       const item = nav.getByText(name).closest('[aria-disabled]');
       expect(item).toHaveAttribute('aria-disabled', 'true');

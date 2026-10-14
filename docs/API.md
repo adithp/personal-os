@@ -19,6 +19,7 @@ CORS: the allowed origins come from CORS_ORIGINS (comma-separated); the default 
 | 404 | unknown_action | POST /undo with an action name that does not exist |
 | 409 | conflict | A tag rename onto an existing name, or restoring a tag whose name exists again |
 | 409 | favorites_limit | More than 12 favorites |
+| 409 | goal_full | A goal already has 500 tasks |
 | 409 | confirmation_required | An external or destructive action without confirmation (the app's buttons confirm, so it never hits this) |
 | 409 | blocked | Completing a blocked task (complete, update to done, move into Done); the message lists the blockers |
 | 409 | circular_dependency | Adding a blocker that would make tasks wait for each other |
@@ -52,7 +53,7 @@ Responses:
 | PATCH | /tags/:id | Rename or recolor a tag |
 | DELETE | /tags/:id | Delete a tag: removed from every task (the tasks stay) and from favorites; returns the tag and an undo |
 | POST | /tags/:id/merge | Body `{ targetId }`: move this tag's tasks and favorites to the target tag and delete this one; returns the target tag and an undo |
-| GET | /goals | Goals with progress: `{ items }`, optional `?status=active|achieved|dropped` (Feature 8: answers 501 until built) |
+| GET | /goals | Goals with progress: `{ items }`, optional `?status=active|achieved|dropped` |
 | GET | /goals/:id | One goal with progress |
 | POST | /goals | Create (title, description, targetAt); 201 |
 | PATCH | /goals/:id | Change title, notes, target date |
