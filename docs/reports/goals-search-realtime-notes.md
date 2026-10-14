@@ -1,0 +1,11 @@
+# Batch 2 (decision 62): Goals, search, realtime, Notes (report, in progress)
+
+Built while the owner was away. Updated after each item. Nothing is ticked in ROADMAP.md until the owner says "next" for it. Research memos: `docs/design/research/`.
+
+## Tasks Feature 8: Goals (done, waiting for the owner's check)
+Checks: lint, typecheck, build, docs check and all tests pass (125 test files, 2272 tests). Four reviewers ran; their findings are fixed. Not run in the real Tauri window.
+- **What it is:** Side panel → Goals. Goals list with tabs Active | Achieved | Dropped, cards with progress ("3 of 8 tasks"), target dates, "Mark as achieved" when every task is done. A goal page with the editable title, target date, progress card, the "Mark as achieved?" row (never automatic), notes and a Tasks card (add a task, "Add tasks" search, done and archived groups, remove from goal). A "Goal" row in the task detail panel. A task is in one goal; only top-level tasks.
+- **Migrations to apply (you run `pnpm db:migrate`):** `0008_goals.sql` (enum value `goal`, enum `goal_status`, table `goals` with RLS and policy `goals_own_rows`) and `0009_goals_updated_at_trigger.sql`. Together with 0006 and 0007 (favorites) that is four pending migrations. Check in Supabase: tables `goals` and `task_favorites` with RLS on, the triggers, and 10 rows in `drizzle.__drizzle_migrations`.
+- **Decisions to review:** decision 63 and `docs/design/research/tasks-goals.md`: one goal per task (not many); the next copy of a repeating task is not linked; archived open tasks are left out of progress; the Delete key on the goal page removes the task from the goal.
+- **Known limits:** the 500-task check and goal changes are queued per user inside the server process (no database lock); the glass progress track is subtle in dark mode; a subtask shows "Follows the parent task" and not the parent's goal; no design reference screenshot could be viewed.
+- **Manual test:** apply the migrations, restart the server and app; create two goals with target dates; link tasks from the goal page ("Add tasks") and from a task's Goal row; complete all tasks of one goal and use "Mark as achieved"; Undo it; move a task to the other goal; delete a goal and Undo; check dark and light and the window at 1100×700.

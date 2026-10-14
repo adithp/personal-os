@@ -142,7 +142,7 @@ The app accent is lavender #C9B4F7: assistant send button, active states, focus 
 - Primary and secondary buttons and inputs are 34 px high. An input has a transparent 0.5 px border that turns accent on keyboard focus and danger when invalid.
 
 ### Segmented control, switch, slider, progress bar, avatar
-- Progress bar tones: `tile` (dark fill on a dark track, for pastel tiles) and `glass` (Tasks yellow fill on the input color, for goal cards and the goal page on glass).
+- Progress bar tones: `tile` (dark fill on a dark track, for pastel tiles) and `glass` (Tasks yellow fill on the translucent progress track, visible on light and dark glass; for goal cards and the goal page). The bar takes an optional `valueText` for screen readers ("3 of 8 tasks"). The detail Popover can align to the right edge (`align="end"`) so a menu at the far right is not cut off.
 - Segmented control: a glass radio group; options 28 px high, radius 8; the chosen one is lavender with dark text; arrow keys move the choice.
 - Switch 36×20, lavender when on. Slider 160 px wide, accent colored. Progress bar 5 px. Module avatar 26 px.
 
