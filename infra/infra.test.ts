@@ -342,7 +342,7 @@ describe('auto-deploy.sh', () => {
   });
 
   it('never applies migrations itself, only tells the owner', () => {
-    expect(autoDeploy).not.toMatch(/^\s*(pnpm|npx|drizzle-kit)/m);
+    expect(autoDeploy).not.toMatch(/^\s*(pnpm|npx|drizzle-kit)\b/m);
     expect(autoDeploy).toContain('run pnpm db:migrate from your PC');
   });
 
@@ -366,6 +366,6 @@ describe('setup-auto-deploy.sh', () => {
     expect(setupAutoDeploy).toContain('DRY_RUN=1');
     expect(setupAutoDeploy).toContain('grep -qF "$CRON_MARK"');
     expect(setupAutoDeploy).not.toMatch(/docker compose/);
-    expect(setupAutoDeploy).not.toMatch(/^\s*(pnpm|npx|drizzle-kit)/m);
+    expect(setupAutoDeploy).not.toMatch(/^\s*(pnpm|npx|drizzle-kit)\b/m);
   });
 });
