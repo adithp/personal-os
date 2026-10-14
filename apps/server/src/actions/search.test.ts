@@ -40,7 +40,7 @@ const makeTag = async (ctx: ActionContext, name: string) =>
   (await registry.run(ctx, 'tags.create', { name })).data as { id: string };
 const search = async (ctx: ActionContext, input: Record<string, unknown>) =>
   (await registry.run(ctx, 'search.global', input)).data as SearchResult;
-const titles = (result: SearchResult, type: 'task' | 'tag') =>
+const titles = (result: SearchResult, type: 'task' | 'note' | 'tag') =>
   result.groups.find((group) => group.type === type)?.items.map((item) => item.title) ?? [];
 
 describe('search.global: tasks', () => {
@@ -265,7 +265,7 @@ describe('search.global: groups, types and input', () => {
       { q: '' },
       { q: '   ' },
       { q: 'a'.repeat(101) },
-      { q: 'rent', types: ['note'] },
+      { q: 'rent', types: ['bogus'] },
       { q: 'rent', types: [] },
       { q: 'rent', limit: 0 },
       { q: 'rent', limit: 21 },
@@ -280,5 +280,49 @@ describe('search.global: groups, types and input', () => {
       q: 'rent',
     });
     expect(result.undo ?? null).toBeNull();
+  });
+});
+
+describe('search.global: notes', () => {
+  const makeNote = async (ctx: ActionContext, title: string, contentMd = '') =>
+    (await registry.run(ctx, 'notes.create', { title, contentMd })).data as { id: string };
+
+  it('finds notes by title and text, with a snippet only for a text match', async () => {
+    const byTitle = await makeNote(alice(), 'Budget plan', 'nothing here');
+    const byText = await makeNote(alice(), 'Meeting', 'we discussed the budget for next year');
+    const result = await search(alice(), { q: 'budg' });
+    const items = result.groups.find((group) => group.type === 'note')?.items ?? [];
+    expect(items.map((item) => item.id).sort()).toEqual([byTitle.id, byText.id].sort());
+    const title = items.find((item) => item.id === byTitle.id);
+    const text = items.find((item) => item.id === byText.id);
+    expect(title).toMatchObject({ type: 'note', pinned: false, dailyDate: null, snippet: null });
+    expect(text?.snippet).toContain('budget');
+  });
+
+  it('leaves out trashed notes and notes of other users, and honors types', async () => {
+    const gone = await makeNote(alice(), 'Budget old');
+    await makeNote(bob(), 'Budget bob');
+    await registry.run(alice(), 'notes.delete', { id: gone.id });
+    expect(titles(await search(alice(), { q: 'budget' }), 'note')).toEqual([]);
+    await makeNote(alice(), 'Budget new');
+    const only = await search(alice(), { q: 'budget', types: ['note'] });
+    expect(only.groups.map((group) => group.type)).toEqual(['note']);
+    expect(titles(only, 'note')).toEqual(['Budget new']);
+  });
+
+  it('only scans the first 20,000 characters of a long note for the snippet', async () => {
+    const far = `${'filler words here\n\n'.repeat(1500)}zebra`;
+    const note = await makeNote(alice(), 'Long', far);
+    const result = await search(alice(), { q: 'zebra' });
+    const hit = result.groups.find((group) => group.type === 'note')?.items[0];
+    expect(hit?.id).toBe(note.id);
+    expect(hit?.snippet).toBeNull();
+  });
+
+  it('shows the daily day of a daily note', async () => {
+    await registry.run(alice(), 'notes.openDaily', { date: '2026-10-14' });
+    const hit = (await search(alice(), { q: '2026' })).groups.find((g) => g.type === 'note')
+      ?.items[0];
+    expect(hit).toMatchObject({ type: 'note', dailyDate: '2026-10-14' });
   });
 });

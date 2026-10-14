@@ -330,10 +330,16 @@ export function isNoteTagName(name: string): boolean {
  * in code, is not a heading marker (`# ` has a space), and has a letter or `_` (not only digits,
  * `-` and `/`, so `#1984` and `#2024-05-01` are not tags).
  */
-function mapTags(markdown: string, visit: (name: string) => string | undefined): string {
+function mapTags(
+  markdown: string,
+  visit: (name: string, start: number, length: number) => string | undefined,
+): string {
   let previous = '\n';
   let out = '';
+  let base = 0;
   for (const part of splitCode(markdown)) {
+    const partStart = base;
+    base += part.text.length;
     if (part.code) {
       out += part.text;
       previous = part.text.endsWith('\n') ? '\n' : '`';
@@ -344,7 +350,7 @@ function mapTags(markdown: string, visit: (name: string) => string | undefined):
       if (!/\s/.test(before)) return whole;
       const name = raw.replace(/\\([_-])/g, '$1');
       if (!isNoteTagName(name)) return whole;
-      return visit(name) ?? whole;
+      return visit(name, partStart + offset, whole.length) ?? whole;
     });
     previous = part.text.slice(-1) || previous;
   }
@@ -366,6 +372,48 @@ export function parseTags(markdown: string): string[] {
 export function rewriteTag(markdown: string, oldName: string, newName: string): string {
   const wanted = oldName.trim().toLowerCase();
   return mapTags(markdown, (name) => (name.toLowerCase() === wanted ? `#${newName}` : undefined));
+}
+
+/**
+ * Like rewriteTag, and also the places where the new tag now stands in the returned text (the index
+ * of each `#`), so restoreTagSpots can put the old name back at exactly those places.
+ */
+export function rewriteTagWithSpots(
+  markdown: string,
+  oldName: string,
+  newName: string,
+): { text: string; spots: number[] } {
+  const wanted = oldName.trim().toLowerCase();
+  const spots: number[] = [];
+  let shift = 0;
+  const text = mapTags(markdown, (name, start, length) => {
+    if (name.toLowerCase() !== wanted) return undefined;
+    spots.push(start + shift);
+    shift += newName.length + 1 - length;
+    return `#${newName}`;
+  });
+  return { text, spots };
+}
+
+/**
+ * Puts `#oldName` back where `#currentName` stands at each spot. A spot that no longer reads
+ * `#currentName` (the text changed) is left alone. Returns the new text.
+ */
+export function restoreTagSpots(
+  markdown: string,
+  spots: readonly number[],
+  currentName: string,
+  oldName: string,
+): string {
+  const current = `#${currentName}`;
+  let out = '';
+  let from = 0;
+  for (const spot of [...spots].sort((a, b) => a - b)) {
+    if (spot < from || markdown.slice(spot, spot + current.length) !== current) continue;
+    out += `${markdown.slice(from, spot)}#${oldName}`;
+    from = spot + current.length;
+  }
+  return out + markdown.slice(from);
 }
 
 // ---- templates and daily notes (stage N3, memo notes.md D11, D12) ----

@@ -12,8 +12,11 @@ import type {
   UndoDescriptor,
 } from '@personal-os/shared';
 import {
+  isNoteTagName,
   MAX_FAVORITES,
+  markdownToPlainText,
   nextTagColor,
+  parseTags,
   removeTagFromView,
   replaceTagInView,
   sameFavoriteView,
@@ -370,6 +373,18 @@ export function createFakeApi(
           archived: task.archivedAt !== null,
           parentTaskId: task.parentTaskId,
         }));
+      const noteHits = notesFake
+        .notes()
+        .filter((note) => matches(`${note.title} ${markdownToPlainText(note.contentMd)}`))
+        .slice(0, limit)
+        .map((note) => ({
+          type: 'note' as const,
+          id: note.id,
+          title: note.title,
+          snippet: !matches(note.title) ? markdownToPlainText(note.contentMd) : null,
+          pinned: note.pinned,
+          dailyDate: note.dailyDate ?? null,
+        }));
       const tagHits =
         typed.length === 1
           ? [...tagStore.values()]
@@ -385,6 +400,7 @@ export function createFakeApi(
           : [];
       const groups = [
         { type: 'task' as const, items: taskHits },
+        { type: 'note' as const, items: noteHits },
         { type: 'tag' as const, items: tagHits },
       ].filter((group) => group.items.length > 0);
       return { item: { q, groups } };
@@ -644,6 +660,21 @@ export function createFakeApi(
     }
 
     // ---- deleting and merging tags ----
+    /** Like the server: a tag used in any note (trashed too) only gets a name the note parser reads. */
+    const assertNoteSafe = (tagName: string, newName: string) => {
+      if (isNoteTagName(newName)) return;
+      const lower = tagName.toLowerCase();
+      const used = [...notesFake.notes(), ...notesFake.trashed()].some((note) =>
+        parseTags(note.contentMd).some((name) => name.toLowerCase() === lower),
+      );
+      if (used) {
+        throw new ApiError(
+          409,
+          'tag_not_note_safe',
+          'This tag is used in notes, so its name can only have letters, numbers, _, - and /.',
+        );
+      }
+    };
     const tagMerge = /^\/tags\/([^/]+)\/merge$/.exec(path);
     const tagDelete = /^\/tags\/([^/]+)$/.exec(path);
     if ((method === 'DELETE' && tagDelete) || (method === 'POST' && tagMerge)) {
@@ -652,6 +683,15 @@ export function createFakeApi(
       if (!tag) throw new ApiError(404, 'not_found', 'Tag not found');
       const target = tagMerge ? tagStore.get(String(body.targetId)) : undefined;
       if (tagMerge && !target) throw new ApiError(404, 'not_found', 'Tag not found');
+      if (target) assertNoteSafe(tag.name, target.name);
+      const liveNotesUsing = notesFake.noteCountOf(tag.name);
+      if (!target && liveNotesUsing > 0) {
+        throw new ApiError(
+          409,
+          'tag_in_notes',
+          `Remove #${tag.name} from ${String(liveNotesUsing)} ${liveNotesUsing === 1 ? 'note' : 'notes'} first.`,
+        );
+      }
       const taskIds = liveTasks()
         .filter((task) => task.tags.some((ref) => ref.id === id))
         .map((task) => task.id);
@@ -711,7 +751,11 @@ export function createFakeApi(
     if (method === 'PATCH' && tagRoute) {
       const tag = tagStore.get(tagRoute[1] ?? '');
       if (!tag) throw new ApiError(404, 'not_found', 'Tag not found');
-      const next = { ...tag, ...(body as Partial<Tag>), id: tag.id };
+      const patch = body as Partial<Tag>;
+      if (typeof patch.name === 'string' && patch.name !== tag.name) {
+        assertNoteSafe(tag.name, patch.name);
+      }
+      const next = { ...tag, ...patch, id: tag.id };
       tagStore.set(tag.id, next);
       // tasks carry their tags' names and colors
       for (const [id, task] of store) {

@@ -10,7 +10,7 @@ Manage daily tasks and long-term goals.
 - Calendar view (Schedule-X) and the planning view (today, this week, this month) belong to the Calendar module (Step 4), not Step 2.
 
 ## Features
-Create, edit, delete, subtasks, priorities 1–4, deadlines, reminders, recurring (RRULE), dependencies (blocks links), tags, filter, sort, archive. Tasks and tags are found from the command palette (Ctrl K; see search.md); task and tag changes refresh its cache. The filter menu covers status, priority, tag, due, and archived.
+Create, edit, delete, subtasks, priorities 1–4, deadlines, reminders, recurring (RRULE), dependencies (blocks links), tags, filter, sort, archive. Tasks, notes and tags are found from the command palette (Ctrl K; see search.md); task and tag changes refresh its cache. The filter menu covers status, priority, tag, due, and archived.
 Project link and category come in Step 5 (tags cover grouping until then).
 
 ## Rules

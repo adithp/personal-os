@@ -123,7 +123,7 @@ function errorText(error: Error): string {
 }
 
 /**
- * Ctrl K opens this. Type to filter commands and search tasks and tags, arrow keys to move,
+ * Ctrl K opens this. Type to filter commands and search tasks, notes and tags, arrow keys to move,
  * Enter to open or run, Esc to close. Commands come first (they filter at once), then the groups
  * from the server, so the selection does not jump when results arrive (search.md D14).
  */
@@ -176,7 +176,8 @@ export function CommandPalette() {
       type: hit.type,
       id: hit.id,
       title: hit.title,
-      ...(hit.type === 'tag' ? { color: hit.color } : { archived: hit.archived }),
+      ...(hit.type === 'tag' ? { color: hit.color } : {}),
+      ...(hit.type === 'task' ? { archived: hit.archived } : {}),
     });
   };
 
@@ -319,7 +320,7 @@ export function CommandPalette() {
           <div className="px-3 py-8 text-center">
             <p className="text-body text-fg-muted">Nothing found for &ldquo;{typed}&rdquo;.</p>
             <p className="mt-1 text-small text-fg-muted">
-              Search finds tasks and tags by the start of their words.
+              Search finds tasks, notes and tags by the start of their words.
             </p>
           </div>
         )}

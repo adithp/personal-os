@@ -204,7 +204,7 @@ describe('searching data from the palette', () => {
     expect(await within(palette()).findByText(/Nothing found for/)).toBeInTheDocument();
     expect(within(palette()).queryByText('Searching…')).not.toBeInTheDocument();
     expect(
-      within(palette()).getByText('Search finds tasks and tags by the start of their words.'),
+      within(palette()).getByText('Search finds tasks, notes and tags by the start of their words.'),
     ).toBeInTheDocument();
   });
 

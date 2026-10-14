@@ -56,6 +56,18 @@ export const SEARCH_KINDS: Record<SearchType, SearchKind> = {
       });
     },
   }),
+  note: kind<'note'>({
+    heading: 'Notes',
+    module: 'notes',
+    Icon: MODULE_ICONS.notes,
+    meta: (hit) => {
+      if (hit.dailyDate) return { text: 'Daily' };
+      return hit.pinned ? { text: 'Pinned' } : null;
+    },
+    open: (target, navigate) => {
+      void navigate({ to: '/notes', search: { note: target.id } });
+    },
+  }),
   tag: kind<'tag'>({
     heading: 'Tags',
     module: 'tasks',

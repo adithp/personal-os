@@ -87,23 +87,26 @@ export async function snippets(
     textColumn: AnyPgColumn;
     ids: string[];
     text: string;
+    /** Only the first characters of the text are searched for the excerpt (long notes). */
+    maxChars?: number;
   },
 ): Promise<Map<string, string>> {
   const result = new Map<string, string>();
   if (input.ids.length === 0 || !hasSearchWords(input.text)) return result;
   const query = prefixQuery(input.text);
+  const body = input.maxChars ? sql`left(${input.textColumn}, ${input.maxChars}::int)` : sql`${input.textColumn}`;
   const rows = await scope.selectFields(
     input.table,
     {
       id: input.table.id,
-      snippet: sql<string>`ts_headline(${config}, ${input.textColumn}, ${query}, ${HEADLINE_OPTIONS}::text)`,
+      snippet: sql<string>`ts_headline(${config}, ${body}, ${query}, ${HEADLINE_OPTIONS}::text)`,
     },
     {
       where: and(
         inArray(input.table.id, input.ids),
         isNotNull(input.textColumn),
         not(sql`to_tsvector(${config}, ${input.titleColumn}) @@ ${query}`),
-        sql`to_tsvector(${config}, ${input.textColumn}) @@ ${query}`,
+        sql`to_tsvector(${config}, ${body}) @@ ${query}`,
       ),
     },
   );

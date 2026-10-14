@@ -9,7 +9,9 @@ import {
   markdownToPlainText,
   parseTags,
   parseWikilinks,
+  restoreTagSpots,
   rewriteTag,
+  rewriteTagWithSpots,
   rewriteWikilinks,
   unescapeMarkdown,
   wordsDelta,
@@ -418,5 +420,21 @@ describe('wordsDelta', () => {
     expect(wordsDelta('one two three', 'one')).toBe(-2);
     expect(wordsDelta('same words', 'same words')).toBe(0);
     expect(wordsDelta('', '')).toBe(0);
+  });
+});
+
+describe('rewriteTagWithSpots and restoreTagSpots', () => {
+  it('gives the places of the new tag and writes the old one back there', () => {
+    const original = '#ab x `#ab` #AB #abc\n#ab';
+    const { text, spots } = rewriteTagWithSpots(original, 'ab', 'longer');
+    expect(text).toBe(rewriteTag(original, 'ab', 'longer'));
+    expect(spots).toHaveLength(3);
+    for (const spot of spots) expect(text.startsWith('#longer', spot)).toBe(true);
+    expect(restoreTagSpots(text, spots, 'longer', 'ab')).toBe(original.replace('#AB', '#ab'));
+  });
+
+  it('skips a spot that no longer reads the tag', () => {
+    expect(restoreTagSpots('x #other', [2], 'longer', 'ab')).toBe('x #other');
+    expect(restoreTagSpots('#new', [], 'new', 'old')).toBe('#new');
   });
 });

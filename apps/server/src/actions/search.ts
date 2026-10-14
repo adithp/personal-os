@@ -1,4 +1,4 @@
-import { tags, tasks } from '@personal-os/db';
+import { notes, tags, tasks } from '@personal-os/db';
 import {
   SEARCH_TYPES,
   searchActions,
@@ -101,6 +101,46 @@ const taskProvider: SearchProvider = async (scope, text, limit) => {
   }));
 };
 
+/** Only the first characters of a long note are scanned for the excerpt (ts_headline is slow). */
+const NOTE_SNIPPET_CHARS = 20_000;
+
+const noteProvider: SearchProvider = async (scope, text, limit) => {
+  const matches = await matchEntities(scope, { text, type: 'note', limit });
+  if (matches.length === 0) return [];
+  const rows = await scope.select(notes, {
+    where: and(
+      scope.isLive(notes),
+      inArray(
+        notes.id,
+        matches.map((match) => match.id),
+      ),
+    ),
+  });
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const excerpts = await snippets(scope, {
+    table: notes,
+    titleColumn: notes.title,
+    textColumn: notes.contentText,
+    ids: rows.map((row) => row.id),
+    text,
+    maxChars: NOTE_SNIPPET_CHARS,
+  });
+  return matches.flatMap((match): SearchHit[] => {
+    const row = byId.get(match.id);
+    if (!row) return [];
+    return [
+      {
+        type: 'note',
+        id: row.id,
+        title: row.title,
+        snippet: excerpts.get(row.id) ?? null,
+        pinned: row.pinned,
+        dailyDate: row.dailyDate,
+      },
+    ];
+  });
+};
+
 /** Tags are found by the start of their name, only for a single typed word (a leading # is ignored). */
 const tagProvider: SearchProvider = async (scope, text, limit) => {
   const word = text.trim().replace(/^#/, '');
@@ -129,6 +169,7 @@ const tagProvider: SearchProvider = async (scope, text, limit) => {
 
 const SEARCH_PROVIDERS: Record<SearchType, SearchProvider> = {
   task: taskProvider,
+  note: noteProvider,
   tag: tagProvider,
 };
 
