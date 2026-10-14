@@ -228,6 +228,7 @@ Fit and scrolling:
 - Ctrl 1 to Ctrl 9: Dashboard, Tasks, Habits, Notes, Graph, Calendar, Mail, Drive, Projects.
 - Ctrl 0: Money. Ctrl J: open AI assistant. Ctrl , : Settings.
 - Tasks page, plain keys: N, Space, Enter, Delete, Esc, arrows, ?. Inbox also: T date, L tag, 1 to 4 priority.
+- Habits page, plain keys (not while typing in a field or a dialog): N new habit, Up and Down, Space (today's check of the selected habit), Enter (open the detail), E (edit), Esc (close), ?.
 - Notes page, plain keys (never Ctrl; not while typing in the editor or a field, a menu, a dialog or the palette): N new note, Up and Down, Enter (opens the note and puts the cursor in the editor), Esc in the editor (back to the list row), Delete (to the trash, with Undo), D (today's daily note), ?.
 
 ### Command palette
