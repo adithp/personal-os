@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { create as createStore } from 'zustand';
 import { ApiError } from '../../api/api-client';
 import { useApi } from '../../api/api-context';
+import { SEARCH_KEY } from '../../commands/search-queries';
 import { useToasts } from '../../store/toast-store';
 import { FAVORITES_KEY, TAGS_KEY, TASKS_KEY } from './query-keys';
 
@@ -55,6 +56,7 @@ export function useTagActions() {
       client.invalidateQueries({ queryKey: TAGS_KEY }),
       client.invalidateQueries({ queryKey: TASKS_KEY }),
       client.invalidateQueries({ queryKey: FAVORITES_KEY }),
+      client.invalidateQueries({ queryKey: SEARCH_KEY }),
     ]);
   };
 

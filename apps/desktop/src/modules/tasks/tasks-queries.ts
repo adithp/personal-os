@@ -13,6 +13,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import { useState } from 'react';
 import { ApiError, type RequestOptions } from '../../api/api-client';
 import { useApi } from '../../api/api-context';
+import { SEARCH_KEY } from '../../commands/search-queries';
 import { useToasts } from '../../store/toast-store';
 import { startOfIstDay } from './dates';
 import { GOALS_KEY } from './query-keys';
@@ -183,6 +184,7 @@ export function useTaskActions() {
     await Promise.all([
       client.invalidateQueries({ queryKey: TASKS_KEY }),
       client.invalidateQueries({ queryKey: GOALS_KEY }),
+      client.invalidateQueries({ queryKey: SEARCH_KEY }),
     ]);
   };
 

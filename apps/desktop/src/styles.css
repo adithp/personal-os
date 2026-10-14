@@ -33,3 +33,13 @@ textarea,
   scrollbar-width: thin;
   scrollbar-color: var(--text-muted) transparent;
 }
+
+/* Search match: a soft accent background, not bold (docs/design/research/search.md D10) */
+.search-mark {
+  border-radius: 4px;
+  background-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: inherit;
+}
+[data-theme='light'] .search-mark {
+  background-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}

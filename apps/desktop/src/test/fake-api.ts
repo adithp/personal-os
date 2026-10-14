@@ -312,6 +312,51 @@ export function createFakeApi(
     }
     if (method === 'GET' && path === '/tasks') return { items: list(options.query) };
 
+    // Keyword search: every typed word is the start of a word in the title or description
+    if (method === 'POST' && path === '/search') {
+      const q = typeof body.q === 'string' ? body.q.trim() : '';
+      if (q === '') throw new ApiError(400, 'validation_error', 'Type something to search');
+      const limit = typeof body.limit === 'number' ? body.limit : 5;
+      const wordsOf = (text: string) => text.toLowerCase().match(/[\p{L}\p{M}\p{N}]+/gu) ?? [];
+      const typed = wordsOf(q);
+      const matches = (text: string | null) =>
+        text !== null &&
+        typed.length > 0 &&
+        typed.every((word) => wordsOf(text).some((w) => w.startsWith(word)));
+      const taskHits = liveTasks()
+        .filter((task) => matches(`${task.title} ${task.description ?? ''}`))
+        .slice(0, limit)
+        .map((task) => ({
+          type: 'task' as const,
+          id: task.id,
+          title: task.title,
+          snippet: !matches(task.title) && task.description ? task.description : null,
+          status: task.status,
+          dueAt: task.dueAt,
+          dueAllDay: task.dueAllDay,
+          archived: task.archivedAt !== null,
+          parentTaskId: task.parentTaskId,
+        }));
+      const tagHits =
+        typed.length === 1
+          ? [...tagStore.values()]
+              .filter((tag) => tag.name.toLowerCase().startsWith(q.replace(/^#/, '').toLowerCase()))
+              .slice(0, limit)
+              .map((tag) => ({
+                type: 'tag' as const,
+                id: tag.id,
+                title: tag.name,
+                snippet: null,
+                color: tag.color,
+              }))
+          : [];
+      const groups = [
+        { type: 'task' as const, items: taskHits },
+        { type: 'tag' as const, items: tagHits },
+      ].filter((group) => group.items.length > 0);
+      return { item: { q, groups } };
+    }
+
     if (method === 'POST' && path === '/tasks') {
       const title = typeof body.title === 'string' ? body.title.trim() : '';
       if (title === '') throw new ApiError(400, 'validation_error', 'Title is required');

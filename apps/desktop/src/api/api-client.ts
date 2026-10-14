@@ -17,6 +17,8 @@ export class ApiError extends Error {
 export interface RequestOptions {
   body?: unknown;
   query?: Record<string, string | number | boolean | readonly string[] | undefined>;
+  /** Stops the request when aborted (for example a search that was typed over). */
+  signal?: AbortSignal;
 }
 
 /** The part of the backend client the app uses. Tests pass a fake with the same shape. */
@@ -78,8 +80,11 @@ export function createApiClient({ baseUrl, getToken, fetchImpl }: ApiClientOptio
           method,
           headers,
           body: options.body === undefined ? undefined : JSON.stringify(options.body),
+          signal: options.signal,
         });
-      } catch {
+      } catch (error) {
+        // An abort is not a network problem: pass it on so the caller can ignore it
+        if (options.signal?.aborted) throw error;
         throw new ApiError(0, 'network', NETWORK_MESSAGE);
       }
 
