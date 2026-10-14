@@ -50,12 +50,16 @@ export function TransactionsPage() {
   const wallets = useWallets(true);
   const categories = useCategories();
 
-  const walletMap = useMemo(() => new Map((wallets.data ?? []).map((w) => [w.id, w])), [wallets.data]);
+  const walletMap = useMemo(
+    () => new Map((wallets.data ?? []).map((w) => [w.id, w])),
+    [wallets.data],
+  );
   const categoryMap = useMemo(
     () => new Map((categories.data ?? []).map((c) => [c.id, c])),
     [categories.data],
   );
-  const filtered = walletId !== null || filters.categoryId !== '' || filters.kind !== '' || text !== '';
+  const filtered =
+    walletId !== null || filters.categoryId !== '' || filters.kind !== '' || text !== '';
   const items = transactions.data ?? [];
 
   return (

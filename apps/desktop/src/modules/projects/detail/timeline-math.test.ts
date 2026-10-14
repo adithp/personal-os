@@ -46,7 +46,11 @@ describe('buildTimeline', () => {
   });
 
   it('always includes today and widens a short range to a week', () => {
-    const project = makeProject({ startAt: null, dueAt: null, createdAt: '2025-10-07T00:00:00.000Z' });
+    const project = makeProject({
+      startAt: null,
+      dueAt: null,
+      createdAt: '2025-10-07T00:00:00.000Z',
+    });
     const timeline = buildTimeline(project, [], [], NOW);
     expect(timeline.end - timeline.start).toBeGreaterThanOrEqual(7 * 24 * 60 * 60 * 1000);
     expect(NOW).toBeGreaterThanOrEqual(timeline.start);

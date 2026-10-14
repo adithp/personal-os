@@ -90,6 +90,8 @@ describe('the generated migrations', () => {
       '0014_note_templates_and_daily.sql',
       '0015_note_templates_triggers.sql',
       '0016_note_versions.sql',
+      '0017_habits_money_projects.sql',
+      '0018_habits_money_projects_triggers.sql',
     ]);
     const all = migrationFiles().flatMap(migrationStatements).join('\n').toUpperCase();
     for (const dangerous of [
@@ -107,19 +109,34 @@ describe('the generated migrations', () => {
     const tables = await rows(
       "select tablename from pg_tables where schemaname = 'public' order by tablename",
     );
-    expect(tables.map((r) => r.tablename)).toEqual([
-      'entities',
-      'entity_tags',
-      'goals',
-      'links',
-      'note_folders',
-      'note_templates',
-      'note_versions',
-      'notes',
-      'tags',
-      'task_favorites',
-      'tasks',
-    ]);
+    expect(tables.map((r) => r.tablename).sort()).toEqual(
+      [
+        'budgets',
+        'categories',
+        'clients',
+        'entities',
+        'entity_tags',
+        'goals',
+        'habit_logs',
+        'habits',
+        'links',
+        'note_folders',
+        'note_templates',
+        'note_versions',
+        'notes',
+        'project_milestones',
+        'projects',
+        'recurring_transactions',
+        'savings_goals',
+        'subscriptions',
+        'tags',
+        'task_favorites',
+        'tasks',
+        'time_entries',
+        'transactions',
+        'wallets',
+      ].sort(),
+    );
   });
 });
 
@@ -248,19 +265,34 @@ describe('Row Level Security is on, with an own-rows policy', () => {
     const policies = await rows(
       "select tablename, policyname, roles, cmd, qual, with_check from pg_policies where schemaname = 'public' order by tablename",
     );
-    expect(policies.map((p) => p.tablename)).toEqual([
-      'entities',
-      'entity_tags',
-      'goals',
-      'links',
-      'note_folders',
-      'note_templates',
-      'note_versions',
-      'notes',
-      'tags',
-      'task_favorites',
-      'tasks',
-    ]);
+    expect(policies.map((p) => p.tablename).sort()).toEqual(
+      [
+        'budgets',
+        'categories',
+        'clients',
+        'entities',
+        'entity_tags',
+        'goals',
+        'habit_logs',
+        'habits',
+        'links',
+        'note_folders',
+        'note_templates',
+        'note_versions',
+        'notes',
+        'project_milestones',
+        'projects',
+        'recurring_transactions',
+        'savings_goals',
+        'subscriptions',
+        'tags',
+        'task_favorites',
+        'tasks',
+        'time_entries',
+        'transactions',
+        'wallets',
+      ].sort(),
+    );
     for (const policy of policies) {
       expect(policy.roles).toEqual(['authenticated']);
       expect(policy.cmd).toBe('ALL');

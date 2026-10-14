@@ -44,7 +44,8 @@ describe('placeholder pages', () => {
   // Dashboard, Settings, Tasks, and Notes are real screens now (see modules/)
   it.each(
     MODULE_IDS.filter(
-      (id) => id !== 'settings' &&
+      (id) =>
+        id !== 'settings' &&
         id !== 'dashboard' &&
         id !== 'tasks' &&
         id !== 'notes' &&

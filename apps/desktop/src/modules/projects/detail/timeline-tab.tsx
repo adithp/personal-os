@@ -41,7 +41,11 @@ export function TimelineTab({ project, now }: { project: Project; now: number })
         </p>
       </div>
 
-      <div role="group" aria-label={`Timeline from ${formatDayShort(timeline.start)} to ${formatDayShort(timeline.end)}, ${String(timeline.items.length)} items`} className="relative flex flex-col">
+      <div
+        role="group"
+        aria-label={`Timeline from ${formatDayShort(timeline.start)} to ${formatDayShort(timeline.end)}, ${String(timeline.items.length)} items`}
+        className="relative flex flex-col"
+      >
         {/* The axis: day labels */}
         <div className="flex">
           <div className={LABEL_COLUMN} />
@@ -76,10 +80,7 @@ export function TimelineTab({ project, now }: { project: Project; now: number })
                 </span>
               </div>
               <div className="relative h-full min-w-0 flex-1">
-                <span
-                  className="absolute top-1/2 h-px w-full bg-glass-border"
-                  aria-hidden
-                />
+                <span className="absolute top-1/2 h-px w-full bg-glass-border" aria-hidden />
                 <span
                   data-kind={item.kind}
                   title={`${item.kind === 'milestone' ? 'Milestone' : 'Task'}: ${item.title}, ${formatDay(new Date(item.at).toISOString())}`}
@@ -102,7 +103,10 @@ export function TimelineTab({ project, now }: { project: Project; now: number })
         )}
 
         {/* Today marker over the track area */}
-        <div className="pointer-events-none absolute top-0 right-16 bottom-0 left-[220px]" aria-hidden>
+        <div
+          className="pointer-events-none absolute top-0 right-16 bottom-0 left-[220px]"
+          aria-hidden
+        >
           <div
             data-testid="today-marker"
             className="absolute top-0 bottom-0 w-px bg-accent"
@@ -117,7 +121,10 @@ export function TimelineTab({ project, now }: { project: Project; now: number })
 
       <p className="flex items-center gap-4 text-small text-fg-muted">
         <span className="flex items-center gap-1.5">
-          <span aria-hidden className="size-2.5 rotate-45 rounded-[2px] border-[1.5px] border-fg-muted" />
+          <span
+            aria-hidden
+            className="size-2.5 rotate-45 rounded-[2px] border-[1.5px] border-fg-muted"
+          />
           Milestone
         </span>
         <span className="flex items-center gap-1.5">

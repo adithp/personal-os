@@ -54,7 +54,11 @@ export type NoteHit = z.infer<typeof noteHitSchema>;
 export const tagHitSchema = z.object({ type: z.literal('tag'), ...hitBase, color: z.string() });
 export type TagHit = z.infer<typeof tagHitSchema>;
 
-export const searchHitSchema = z.discriminatedUnion('type', [taskHitSchema, noteHitSchema, tagHitSchema]);
+export const searchHitSchema = z.discriminatedUnion('type', [
+  taskHitSchema,
+  noteHitSchema,
+  tagHitSchema,
+]);
 export type SearchHit = z.infer<typeof searchHitSchema>;
 
 /** Only non-empty groups, in SEARCH_TYPES order. The order of items is the rank. */

@@ -32,15 +32,7 @@ export interface HabitDialogProps {
   onClose: () => void;
 }
 
-function Field({
-  id,
-  label,
-  children,
-}: {
-  id: string;
-  label: string;
-  children: ReactNode;
-}) {
+function Field({ id, label, children }: { id: string; label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className="text-small font-medium text-fg-muted">

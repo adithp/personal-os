@@ -84,11 +84,7 @@ export function FormDialog({
       >
         <div className="flex items-center justify-between">
           <h2 className="text-section font-semibold text-fg">{title}</h2>
-          <IconButton
-            aria-label="Close"
-            icon={<IconX size={16} aria-hidden />}
-            onClick={onClose}
-          />
+          <IconButton aria-label="Close" icon={<IconX size={16} aria-hidden />} onClick={onClose} />
         </div>
         {children}
         {error ? (

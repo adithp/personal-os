@@ -78,7 +78,8 @@ export const tagManagementActions = {
   }),
   unmerge: defineAction({
     name: 'tags.unmerge',
-    description: 'Undo a merge: bring the merged tag back, move its tasks back and write the tag name back into the notes the merge changed (if not edited since).',
+    description:
+      'Undo a merge: bring the merged tag back, move its tasks back and write the tag name back into the notes the merge changed (if not edited since).',
     permission: 'write',
     input: unmergeTagInput,
   }),

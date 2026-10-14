@@ -201,9 +201,7 @@ async function linksToProjects(scope: UserScope, projectIds: readonly string[]) 
 async function presentProjects(scope: UserScope, rows: ProjectRow[]): Promise<Project[]> {
   const ids = rows.map((row) => row.id);
   if (ids.length === 0) return [];
-  const clientIds = [
-    ...new Set(rows.flatMap((row) => (row.clientId ? [row.clientId] : []))),
-  ];
+  const clientIds = [...new Set(rows.flatMap((row) => (row.clientId ? [row.clientId] : [])))];
   const [progress, tracked, clientRows, linkRows] = await Promise.all([
     loadGoalProgress(scope, ids),
     loadTracked(scope, ids),
@@ -552,7 +550,11 @@ const baseProjectImplementations = [
       const startAfter = 'startAt' in values ? values.startAt : current.startAt;
       const dueAfter = 'dueAt' in values ? values.dueAt : current.dueAt;
       if (startAfter && dueAfter && dueAfter.getTime() < startAfter.getTime()) {
-        throw new HttpError(400, 'validation_error', 'The due date cannot be before the start date');
+        throw new HttpError(
+          400,
+          'validation_error',
+          'The due date cannot be before the start date',
+        );
       }
       const [updated] = await tx.update(projects, values, eq(projects.id, id));
       if (!updated) throw projectNotFound();
@@ -600,38 +602,38 @@ const baseProjectImplementations = [
   implement(projectActions.restore, async ({ scope }, { id }) => {
     const { row, changed } = await withUserLock('projects', scope.userId, () =>
       scope.transaction(async (tx) => {
-      const current = await findProject(tx, id, true);
-      if (!current.deletedAt) return { row: current, changed: false };
-      const [restored] = await tx.update(projects, { deletedAt: null }, eq(projects.id, id));
-      await tx.update(entities, { deletedAt: null }, eq(entities.id, id));
-      if (!restored) throw projectNotFound();
-      // An item that moved to another live project while this one was deleted stays there: its
-      // old link to this project is dropped, so an item is never in two projects
-      const own = await linksToProjects(tx, [id]);
-      if (own.length > 0) {
-        const others = await tx.select(links, {
-          where: and(
-            scope.isLive(links),
-            eq(links.relation, 'belongs_to'),
-            ne(links.targetId, id),
-            inArray(links.sourceId, [...new Set(own.map((link) => link.sourceId))]),
-          ),
-        });
-        const targetIds = [...new Set(others.map((link) => link.targetId))];
-        const liveOther =
-          targetIds.length === 0
-            ? []
-            : await tx.select(projects, {
-                where: and(scope.isLive(projects), inArray(projects.id, targetIds)),
-              });
-        const liveIds = new Set(liveOther.map((project) => project.id));
-        const moved = new Set(
-          others.filter((link) => liveIds.has(link.targetId)).map((link) => link.sourceId),
-        );
-        const stale = own.filter((link) => moved.has(link.sourceId)).map((link) => link.id);
-        if (stale.length > 0) await tx.softDelete(links, inArray(links.id, stale));
-      }
-      return { row: restored, changed: true };
+        const current = await findProject(tx, id, true);
+        if (!current.deletedAt) return { row: current, changed: false };
+        const [restored] = await tx.update(projects, { deletedAt: null }, eq(projects.id, id));
+        await tx.update(entities, { deletedAt: null }, eq(entities.id, id));
+        if (!restored) throw projectNotFound();
+        // An item that moved to another live project while this one was deleted stays there: its
+        // old link to this project is dropped, so an item is never in two projects
+        const own = await linksToProjects(tx, [id]);
+        if (own.length > 0) {
+          const others = await tx.select(links, {
+            where: and(
+              scope.isLive(links),
+              eq(links.relation, 'belongs_to'),
+              ne(links.targetId, id),
+              inArray(links.sourceId, [...new Set(own.map((link) => link.sourceId))]),
+            ),
+          });
+          const targetIds = [...new Set(others.map((link) => link.targetId))];
+          const liveOther =
+            targetIds.length === 0
+              ? []
+              : await tx.select(projects, {
+                  where: and(scope.isLive(projects), inArray(projects.id, targetIds)),
+                });
+          const liveIds = new Set(liveOther.map((project) => project.id));
+          const moved = new Set(
+            others.filter((link) => liveIds.has(link.targetId)).map((link) => link.sourceId),
+          );
+          const stale = own.filter((link) => moved.has(link.sourceId)).map((link) => link.id);
+          if (stale.length > 0) await tx.softDelete(links, inArray(links.id, stale));
+        }
+        return { row: restored, changed: true };
       }),
     );
     return {

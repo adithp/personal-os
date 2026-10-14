@@ -47,13 +47,18 @@ export function TransactionForm({ transaction, walletId, onClose }: TransactionF
   const [error, setError] = useState<string | null>(null);
 
   const usable = (wallets.data ?? []).filter(
-    (wallet) => !wallet.archived || wallet.id === transaction?.walletId || wallet.id === transaction?.toWalletId,
+    (wallet) =>
+      !wallet.archived ||
+      wallet.id === transaction?.walletId ||
+      wallet.id === transaction?.toWalletId,
   );
   // The first wallet is the default when the person has not chosen one
   const fromId = from || usable[0]?.id || '';
   const kindCategories = (categories.data ?? []).filter((category) => category.kind === kind);
   // A deleted category is not in the list: show and send "No category" instead of a stale id
-  const shownCategory = kindCategories.some((category) => category.id === categoryId) ? categoryId : '';
+  const shownCategory = kindCategories.some((category) => category.id === categoryId)
+    ? categoryId
+    : '';
   const busy = actions.create.isPending || actions.update.isPending || repeats.create.isPending;
 
   const changeKind = (next: TransactionKind) => {

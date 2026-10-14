@@ -68,7 +68,9 @@ export const subscriptionSummarySchema = z.object({
 });
 export type SubscriptionSummary = z.infer<typeof subscriptionSummarySchema>;
 
-export const listSubscriptionsInput = z.object({ status: z.enum(SUBSCRIPTION_STATUSES).optional() });
+export const listSubscriptionsInput = z.object({
+  status: z.enum(SUBSCRIPTION_STATUSES).optional(),
+});
 export const UPCOMING_DEFAULT_DAYS = 30;
 export const upcomingSubscriptionsInput = z.object({
   days: z.number().int().min(1).max(366).default(UPCOMING_DEFAULT_DAYS),
@@ -178,4 +180,3 @@ export const subscriptionActions = {
     input: z.object({ id }),
   }),
 } as const;
-

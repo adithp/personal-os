@@ -85,8 +85,11 @@ export function useSummary(month: string) {
   return useQuery({
     queryKey: moneyKeys.summary(month),
     queryFn: async () =>
-      (await api.request<{ summary: MonthSummary }>('GET', '/finance/summary', { query: { month } }))
-        .summary,
+      (
+        await api.request<{ summary: MonthSummary }>('GET', '/finance/summary', {
+          query: { month },
+        })
+      ).summary,
   });
 }
 
@@ -112,9 +115,11 @@ export function useUpcoming(days = 30) {
   return useQuery({
     queryKey: moneyKeys.upcoming(days),
     queryFn: async () =>
-      (await api.request<{ items: Subscription[] }>('GET', '/subscriptions/upcoming', {
-        query: { days },
-      })).items,
+      (
+        await api.request<{ items: Subscription[] }>('GET', '/subscriptions/upcoming', {
+          query: { days },
+        })
+      ).items,
   });
 }
 

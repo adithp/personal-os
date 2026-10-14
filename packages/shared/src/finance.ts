@@ -43,7 +43,8 @@ export function addDays(day: string, n: number): string {
   return dayOf(utcOf(day) + n * DAY_MS);
 }
 
-const daysInMonth = (year: number, month: number) => new Date(Date.UTC(year, month, 0)).getUTCDate();
+const daysInMonth = (year: number, month: number) =>
+  new Date(Date.UTC(year, month, 0)).getUTCDate();
 
 /**
  * n months after `day`, keeping the day of the month when the month is long enough, else the last
@@ -121,9 +122,7 @@ export const MAX_PAISE = 1_000_000_000_000;
 export const paiseSchema = z.number().int().min(1, 'Enter an amount above zero').max(MAX_PAISE);
 const signedPaise = z.number().int().min(-MAX_PAISE).max(MAX_PAISE);
 
-export const daySchema = z
-  .string()
-  .refine(isDayString, { message: 'Use a date like 2026-10-14' });
+export const daySchema = z.string().refine(isDayString, { message: 'Use a date like 2026-10-14' });
 export const monthSchema = z.string().regex(MONTH_PATTERN, 'Use a month like 2026-10');
 const isoTime = z.iso.datetime({ offset: true });
 const id = z.uuid();

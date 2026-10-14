@@ -1,9 +1,4 @@
-import {
-  WEEKDAYS,
-  WEEKDAY_NAMES,
-  buildRecurrence,
-  type Weekday,
-} from '@personal-os/shared';
+import { WEEKDAYS, WEEKDAY_NAMES, buildRecurrence, type Weekday } from '@personal-os/shared';
 import { cx } from '@personal-os/ui';
 import { Field, selectClass } from '../ui/fields';
 

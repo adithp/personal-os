@@ -158,7 +158,8 @@ const utc = (day: string) => {
   const [y, m, d] = day.split('-').map(Number) as [number, number, number];
   return Date.UTC(y, m - 1, d);
 };
-export const daysBetween = (from: string, to: string): number => Math.round((utc(to) - utc(from)) / DAY_MS);
+export const daysBetween = (from: string, to: string): number =>
+  Math.round((utc(to) - utc(from)) / DAY_MS);
 
 /** The balance: opening + income - expense + transfers in - transfers out. */
 export function balanceOf(wallet: Wallet, live: readonly Transaction[]): number {
@@ -244,7 +245,11 @@ export function summaryOf(month: string, live: readonly Transaction[]): MonthSum
     const row = byCategory.get(key) ?? { categoryId: tx.categoryId, kind, totalPaise: 0 };
     row.totalPaise += tx.amountPaise;
     byCategory.set(key, row);
-    const day = byDay.get(tx.occurredOn) ?? { date: tx.occurredOn, incomePaise: 0, expensePaise: 0 };
+    const day = byDay.get(tx.occurredOn) ?? {
+      date: tx.occurredOn,
+      incomePaise: 0,
+      expensePaise: 0,
+    };
     if (kind === 'income') day.incomePaise += tx.amountPaise;
     else day.expensePaise += tx.amountPaise;
     byDay.set(tx.occurredOn, day);

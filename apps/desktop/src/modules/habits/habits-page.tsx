@@ -189,7 +189,9 @@ export function HabitsPage() {
         {query.isError ? (
           <GlassCard role="alert" className="flex items-center justify-between gap-4">
             <p className="text-body text-fg">
-              {query.error instanceof ApiError ? query.error.message : 'Could not load your habits.'}
+              {query.error instanceof ApiError
+                ? query.error.message
+                : 'Could not load your habits.'}
             </p>
             <Button
               variant="secondary"
@@ -253,7 +255,9 @@ export function HabitsPage() {
                       }}
                       className={cx(
                         'h-7 rounded-chip px-3 text-body focus-ring transition-colors duration-150 ease-out',
-                        on ? 'bg-accent font-medium text-on-tile' : 'bg-input text-fg-secondary hover:text-fg',
+                        on
+                          ? 'bg-accent font-medium text-on-tile'
+                          : 'bg-input text-fg-secondary hover:text-fg',
                       )}
                     >
                       {name ?? 'All'}

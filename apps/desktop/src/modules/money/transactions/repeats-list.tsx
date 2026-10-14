@@ -39,7 +39,7 @@ export function RepeatsList({
                   {rule.active ? ` · Next ${shortDay(rule.nextOn)}` : ' · Paused'}
                 </span>
               </span>
-              <span className="text-body font-medium tabular-nums text-fg">
+              <span className="text-body font-medium text-fg tabular-nums">
                 {formatInr(rule.amountPaise)}
               </span>
               <Button

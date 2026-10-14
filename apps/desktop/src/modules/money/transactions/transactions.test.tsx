@@ -32,11 +32,17 @@ describe('Transactions list', () => {
     await open();
     const today = screen.getByRole('region', { name: 'Today' });
     // Dinner (-550) and the transfer (left out of the total)
-    expect(within(today).getByText(`-${formatInr(55000)}`, { selector: 'span.text-small' })).toBeInTheDocument();
-    expect(within(today).getByRole('button', { name: /Edit Food, -₹550, Dinner/ })).toBeInTheDocument();
+    expect(
+      within(today).getByText(`-${formatInr(55000)}`, { selector: 'span.text-small' }),
+    ).toBeInTheDocument();
+    expect(
+      within(today).getByRole('button', { name: /Edit Food, -₹550, Dinner/ }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Yesterday' })).toBeInTheDocument();
     const first = screen.getByRole('region', { name: /1 Oct/ });
-    expect(within(first).getByText(`+${formatInr(6000000)}`, { selector: 'span.text-small' })).toBeInTheDocument();
+    expect(
+      within(first).getByText(`+${formatInr(6000000)}`, { selector: 'span.text-small' }),
+    ).toBeInTheDocument();
     // September belongs to the previous month
     expect(screen.queryByRole('button', { name: /Rent/ })).not.toBeInTheDocument();
   });
@@ -79,7 +85,10 @@ describe('Transactions list', () => {
   });
 
   it('has an empty state with a call to action, and a message for filters with no match', async () => {
-    const { user } = await openMoney({ wallets: sampleSeed().seed.wallets ?? [] }, '?section=transactions');
+    const { user } = await openMoney(
+      { wallets: sampleSeed().seed.wallets ?? [] },
+      '?section=transactions',
+    );
     await screen.findByText('No transactions this month');
     await user.click(screen.getByRole('button', { name: 'Add a transaction' }));
     expect(await screen.findByRole('dialog', { name: 'New transaction' })).toBeInTheDocument();
@@ -127,7 +136,9 @@ describe('Transaction form', () => {
     });
     expect(Number.isInteger(body.amountPaise)).toBe(true);
     expect(body).not.toHaveProperty('toWalletId', expect.any(String));
-    expect(await screen.findByRole('button', { name: /Edit Food, -₹1,234.50, Groceries/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: /Edit Food, -₹1,234.50, Groceries/ }),
+    ).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
@@ -155,13 +166,17 @@ describe('Transaction form', () => {
 
     // No second wallet yet
     await user.click(within(dialog).getByRole('button', { name: 'Add' }));
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(/wallet to send the money to/);
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      /wallet to send the money to/,
+    );
 
     // The same wallet twice
     await user.selectOptions(within(dialog).getByLabelText('From wallet'), 'Cash');
     await user.selectOptions(within(dialog).getByLabelText('To wallet'), 'Cash');
     await user.click(within(dialog).getByRole('button', { name: 'Add' }));
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Pick two different wallets');
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Pick two different wallets',
+    );
     expect(callsTo(fake, 'POST', '/transactions')).toHaveLength(0);
 
     await user.selectOptions(within(dialog).getByLabelText('To wallet'), 'HDFC');
@@ -171,8 +186,16 @@ describe('Transaction form', () => {
     });
     const body = callsTo(fake, 'POST', '/transactions')[0]?.body;
     expect(body).toMatchObject({ kind: 'transfer', amountPaise: 70000, categoryId: null });
-    expect(moneyState().wallets().find((w) => w.name === 'Cash')?.balancePaise).toBe(200000 - 70000);
-    expect(moneyState().wallets().find((w) => w.name === 'HDFC')?.balancePaise).toBe(9300000 + 70000);
+    expect(
+      moneyState()
+        .wallets()
+        .find((w) => w.name === 'Cash')?.balancePaise,
+    ).toBe(200000 - 70000);
+    expect(
+      moneyState()
+        .wallets()
+        .find((w) => w.name === 'HDFC')?.balancePaise,
+    ).toBe(9300000 + 70000);
   });
 
   it('only offers the categories of the kind', async () => {
@@ -203,9 +226,15 @@ describe('Transaction form', () => {
     });
     // Starting today, the first transaction exists at once
     await waitFor(() => {
-      expect(moneyState().transactions().filter((tx) => tx.recurringId !== null)).toHaveLength(1);
+      expect(
+        moneyState()
+          .transactions()
+          .filter((tx) => tx.recurringId !== null),
+      ).toHaveLength(1);
     });
-    expect(await screen.findByRole('region', { name: 'Repeating transactions' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('region', { name: 'Repeating transactions' }),
+    ).toBeInTheDocument();
   });
 
   it('a weekly repeat starts on the weekday of the date and needs at least one day', async () => {
@@ -215,7 +244,10 @@ describe('Transaction form', () => {
     await user.selectOptions(within(dialog).getByLabelText('Repeat'), 'Every week on…');
     const days = within(dialog).getByRole('group', { name: 'Repeat on' });
     // 14 October 2026 is a Wednesday
-    expect(within(days).getByRole('button', { name: 'Wed' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(days).getByRole('button', { name: 'Wed' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     await user.click(within(days).getByRole('button', { name: 'Wed' }));
     await user.click(within(dialog).getByRole('button', { name: 'Add repeating' }));
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Pick at least one weekday');
@@ -240,9 +272,13 @@ describe('Transaction form', () => {
     await user.type(within(dialog).getByLabelText('Amount (₹)'), '600.75');
     await user.click(within(dialog).getByRole('button', { name: 'Save' }));
     await waitFor(() => {
-      expect(callsTo(fake, 'PATCH', `/transactions/${moneyState().transactions()[2]?.id ?? ''}`)).toHaveLength(1);
+      expect(
+        callsTo(fake, 'PATCH', `/transactions/${moneyState().transactions()[2]?.id ?? ''}`),
+      ).toHaveLength(1);
     });
-    expect(await screen.findByRole('button', { name: /Edit Food, -₹600.75, Dinner/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: /Edit Food, -₹600.75, Dinner/ }),
+    ).toBeInTheDocument();
   });
 
   it('deletes from the form and Undo brings the transaction back', async () => {
@@ -255,7 +291,9 @@ describe('Transaction form', () => {
     });
     const toast = await findToast('Transaction deleted.');
     await user.click(within(toast).getByRole('button', { name: 'Undo' }));
-    expect(await screen.findByRole('button', { name: /Edit Food, -₹550, Dinner/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: /Edit Food, -₹550, Dinner/ }),
+    ).toBeInTheDocument();
   });
 
   it('Escape closes the form and brings focus back to the button that opened it', async () => {
@@ -320,7 +358,9 @@ describe('Repeating list and categories', () => {
     });
     await user.click(within(list).getByRole('button', { name: 'Delete repeat Rent' }));
     await waitFor(() => {
-      expect(screen.queryByRole('region', { name: 'Repeating transactions' })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('region', { name: 'Repeating transactions' }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -352,7 +392,11 @@ describe('Repeating list and categories', () => {
     await openMoney({ wallets: sampleSeed().seed.wallets ?? [] }, '?section=transactions');
     await screen.findByText('No transactions this month');
     await waitFor(() => {
-      expect(moneyState().categories().map((c) => c.name)).toContain('Salary');
+      expect(
+        moneyState()
+          .categories()
+          .map((c) => c.name),
+      ).toContain('Salary');
     });
   });
 });

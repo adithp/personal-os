@@ -64,12 +64,7 @@ export function CategoriesDialog({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <FormDialog
-      title="Categories"
-      onSubmit={editing ? save : add}
-      onClose={onClose}
-      error={error}
-    >
+    <FormDialog title="Categories" onSubmit={editing ? save : add} onClose={onClose} error={error}>
       <div className="flex flex-col gap-1">
         <span className="text-small font-medium text-fg-muted">New category</span>
         <div className="flex gap-2">

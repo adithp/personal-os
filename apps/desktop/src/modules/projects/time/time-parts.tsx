@@ -34,7 +34,9 @@ export function RunningTimer({ compact = false }: { compact?: boolean }) {
     >
       <span aria-hidden className="size-2 shrink-0 rounded-full bg-module-projects" />
       <span className="min-w-0 truncate text-body text-fg">
-        {compact ? entry.projectTitle : `${entry.projectTitle}${entry.taskTitle ? ` / ${entry.taskTitle}` : ''}`}
+        {compact
+          ? entry.projectTitle
+          : `${entry.projectTitle}${entry.taskTitle ? ` / ${entry.taskTitle}` : ''}`}
       </span>
       <span className="font-medium text-fg tabular-nums">{formatTimer(elapsed)}</span>
       <Button
@@ -101,7 +103,11 @@ export function StartTimer({ projectId }: { projectId: string }) {
         disabled={start.isPending || here}
         onClick={() => {
           start.mutate(
-            { projectId, ...(taskId ? { taskId } : {}), ...(note.trim() ? { note: note.trim() } : {}) },
+            {
+              projectId,
+              ...(taskId ? { taskId } : {}),
+              ...(note.trim() ? { note: note.trim() } : {}),
+            },
             {
               onSuccess: () => {
                 setNote('');
@@ -140,7 +146,8 @@ export function EntryDialog({
   );
   const [startedAt, setStartedAt] = useState<string | null>(
     () =>
-      entry?.startedAt ?? new Date(Math.floor(Date.now() / 60000) * 60000 - 3600 * 1000).toISOString(),
+      entry?.startedAt ??
+      new Date(Math.floor(Date.now() / 60000) * 60000 - 3600 * 1000).toISOString(),
   );
   const [taskId, setTaskId] = useState(entry?.taskId ?? '');
   const [note, setNote] = useState(entry?.note ?? '');
@@ -281,7 +288,9 @@ export function EntryList({
           >
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="truncate text-body text-fg">
-                {showProject ? `${entry.projectTitle}${entry.taskTitle ? ` / ${entry.taskTitle}` : ''}` : (entry.taskTitle ?? entry.note ?? 'Time')}
+                {showProject
+                  ? `${entry.projectTitle}${entry.taskTitle ? ` / ${entry.taskTitle}` : ''}`
+                  : (entry.taskTitle ?? entry.note ?? 'Time')}
               </span>
               <span className="truncate text-small text-fg-muted">
                 {rangeOf(entry)}

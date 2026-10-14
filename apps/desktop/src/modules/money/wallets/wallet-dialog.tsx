@@ -61,7 +61,10 @@ export function WalletDialog({ wallet, onClose }: { wallet?: Wallet; onClose: ()
               variant="secondary"
               disabled={busy}
               onClick={() => {
-                update.mutate({ id: wallet.id, archived: !wallet.archived }, { onSuccess: onClose });
+                update.mutate(
+                  { id: wallet.id, archived: !wallet.archived },
+                  { onSuccess: onClose },
+                );
               }}
             >
               {wallet.archived ? 'Unarchive' : 'Archive'}

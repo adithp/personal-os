@@ -99,8 +99,12 @@ describe('transactionShapeError', () => {
   it('checks transfers and second wallets', () => {
     expect(transactionShapeError({ kind: 'transfer', walletId: 'a', toWalletId: 'b' })).toBeNull();
     expect(transactionShapeError({ kind: 'transfer', walletId: 'a' })).not.toBeNull();
-    expect(transactionShapeError({ kind: 'transfer', walletId: 'a', toWalletId: 'a' })).not.toBeNull();
-    expect(transactionShapeError({ kind: 'expense', walletId: 'a', toWalletId: 'b' })).not.toBeNull();
+    expect(
+      transactionShapeError({ kind: 'transfer', walletId: 'a', toWalletId: 'a' }),
+    ).not.toBeNull();
+    expect(
+      transactionShapeError({ kind: 'expense', walletId: 'a', toWalletId: 'b' }),
+    ).not.toBeNull();
     expect(transactionShapeError({ kind: 'expense', walletId: 'a' })).toBeNull();
   });
 });

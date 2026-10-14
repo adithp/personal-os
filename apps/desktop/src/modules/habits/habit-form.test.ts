@@ -13,7 +13,8 @@ const view = (overrides: Partial<Habit> = {}): Habit => ({
 });
 
 describe('readForm', () => {
-  const ok = (form: Partial<typeof EMPTY_FORM>) => readForm({ ...EMPTY_FORM, name: 'Run', ...form });
+  const ok = (form: Partial<typeof EMPTY_FORM>) =>
+    readForm({ ...EMPTY_FORM, name: 'Run', ...form });
 
   it('needs a name', () => {
     expect(ok({ name: '  ' })).toEqual({ error: 'Add a name' });

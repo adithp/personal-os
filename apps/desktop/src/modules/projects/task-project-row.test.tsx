@@ -45,7 +45,9 @@ describe('TaskProjectRow in the task details', () => {
     await user.click(await screen.findByRole('button', { name: 'Change project' }));
     const menu = await screen.findByRole('menu', { name: 'Projects' });
     // Only active projects are offered
-    expect(within(menu).queryByRole('menuitemradio', { name: 'Paused one' })).not.toBeInTheDocument();
+    expect(
+      within(menu).queryByRole('menuitemradio', { name: 'Paused one' }),
+    ).not.toBeInTheDocument();
     await user.click(await within(menu).findByRole('menuitemradio', { name: 'Website' }));
     await waitFor(() => {
       expect(projects.taskProjectOf(task.id)).toBe(website.id);

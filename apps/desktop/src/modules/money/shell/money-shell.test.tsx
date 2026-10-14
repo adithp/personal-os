@@ -14,7 +14,11 @@ describe('Money side panel and the URL', () => {
     await openMoney(sampleSeed().seed);
     await heading('Money');
     const nav = screen.getByRole('navigation', { name: 'Money' });
-    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual([
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual([
       'Overview',
       'Transactions',
       'Wallets',

@@ -52,7 +52,11 @@ export const subscriptionImplementations = [
     const today = todayInIndia();
     const rows = await scope.select(subscriptions, {
       where: scope.isLive(subscriptions),
-      orderBy: [asc(subscriptions.nextRenewalOn), asc(subscriptions.createdAt), asc(subscriptions.id)],
+      orderBy: [
+        asc(subscriptions.nextRenewalOn),
+        asc(subscriptions.createdAt),
+        asc(subscriptions.id),
+      ],
     });
     const all = rows.map((row) => toSubscription(row, today));
     const active = all.filter((item) => item.status === 'active');
@@ -61,7 +65,9 @@ export const subscriptionImplementations = [
       monthlyPaise: active.reduce((sum, item) => sum + item.monthlyPaise, 0),
       yearlyPaise: active.reduce((sum, item) => sum + item.yearlyPaise, 0),
     };
-    return { data: { items: status ? all.filter((item) => item.status === status) : all, summary } };
+    return {
+      data: { items: status ? all.filter((item) => item.status === status) : all, summary },
+    };
   }),
 
   implement(subscriptionActions.upcoming, async ({ scope }, { days }) => {
@@ -69,10 +75,16 @@ export const subscriptionImplementations = [
     const last = addDays(today, days);
     const rows = await scope.select(subscriptions, {
       where: andAll(scope.isLive(subscriptions), eq(subscriptions.status, 'active')),
-      orderBy: [asc(subscriptions.nextRenewalOn), asc(subscriptions.createdAt), asc(subscriptions.id)],
+      orderBy: [
+        asc(subscriptions.nextRenewalOn),
+        asc(subscriptions.createdAt),
+        asc(subscriptions.id),
+      ],
     });
     return {
-      data: rows.filter((row) => row.nextRenewalOn <= last).map((row) => toSubscription(row, today)),
+      data: rows
+        .filter((row) => row.nextRenewalOn <= last)
+        .map((row) => toSubscription(row, today)),
     };
   }),
 

@@ -39,7 +39,7 @@ function WalletCard({
           {KIND_NAMES[wallet.kind]}
           {wallet.archived ? ' · Archived' : ''}
         </span>
-        <span className="text-section font-semibold tabular-nums text-fg">
+        <span className="text-section font-semibold text-fg tabular-nums">
           {formatInr(wallet.balancePaise)}
         </span>
       </button>
@@ -65,7 +65,9 @@ export function WalletsPage() {
   });
 
   const items = wallets.data ?? [];
-  const total = items.filter((wallet) => !wallet.archived).reduce((sum, w) => sum + w.balancePaise, 0);
+  const total = items
+    .filter((wallet) => !wallet.archived)
+    .reduce((sum, w) => sum + w.balancePaise, 0);
 
   return (
     <div className="mx-auto flex w-full max-w-[860px] flex-col gap-4 px-2 pb-6">

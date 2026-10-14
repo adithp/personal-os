@@ -24,7 +24,11 @@ export interface MoneyHarness {
   db: () => TestDb['db'];
   alice: () => ActionContext;
   bob: () => ActionContext;
-  run: <T = Record<string, any>>(ctx: ActionContext, name: string, input: unknown) => Promise<Result<T>>;
+  run: <T = Record<string, any>>(
+    ctx: ActionContext,
+    name: string,
+    input: unknown,
+  ) => Promise<Result<T>>;
 }
 
 /** Registers the hooks of a test file; call once at the top. */

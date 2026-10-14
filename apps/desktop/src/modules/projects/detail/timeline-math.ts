@@ -51,7 +51,9 @@ export function buildTimeline(
         : [],
     ),
     ...tasks.flatMap((task) =>
-      task.dueAt && task.parentTaskId === null && (task.archivedAt === null || task.status === 'done')
+      task.dueAt &&
+      task.parentTaskId === null &&
+      (task.archivedAt === null || task.status === 'done')
         ? [
             {
               kind: 'task' as const,

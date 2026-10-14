@@ -85,9 +85,7 @@ export function projectRoutes(app: FastifyInstance, options: ActionRouteOptions)
   app.patch('/milestones/:id', (request) =>
     write(request, 'milestones.update', withId(request, request.body)),
   );
-  app.delete('/milestones/:id', (request) =>
-    write(request, 'milestones.delete', withId(request)),
-  );
+  app.delete('/milestones/:id', (request) => write(request, 'milestones.delete', withId(request)));
 
   // ----- Time entries (fixed paths first, then the ones with an id)
   app.get('/time-entries', (request) => list(request, 'time.list', request.query));

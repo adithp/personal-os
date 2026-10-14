@@ -33,7 +33,8 @@ const addWallet = async (name: string, openingBalancePaise = 0, ctx = h.alice())
   (await h.run<Wallet>(ctx, 'finance.wallets.create', { name, openingBalancePaise })).data;
 const wallets = async (ctx = h.alice(), includeArchived = false) =>
   (await h.run<Wallet[]>(ctx, 'finance.wallets.list', { includeArchived })).data;
-const balances = async () => Object.fromEntries((await wallets()).map((w) => [w.name, w.balancePaise]));
+const balances = async () =>
+  Object.fromEntries((await wallets()).map((w) => [w.name, w.balancePaise]));
 const categories = async (ctx = h.alice()) =>
   (await h.run<Category[]>(ctx, 'finance.categories.list', {})).data;
 const category = async (kind: string, ctx = h.alice()) => {
@@ -74,9 +75,9 @@ describe('finance.wallets', () => {
     expect(await failure(h.run(h.alice(), 'finance.wallets.create', { name: ' ' }))).toBeInstanceOf(
       ZodError,
     );
-    expect(await failure(h.run(h.alice(), 'finance.wallets.update', { id: MISSING }))).toBeInstanceOf(
-      ZodError,
-    );
+    expect(
+      await failure(h.run(h.alice(), 'finance.wallets.update', { id: MISSING })),
+    ).toBeInstanceOf(ZodError);
   });
 
   it('refuses a name twice (409 name_taken, ignoring case) but not for another user', async () => {
@@ -107,7 +108,10 @@ describe('finance.wallets', () => {
 
   it('archives (hidden from the list unless asked) and the undo unarchives', async () => {
     const wallet = await addWallet('Old card');
-    const archived = await h.run(h.alice(), 'finance.wallets.update', { id: wallet.id, archived: true });
+    const archived = await h.run(h.alice(), 'finance.wallets.update', {
+      id: wallet.id,
+      archived: true,
+    });
     expect(await wallets()).toHaveLength(0);
     expect(await wallets(h.alice(), true)).toMatchObject([{ archived: true }]);
     await undo(archived);
@@ -164,8 +168,16 @@ describe('finance.wallets', () => {
       nextRenewalOn: today(),
       walletId: forSub.id,
     });
-    await fails(h.run(h.alice(), 'finance.wallets.delete', { id: forRepeat.id }), 409, 'wallet_in_use');
-    await fails(h.run(h.alice(), 'finance.wallets.delete', { id: forSub.id }), 409, 'wallet_in_use');
+    await fails(
+      h.run(h.alice(), 'finance.wallets.delete', { id: forRepeat.id }),
+      409,
+      'wallet_in_use',
+    );
+    await fails(
+      h.run(h.alice(), 'finance.wallets.delete', { id: forSub.id }),
+      409,
+      'wallet_in_use',
+    );
   });
 
   it('is private: another user cannot see, change, delete, or restore a wallet', async () => {
@@ -183,7 +195,9 @@ describe('finance.wallets', () => {
     await h.run(h.alice(), 'finance.wallets.delete', { id: wallet.id });
     await addWallet('a');
     await fails(h.run(h.alice(), 'finance.wallets.restore', { id: wallet.id }), 409, 'name_taken');
-    const live = await h.run(h.alice(), 'finance.wallets.restore', { id: (await wallets())[0]!.id });
+    const live = await h.run(h.alice(), 'finance.wallets.restore', {
+      id: (await wallets())[0]!.id,
+    });
     expect(live.undo).toBeNull();
   });
 });
@@ -241,7 +255,12 @@ describe('finance.categories', () => {
   it('keeps transactions of a deleted category and hides other users categories', async () => {
     const wallet = await addWallet('W');
     const food = await category('expense');
-    const tx = await addTx({ kind: 'expense', amountPaise: 100, walletId: wallet.id, categoryId: food.id });
+    const tx = await addTx({
+      kind: 'expense',
+      amountPaise: 100,
+      walletId: wallet.id,
+      categoryId: food.id,
+    });
     await h.run(h.alice(), 'finance.categories.delete', { id: food.id });
     expect((await txs())[0]?.id).toBe(tx.data.id);
     await fails(h.run(h.bob(), 'finance.categories.delete', { id: food.id }), 404);
@@ -252,7 +271,12 @@ describe('finance.categories', () => {
 describe('finance.transactions', () => {
   it('creates with today as the default day and an undo that deletes it', async () => {
     const wallet = await addWallet('W');
-    const created = await addTx({ kind: 'expense', amountPaise: 12345, walletId: wallet.id, note: ' Tea ' });
+    const created = await addTx({
+      kind: 'expense',
+      amountPaise: 12345,
+      walletId: wallet.id,
+      note: ' Tea ',
+    });
     expect(created.data).toMatchObject({ occurredOn: today(), note: 'Tea', categoryId: null });
     await undo(created);
     expect(await txs()).toEqual([]);
@@ -267,15 +291,21 @@ describe('finance.transactions', () => {
       await failure(addTx({ kind: 'transfer', amountPaise: 1, walletId: wallet.id })),
     ).toBeInstanceOf(ZodError);
     expect(
-      await failure(addTx({ kind: 'transfer', amountPaise: 1, walletId: wallet.id, toWalletId: wallet.id })),
+      await failure(
+        addTx({ kind: 'transfer', amountPaise: 1, walletId: wallet.id, toWalletId: wallet.id }),
+      ),
     ).toBeInstanceOf(ZodError);
-    expect(await failure(addTx({ kind: 'expense', amountPaise: 0, walletId: wallet.id }))).toBeInstanceOf(
-      ZodError,
-    );
+    expect(
+      await failure(addTx({ kind: 'expense', amountPaise: 0, walletId: wallet.id })),
+    ).toBeInstanceOf(ZodError);
     expect(
       await failure(addTx({ kind: 'expense', amountPaise: 1.5, walletId: wallet.id })),
     ).toBeInstanceOf(ZodError);
-    await fails(addTx({ kind: 'expense', amountPaise: 1, walletId: MISSING }), 400, 'validation_error');
+    await fails(
+      addTx({ kind: 'expense', amountPaise: 1, walletId: MISSING }),
+      400,
+      'validation_error',
+    );
     await fails(addTx({ kind: 'expense', amountPaise: 1, walletId: bobsWallet.id }), 400);
     await fails(
       addTx({ kind: 'transfer', amountPaise: 1, walletId: wallet.id, toWalletId: bobsWallet.id }),
@@ -289,7 +319,10 @@ describe('finance.transactions', () => {
       addTx({ kind: 'income', amountPaise: 1, walletId: wallet.id, categoryId: expense.id }),
       400,
     );
-    await fails(addTx({ kind: 'expense', amountPaise: 1, walletId: wallet.id, categoryId: MISSING }), 400);
+    await fails(
+      addTx({ kind: 'expense', amountPaise: 1, walletId: wallet.id, categoryId: MISSING }),
+      400,
+    );
     expect(await txs()).toEqual([]);
   });
 
@@ -300,22 +333,46 @@ describe('finance.transactions', () => {
     await fails(addTx({ kind: 'expense', amountPaise: 1, walletId: gone.id }), 400);
     const food = await category('expense');
     await h.run(h.alice(), 'finance.categories.delete', { id: food.id });
-    await fails(addTx({ kind: 'expense', amountPaise: 1, walletId: wallet.id, categoryId: food.id }), 400);
+    await fails(
+      addTx({ kind: 'expense', amountPaise: 1, walletId: wallet.id, categoryId: food.id }),
+      400,
+    );
   });
 
   it('lists newest first with filters, text search and paging', async () => {
     const a = await addWallet('A');
     const b = await addWallet('B');
     const food = await category('expense');
-    await addTx({ kind: 'expense', amountPaise: 100, walletId: a.id, occurredOn: '2026-01-05', note: '50% off tea', categoryId: food.id });
+    await addTx({
+      kind: 'expense',
+      amountPaise: 100,
+      walletId: a.id,
+      occurredOn: '2026-01-05',
+      note: '50% off tea',
+      categoryId: food.id,
+    });
     await addTx({ kind: 'income', amountPaise: 200, walletId: a.id, occurredOn: '2026-01-10' });
-    await addTx({ kind: 'expense', amountPaise: 300, walletId: b.id, occurredOn: '2026-01-10', note: 'Tea_time' });
-    await addTx({ kind: 'transfer', amountPaise: 400, walletId: a.id, toWalletId: b.id, occurredOn: '2026-02-01' });
+    await addTx({
+      kind: 'expense',
+      amountPaise: 300,
+      walletId: b.id,
+      occurredOn: '2026-01-10',
+      note: 'Tea_time',
+    });
+    await addTx({
+      kind: 'transfer',
+      amountPaise: 400,
+      walletId: a.id,
+      toWalletId: b.id,
+      occurredOn: '2026-02-01',
+    });
     expect((await txs()).map((t) => t.amountPaise)).toEqual([400, 300, 200, 100]);
     expect((await txs({ kind: 'expense' })).map((t) => t.amountPaise)).toEqual([300, 100]);
     expect((await txs({ walletId: b.id })).map((t) => t.amountPaise)).toEqual([400, 300]);
     expect((await txs({ categoryId: food.id })).map((t) => t.amountPaise)).toEqual([100]);
-    expect((await txs({ from: '2026-01-10', to: '2026-01-31' })).map((t) => t.amountPaise)).toEqual([300, 200]);
+    expect((await txs({ from: '2026-01-10', to: '2026-01-31' })).map((t) => t.amountPaise)).toEqual(
+      [300, 200],
+    );
     expect((await txs({ q: 'TEA' })).map((t) => t.amountPaise)).toEqual([300, 100]);
     // % and _ are searched literally
     expect((await txs({ q: '50%' })).map((t) => t.amountPaise)).toEqual([100]);
@@ -337,9 +394,17 @@ describe('finance.transactions', () => {
       occurredOn: '2026-03-04',
       walletId: b.id,
     });
-    expect(changed.data).toMatchObject({ amountPaise: 250, occurredOn: '2026-03-04', walletId: b.id });
+    expect(changed.data).toMatchObject({
+      amountPaise: 250,
+      occurredOn: '2026-03-04',
+      walletId: b.id,
+    });
     await undo(changed);
-    expect((await txs())[0]).toMatchObject({ amountPaise: 100, walletId: a.id, occurredOn: today() });
+    expect((await txs())[0]).toMatchObject({
+      amountPaise: 100,
+      walletId: a.id,
+      occurredOn: today(),
+    });
     // Becoming a transfer needs the second wallet
     await fails(h.run(h.alice(), 'finance.transactions.update', { id, kind: 'transfer' }), 400);
     const transfer = await h.run<Tx>(h.alice(), 'finance.transactions.update', {
@@ -354,17 +419,27 @@ describe('finance.transactions', () => {
     const food = await category('expense');
     await h.run(h.alice(), 'finance.transactions.update', { id, categoryId: food.id });
     await fails(h.run(h.alice(), 'finance.transactions.update', { id, kind: 'income' }), 400);
-    expect((await h.run(h.alice(), 'finance.transactions.update', { id, amountPaise: 100 })).undo).toBeNull();
+    expect(
+      (await h.run(h.alice(), 'finance.transactions.update', { id, amountPaise: 100 })).undo,
+    ).toBeNull();
   });
 
   it('gives 404 to other users and unknown ids, and ZodError for an empty update', async () => {
     const wallet = await addWallet('W');
     const { data } = await addTx({ kind: 'expense', amountPaise: 100, walletId: wallet.id });
-    await fails(h.run(h.bob(), 'finance.transactions.update', { id: data.id, amountPaise: 1 }), 404);
+    await fails(
+      h.run(h.bob(), 'finance.transactions.update', { id: data.id, amountPaise: 1 }),
+      404,
+    );
     await fails(h.run(h.bob(), 'finance.transactions.delete', { id: data.id }), 404);
     await fails(h.run(h.bob(), 'finance.transactions.restore', { id: data.id }), 404);
-    await fails(h.run(h.alice(), 'finance.transactions.update', { id: MISSING, amountPaise: 1 }), 404);
-    expect(await failure(h.run(h.alice(), 'finance.transactions.update', { id: data.id }))).toBeInstanceOf(ZodError);
+    await fails(
+      h.run(h.alice(), 'finance.transactions.update', { id: MISSING, amountPaise: 1 }),
+      404,
+    );
+    expect(
+      await failure(h.run(h.alice(), 'finance.transactions.update', { id: data.id })),
+    ).toBeInstanceOf(ZodError);
     expect((await txs())[0]?.amountPaise).toBe(100);
   });
 
@@ -372,13 +447,21 @@ describe('finance.transactions', () => {
     const wallet = await addWallet('W');
     const { data } = await addTx({ kind: 'expense', amountPaise: 100, walletId: wallet.id });
     const deleted = await h.run(h.alice(), 'finance.transactions.delete', { id: data.id });
-    expect(deleted.undo).toEqual({ action: 'finance.transactions.restore', input: { id: data.id } });
+    expect(deleted.undo).toEqual({
+      action: 'finance.transactions.restore',
+      input: { id: data.id },
+    });
     await fails(h.run(h.alice(), 'finance.transactions.delete', { id: data.id }), 404);
     await h.run(h.alice(), 'finance.wallets.delete', { id: wallet.id });
     await fails(h.run(h.alice(), 'finance.transactions.restore', { id: data.id }), 400);
     await h.run(h.alice(), 'finance.wallets.restore', { id: wallet.id });
     const restored = await h.run(h.alice(), 'finance.transactions.restore', { id: data.id });
-    expect(restored.undo).toEqual({ action: 'finance.transactions.delete', input: { id: data.id } });
-    expect((await h.run(h.alice(), 'finance.transactions.restore', { id: data.id })).undo).toBeNull();
+    expect(restored.undo).toEqual({
+      action: 'finance.transactions.delete',
+      input: { id: data.id },
+    });
+    expect(
+      (await h.run(h.alice(), 'finance.transactions.restore', { id: data.id })).undo,
+    ).toBeNull();
   });
 });

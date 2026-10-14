@@ -40,10 +40,14 @@ export function SubscriptionRow({
         <span className="truncate text-small text-fg-muted">
           {CYCLE_NAMES[sub.cycle]} · Renews {shortDay(sub.nextRenewalOn)}
           {sub.status === 'active' ? ` · ${renewalText(sub.daysUntilRenewal)}` : ''}
-          {detail ? ` · ${formatInr(sub.monthlyPaise)}/month · ${formatInr(sub.yearlyPaise)}/year` : ''}
+          {detail
+            ? ` · ${formatInr(sub.monthlyPaise)}/month · ${formatInr(sub.yearlyPaise)}/year`
+            : ''}
         </span>
       </span>
-      <span className="text-body font-medium tabular-nums text-fg">{formatInr(sub.amountPaise)}</span>
+      <span className="text-body font-medium text-fg tabular-nums">
+        {formatInr(sub.amountPaise)}
+      </span>
       {sub.status === 'active' ? (
         <Button
           variant="secondary"

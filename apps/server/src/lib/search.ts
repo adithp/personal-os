@@ -94,7 +94,9 @@ export async function snippets(
   const result = new Map<string, string>();
   if (input.ids.length === 0 || !hasSearchWords(input.text)) return result;
   const query = prefixQuery(input.text);
-  const body = input.maxChars ? sql`left(${input.textColumn}, ${input.maxChars}::int)` : sql`${input.textColumn}`;
+  const body = input.maxChars
+    ? sql`left(${input.textColumn}, ${input.maxChars}::int)`
+    : sql`${input.textColumn}`;
   const rows = await scope.selectFields(
     input.table,
     {

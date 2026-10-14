@@ -68,7 +68,9 @@ describe('Time tab of a project', () => {
     await user.click(screen.getByRole('radio', { name: 'Time' }));
     await user.selectOptions(await screen.findByLabelText('Task (optional)'), 'Write copy');
     await user.click(screen.getByRole('button', { name: 'Start timer' }));
-    const timer = (await screen.findAllByRole('timer', { name: 'Running timer' })).at(0) as HTMLElement;
+    const timer = (await screen.findAllByRole('timer', { name: 'Running timer' })).at(
+      0,
+    ) as HTMLElement;
     expect(within(timer).getByText('00:00:00')).toBeInTheDocument();
     expect(callsTo(fake, 'POST', '/time-entries/start')[0]?.body).toEqual({
       projectId: project.id,
@@ -110,7 +112,9 @@ describe('Time tab of a project', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
-    const added = projects.entries().find((entry) => entry.startedAt === '2025-10-07T04:30:00.000Z');
+    const added = projects
+      .entries()
+      .find((entry) => entry.startedAt === '2025-10-07T04:30:00.000Z');
     expect(added?.seconds).toBe(5400);
     expect(await screen.findByText('Total: 3h 00m')).toBeInTheDocument();
   });
@@ -149,7 +153,9 @@ describe('Time page', () => {
     expect(within(perProject).getByText('1h 30m')).toBeInTheDocument();
     expect(within(perProject).getByText('Mobile app')).toBeInTheDocument();
     expect(within(perProject).getByText('45m')).toBeInTheDocument();
-    expect(within(screen.getByRole('list', { name: 'Time per week' })).getAllByRole('listitem')).toHaveLength(8);
+    expect(
+      within(screen.getByRole('list', { name: 'Time per week' })).getAllByRole('listitem'),
+    ).toHaveLength(8);
     const recent = screen.getByRole('list', { name: 'Time entries' });
     expect(within(recent).getAllByRole('listitem')).toHaveLength(2);
   });
@@ -163,7 +169,9 @@ describe('Time page', () => {
         name: 'Time',
       }),
     );
-    const timer = (await screen.findAllByRole('timer', { name: 'Running timer' })).at(0) as HTMLElement;
+    const timer = (await screen.findAllByRole('timer', { name: 'Running timer' })).at(
+      0,
+    ) as HTMLElement;
     expect(timer).toHaveTextContent('Mobile app');
   });
 

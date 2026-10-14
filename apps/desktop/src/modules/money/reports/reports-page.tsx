@@ -51,7 +51,10 @@ export function ReportsPage() {
               module="money"
               title="Expense"
               value={formatInr(data.expensePaise)}
-              lines={[changeText(data.expensePaise, data.previousExpensePaise) ?? 'No last month to compare']}
+              lines={[
+                changeText(data.expensePaise, data.previousExpensePaise) ??
+                  'No last month to compare',
+              ]}
             />
             <Tile
               module="money"

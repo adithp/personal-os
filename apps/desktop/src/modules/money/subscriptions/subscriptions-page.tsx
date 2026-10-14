@@ -15,7 +15,7 @@ function Total({ label, value }: { label: string; value: string }) {
   return (
     <GlassCard role="group" aria-label={label} padding="compact" className="flex flex-col gap-0.5">
       <span className="text-small text-fg-muted">{label}</span>
-      <span className="text-section font-semibold tabular-nums text-fg">{value}</span>
+      <span className="text-section font-semibold text-fg tabular-nums">{value}</span>
     </GlassCard>
   );
 }

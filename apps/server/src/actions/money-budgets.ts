@@ -3,13 +3,7 @@ import { financeActions, monthEnd, monthOf, monthStart } from '@personal-os/shar
 import { asc, eq, gte, lt } from 'drizzle-orm';
 import { withUserLock } from '../lib/user-lock';
 import type { UserScope } from '../lib/user-scope';
-import {
-  andAll,
-  notFound,
-  requireCategory,
-  todayInIndia,
-  toBudget,
-} from './money-common';
+import { andAll, notFound, requireCategory, todayInIndia, toBudget } from './money-common';
 import { implement } from './registry';
 
 /**
@@ -29,7 +23,8 @@ async function spentByCategory(scope: UserScope, month: string): Promise<Map<str
   });
   const spent = new Map<string, number>();
   for (const row of rows) {
-    if (row.categoryId) spent.set(row.categoryId, (spent.get(row.categoryId) ?? 0) + row.amountPaise);
+    if (row.categoryId)
+      spent.set(row.categoryId, (spent.get(row.categoryId) ?? 0) + row.amountPaise);
   }
   return spent;
 }

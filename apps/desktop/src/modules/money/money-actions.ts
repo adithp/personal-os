@@ -106,7 +106,11 @@ export function useRecurringActions() {
     send: (api, { id, ...rest }) =>
       api.request('PATCH', `/recurring-transactions/${id}`, { body: rest }),
     message: (input) =>
-      input.active === false ? 'Repeat paused.' : input.active === true ? 'Repeat resumed.' : 'Repeat saved.',
+      input.active === false
+        ? 'Repeat paused.'
+        : input.active === true
+          ? 'Repeat resumed.'
+          : 'Repeat saved.',
   });
   const remove = useMoneyWrite<string, RecurringTransaction>({
     send: (api, id) => api.request('DELETE', `/recurring-transactions/${id}`),
@@ -169,7 +173,8 @@ export function useSubscriptionActions() {
   });
   /** Mark paid: moves the renewal one cycle on and books the expense. */
   const renew = useMoneyWrite<Subscription, RenewResult>({
-    send: (api, subscription) => api.request('POST', `/subscriptions/${subscription.id}/renew`, { body: {} }),
+    send: (api, subscription) =>
+      api.request('POST', `/subscriptions/${subscription.id}/renew`, { body: {} }),
     message: (_input, result) =>
       result.transaction
         ? `${result.subscription.name} marked paid and booked as an expense.`

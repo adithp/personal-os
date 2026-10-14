@@ -29,7 +29,10 @@ const invalid = (message: string) => new HttpError(400, 'validation_error', mess
 
 type CountMap = Map<string, number>;
 
-async function logsOf(scope: UserScope, habitIds: readonly string[]): Promise<Map<string, CountMap>> {
+async function logsOf(
+  scope: UserScope,
+  habitIds: readonly string[],
+): Promise<Map<string, CountMap>> {
   const byHabit = new Map<string, CountMap>();
   if (habitIds.length === 0) return byHabit;
   const rows: HabitLogRow[] = await scope.select(habitLogs, {

@@ -141,7 +141,11 @@ export function MilestonesCard({ projectId }: { projectId: string }) {
         <div className="w-[150px] shrink-0">
           <DateTimeBox label="Milestone due date" kind="date" value={dueAt} onCommit={setDueAt} />
         </div>
-        <Button variant="secondary" disabled={title.trim() === '' || create.isPending} onClick={add}>
+        <Button
+          variant="secondary"
+          disabled={title.trim() === '' || create.isPending}
+          onClick={add}
+        >
           Add
         </Button>
       </div>

@@ -45,9 +45,7 @@ async function presentEntries(
   const taskIds = [...new Set(rows.flatMap((row) => (row.taskId ? [row.taskId] : [])))];
   const projectRows = await scope.select(projects, { where: inArray(projects.id, projectIds) });
   const taskRows =
-    taskIds.length === 0
-      ? []
-      : await scope.select(tasks, { where: inArray(tasks.id, taskIds) });
+    taskIds.length === 0 ? [] : await scope.select(tasks, { where: inArray(tasks.id, taskIds) });
   const projectTitle = new Map(projectRows.map((project) => [project.id, project.title]));
   const taskTitle = new Map(taskRows.map((task) => [task.id, task.title]));
   return rows.map((row) => ({
@@ -161,7 +159,11 @@ export const timeImplementations = [
     const data: TimeSummary = {
       totalSeconds: total,
       byProject: ids
-        .map((id) => ({ projectId: id, title: titles.get(id) ?? '', seconds: perProject.get(id) ?? 0 }))
+        .map((id) => ({
+          projectId: id,
+          title: titles.get(id) ?? '',
+          seconds: perProject.get(id) ?? 0,
+        }))
         .sort((a, b) => b.seconds - a.seconds || a.title.localeCompare(b.title)),
       byWeek: perWeek.map((seconds, index) => ({
         weekStart: new Date(firstWeek + index * WEEK_MS).toISOString(),
@@ -315,7 +317,11 @@ export const timeImplementations = [
         if (current.endedAt === null && (await runningRows(tx)).length > 0) {
           throw new HttpError(409, 'timer_running', 'Another timer is running. Stop it first.');
         }
-        const [restored] = await tx.update(timeEntries, { deletedAt: null }, eq(timeEntries.id, id));
+        const [restored] = await tx.update(
+          timeEntries,
+          { deletedAt: null },
+          eq(timeEntries.id, id),
+        );
         if (!restored) throw entryNotFound();
         return {
           data: await presentEntry(tx, restored),

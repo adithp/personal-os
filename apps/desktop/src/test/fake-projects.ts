@@ -150,7 +150,10 @@ export function createProjectsFake(): ProjectsFake {
   const secondsOf = (entry: TimeEntry) =>
     Math.max(
       0,
-      Math.floor(((entry.endedAt ? Date.parse(entry.endedAt) : Date.now()) - Date.parse(entry.startedAt)) / 1000),
+      Math.floor(
+        ((entry.endedAt ? Date.parse(entry.endedAt) : Date.now()) - Date.parse(entry.startedAt)) /
+          1000,
+      ),
     );
   const entryView = (entry: TimeEntry): TimeEntry => {
     const project = projects.get(entry.projectId);
@@ -225,7 +228,9 @@ export function createProjectsFake(): ProjectsFake {
   const summary = (query: RequestOptions['query'] = {}): TimeSummary => {
     const projectId = query.projectId === undefined ? null : String(query.projectId);
     const weeks = query.weeks === undefined ? 8 : Number(query.weeks);
-    const chosen = liveEntries().filter((entry) => projectId === null || entry.projectId === projectId);
+    const chosen = liveEntries().filter(
+      (entry) => projectId === null || entry.projectId === projectId,
+    );
     const thisWeek = weekStart(Date.now());
     const byWeek = Array.from({ length: weeks }, (_, index) => {
       const start = thisWeek - (weeks - 1 - index) * 7 * DAY_MS;
@@ -368,7 +373,10 @@ export function createProjectsFake(): ProjectsFake {
         const current = find(clients, id, 'Client');
         const { id: _ignored, ...patch } = body;
         const previous = Object.fromEntries(
-          Object.keys(patch).map((key) => [key, (current as unknown as Record<string, unknown>)[key]]),
+          Object.keys(patch).map((key) => [
+            key,
+            (current as unknown as Record<string, unknown>)[key],
+          ]),
         );
         const next = touch({ ...current, ...patch }) as Client;
         clients.set(id, next);
@@ -386,7 +394,9 @@ export function createProjectsFake(): ProjectsFake {
       return {
         items: live(projects)
           .filter((project) => query.status === undefined || project.status === query.status)
-          .filter((project) => query.clientId === undefined || project.client?.id === query.clientId)
+          .filter(
+            (project) => query.clientId === undefined || project.client?.id === query.clientId,
+          )
           .map(projectView),
       };
     }
@@ -459,7 +469,10 @@ export function createProjectsFake(): ProjectsFake {
         const current = find(projects, id, 'Project');
         const { id: _ignored, clientId, ...patch } = body;
         const previous = Object.fromEntries(
-          Object.keys(patch).map((key) => [key, (current as unknown as Record<string, unknown>)[key]]),
+          Object.keys(patch).map((key) => [
+            key,
+            (current as unknown as Record<string, unknown>)[key],
+          ]),
         );
         let client = current.client;
         if (clientId !== undefined) {

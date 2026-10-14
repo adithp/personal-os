@@ -116,7 +116,9 @@ describe('new project', () => {
     await user.type(within(dialog).getByRole('textbox', { name: 'New client name' }), 'Globex');
     await user.click(within(dialog).getByRole('button', { name: 'Create project' }));
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Brand site' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Brand site' }),
+    ).toBeInTheDocument();
     expect(callsTo(fake, 'POST', '/clients')).toHaveLength(1);
     const created = projects.projects().find((project) => project.title === 'Brand site');
     expect(created?.client?.name).toBe('Globex');
@@ -125,7 +127,9 @@ describe('new project', () => {
   it('asks for a title', async () => {
     const { fake } = projectsSetup();
     const { user } = await openProjects(fake);
-    await user.click((await screen.findAllByRole('button', { name: 'New project' }))[0] as HTMLElement);
+    await user.click(
+      (await screen.findAllByRole('button', { name: 'New project' }))[0] as HTMLElement,
+    );
     const dialog = await screen.findByRole('dialog', { name: 'New project' });
     await user.click(within(dialog).getByRole('button', { name: 'Create project' }));
     expect(within(dialog).getByRole('alert')).toHaveTextContent('Add a title');
@@ -135,7 +139,9 @@ describe('new project', () => {
   it('closes with Escape', async () => {
     const { fake } = projectsSetup();
     const { user } = await openProjects(fake);
-    await user.click((await screen.findAllByRole('button', { name: 'New project' }))[0] as HTMLElement);
+    await user.click(
+      (await screen.findAllByRole('button', { name: 'New project' }))[0] as HTMLElement,
+    );
     await screen.findByRole('dialog', { name: 'New project' });
     await user.keyboard('{Escape}');
     await waitFor(() => {

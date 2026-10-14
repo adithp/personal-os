@@ -135,7 +135,10 @@ export const timeEntries = pgTable(
       columns: [table.taskId, table.userId],
       foreignColumns: [tasks.id, tasks.userId],
     }),
-    check('time_entries_end_after_start', sql`${table.endedAt} is null or ${table.endedAt} >= ${table.startedAt}`),
+    check(
+      'time_entries_end_after_start',
+      sql`${table.endedAt} is null or ${table.endedAt} >= ${table.startedAt}`,
+    ),
     uniqueIndex('time_entries_one_running_idx')
       .on(table.userId)
       .where(sql`${table.endedAt} is null and ${table.deletedAt} is null`),

@@ -3,11 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFakeApi } from '../../test/fake-api';
 import { makeHabit, seedHabits, type HabitSeed } from '../../test/fake-habits';
-import {
-  openMyTasks,
-  resetEverything,
-  restoreEverything,
-} from '../tasks/my-tasks/test-utils';
+import { openMyTasks, resetEverything, restoreEverything } from '../tasks/my-tasks/test-utils';
 
 vi.mock('@tauri-apps/api/window', async (importOriginal) => ({
   ...(await importOriginal<typeof TauriWindow>()),
@@ -125,7 +121,9 @@ describe('today list', () => {
 describe('create, edit, archive', () => {
   it('creates a weekly habit from the dialog', async () => {
     const { user, fake } = await open();
-    await user.click((await screen.findAllByRole('button', { name: 'New habit' }))[0] as HTMLElement);
+    await user.click(
+      (await screen.findAllByRole('button', { name: 'New habit' }))[0] as HTMLElement,
+    );
     const dialog = await screen.findByRole('dialog', { name: 'New habit' });
     expect(dialog.parentElement?.parentElement).toBe(document.body);
     await user.type(within(dialog).getByLabelText('Name'), 'Gym');
@@ -144,7 +142,9 @@ describe('create, edit, archive', () => {
 
   it('asks for a name', async () => {
     const { user, fake } = await open();
-    await user.click((await screen.findAllByRole('button', { name: 'New habit' }))[0] as HTMLElement);
+    await user.click(
+      (await screen.findAllByRole('button', { name: 'New habit' }))[0] as HTMLElement,
+    );
     const dialog = await screen.findByRole('dialog', { name: 'New habit' });
     await user.click(within(dialog).getByRole('button', { name: 'Create habit' }));
     expect(within(dialog).getByRole('alert')).toHaveTextContent('Add a name');
@@ -203,13 +203,17 @@ describe('detail panel', () => {
     await user.click(await screen.findByRole('group', { name: 'Run' }));
     const panel = await screen.findByRole('complementary', { name: 'Habit details' });
     await user.click(await within(panel).findByRole('button', { name: /Mon, 6 Oct, missed/ }));
-    expect(await within(panel).findByRole('button', { name: /Mon, 6 Oct, done/ })).toBeInTheDocument();
     expect(
-      habitCalls(fake, 'PUT').find((call) => call.path.endsWith('/log'))?.body,
-    ).toEqual({ date: YESTERDAY });
+      await within(panel).findByRole('button', { name: /Mon, 6 Oct, done/ }),
+    ).toBeInTheDocument();
+    expect(habitCalls(fake, 'PUT').find((call) => call.path.endsWith('/log'))?.body).toEqual({
+      date: YESTERDAY,
+    });
 
     await user.click(within(panel).getByRole('button', { name: /Mon, 6 Oct, done/ }));
-    expect(await within(panel).findByRole('button', { name: /Mon, 6 Oct, missed/ })).toBeInTheDocument();
+    expect(
+      await within(panel).findByRole('button', { name: /Mon, 6 Oct, missed/ }),
+    ).toBeInTheDocument();
   });
 
   it('shows an error for the history with Try again', async () => {
@@ -243,7 +247,9 @@ describe('keyboard', () => {
     expect(await screen.findByRole('complementary', { name: 'Habit details' })).toBeInTheDocument();
     await user.keyboard('{Escape}');
     await waitFor(() => {
-      expect(screen.queryByRole('complementary', { name: 'Habit details' })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('complementary', { name: 'Habit details' }),
+      ).not.toBeInTheDocument();
     });
   });
 

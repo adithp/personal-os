@@ -94,15 +94,19 @@ describe('Wallets', () => {
     await user.type(within(dialog).getByLabelText('Opening balance (₹)'), '1,234.50');
     await user.click(within(dialog).getByRole('button', { name: 'Add wallet' }));
     await waitFor(() => {
-      expect(moneyState().wallets().map((w) => w.name)).toContain('Savings');
+      expect(
+        moneyState()
+          .wallets()
+          .map((w) => w.name),
+      ).toContain('Savings');
     });
     expect(callsTo(fake, 'POST', '/wallets')[0]?.body).toMatchObject({
       name: 'Savings',
       openingBalancePaise: 123450,
     });
-    expect(await screen.findByRole('button', { name: 'Open Savings transactions' })).toHaveTextContent(
-      formatInr(123450),
-    );
+    expect(
+      await screen.findByRole('button', { name: 'Open Savings transactions' }),
+    ).toHaveTextContent(formatInr(123450));
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
@@ -130,8 +134,14 @@ describe('Wallets', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
-    expect(moneyState().wallets().find((w) => w.name === 'Cash')?.archived).toBe(true);
-    expect(screen.queryByRole('button', { name: 'Open Cash transactions' })).not.toBeInTheDocument();
+    expect(
+      moneyState()
+        .wallets()
+        .find((w) => w.name === 'Cash')?.archived,
+    ).toBe(true);
+    expect(
+      screen.queryByRole('button', { name: 'Open Cash transactions' }),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Show archived' }));
     await user.click(await screen.findByRole('button', { name: 'Edit Cash' }));
     dialog = await screen.findByRole('dialog', { name: 'Edit wallet' });
@@ -170,7 +180,10 @@ describe('Budgets', () => {
   it('marks an over-budget category in the danger color', async () => {
     const { seed, food } = sampleSeed();
     await openMoney(
-      { ...seed, budgets: [makeBudget({ categoryId: food.id, month: '2026-10', amountPaise: 80000 })] },
+      {
+        ...seed,
+        budgets: [makeBudget({ categoryId: food.id, month: '2026-10', amountPaise: 80000 })],
+      },
       '?section=budgets',
     );
     const note = await screen.findByText(`Over budget by ${formatInr(20000)}`);
@@ -234,7 +247,10 @@ describe('Goals', () => {
         '38',
       );
     });
-    expect(callsTo(fake, 'POST', `/savings-goals/${moneyState().goals()[0]?.id ?? ''}/contribute`)[0]?.body).toEqual({
+    expect(
+      callsTo(fake, 'POST', `/savings-goals/${moneyState().goals()[0]?.id ?? ''}/contribute`)[0]
+        ?.body,
+    ).toEqual({
       deltaPaise: 1000000,
     });
   });
@@ -285,7 +301,9 @@ describe('Subscriptions', () => {
     expect(cancelled).toHaveClass('opacity-60');
     expect(within(all).getByText('Cancelled')).toBeInTheDocument();
     // A cancelled subscription cannot be marked paid
-    expect(within(all).queryByRole('button', { name: 'Mark Old paper paid' })).not.toBeInTheDocument();
+    expect(
+      within(all).queryByRole('button', { name: 'Mark Old paper paid' }),
+    ).not.toBeInTheDocument();
   });
 
   it('Mark paid moves the renewal on, books the expense, and Undo puts it back', async () => {
@@ -296,8 +314,12 @@ describe('Subscriptions', () => {
     await waitFor(() => {
       expect(moneyState().transactions()).toHaveLength(before + 1);
     });
-    expect(callsTo(fake, 'POST', `/subscriptions/${moneyState().subscriptions()[0]?.id ?? ''}/renew`)).toHaveLength(1);
-    const netflix = moneyState().subscriptions().find((s) => s.name === 'Netflix');
+    expect(
+      callsTo(fake, 'POST', `/subscriptions/${moneyState().subscriptions()[0]?.id ?? ''}/renew`),
+    ).toHaveLength(1);
+    const netflix = moneyState()
+      .subscriptions()
+      .find((s) => s.name === 'Netflix');
     expect(netflix?.nextRenewalOn).toBe('2026-11-20');
     expect(moneyState().transactions().at(-1)).toMatchObject({
       kind: 'expense',
@@ -310,9 +332,11 @@ describe('Subscriptions', () => {
     await waitFor(() => {
       expect(moneyState().transactions()).toHaveLength(before);
     });
-    expect(moneyState().subscriptions().find((s) => s.name === 'Netflix')?.nextRenewalOn).toBe(
-      '2026-10-20',
-    );
+    expect(
+      moneyState()
+        .subscriptions()
+        .find((s) => s.name === 'Netflix')?.nextRenewalOn,
+    ).toBe('2026-10-20');
   });
 
   it('adds a subscription with the price as integer paise', async () => {
@@ -387,9 +411,7 @@ describe('Reports', () => {
       within(screen.getByRole('group', { name: 'Month' })).getByText('September 2026'),
     ).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByRole('region', { name: 'Expense' })).toHaveTextContent(
-        formatInr(1500000),
-      );
+      expect(screen.getByRole('region', { name: 'Expense' })).toHaveTextContent(formatInr(1500000));
     });
     expect(await screen.findByRole('region', { name: 'Expense' })).toHaveTextContent(
       formatInr(1500000),

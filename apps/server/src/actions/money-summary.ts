@@ -30,7 +30,10 @@ export const summaryImplementations = [
     let income = 0;
     let expense = 0;
     let previousExpense = 0;
-    const categoryTotals = new Map<string, { categoryId: string | null; kind: CategoryKind; total: number }>();
+    const categoryTotals = new Map<
+      string,
+      { categoryId: string | null; kind: CategoryKind; total: number }
+    >();
     const days = new Map<string, { incomePaise: number; expensePaise: number }>();
 
     for (const row of rows) {

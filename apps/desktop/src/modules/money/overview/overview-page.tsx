@@ -56,8 +56,17 @@ export function OverviewPage() {
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <BudgetsCard month={nav.thisMonth} onOpen={() => { nav.showSection('budgets'); }} />
-            <RenewalsCard onOpen={() => { nav.showSection('subscriptions'); }} />
+            <BudgetsCard
+              month={nav.thisMonth}
+              onOpen={() => {
+                nav.showSection('budgets');
+              }}
+            />
+            <RenewalsCard
+              onOpen={() => {
+                nav.showSection('subscriptions');
+              }}
+            />
           </div>
           <RecentCard
             today={nav.today}

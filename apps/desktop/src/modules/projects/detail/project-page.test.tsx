@@ -35,7 +35,10 @@ const openTask = makeTask({ title: 'Write copy', dueAt: '2025-10-20T06:30:00.000
 const doneTask = makeTask({ title: 'Pick a theme', status: 'done' });
 const doingTask = makeTask({ title: 'Build pages', status: 'doing' });
 
-function setup(extra: Parameters<typeof projectsSetup>[0] = {}, others = [makeTask({ title: 'Loose task' })]) {
+function setup(
+  extra: Parameters<typeof projectsSetup>[0] = {},
+  others = [makeTask({ title: 'Loose task' })],
+) {
   return projectsSetup(
     {
       projects: [project],
@@ -108,7 +111,9 @@ describe('overview', () => {
     await user.clear(title);
     await user.type(title, 'Website v2');
     await user.click(within(dialog).getByRole('button', { name: 'Save' }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Website v2' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Website v2' }),
+    ).toBeInTheDocument();
     expect(projects.projects()[0]?.title).toBe('Website v2');
   });
 
@@ -140,7 +145,9 @@ describe('milestones', () => {
     expect(await screen.findByText('Launch')).toBeInTheDocument();
     expect(projects.milestones().map((m) => m.title)).toContain('Launch');
 
-    await user.click(screen.getByRole('checkbox', { name: 'Complete milestone: Design signed off' }));
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Complete milestone: Design signed off' }),
+    );
     await waitFor(() => {
       expect(projects.milestones().find((m) => m.id === existing.id)?.doneAt).not.toBeNull();
     });
@@ -158,7 +165,9 @@ describe('milestones', () => {
   it('shows the empty line', async () => {
     const { fake } = setup();
     await openProjectPage(fake, 'Website');
-    expect(await screen.findByText('No milestones yet. Add the first one below.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('No milestones yet. Add the first one below.'),
+    ).toBeInTheDocument();
   });
 });
 
@@ -208,7 +217,9 @@ describe('tasks tab', () => {
     const { fake, projects } = setup();
     const { user } = await openProjectPage(fake, 'Website');
     await user.click(screen.getByRole('radio', { name: 'Tasks' }));
-    await user.click(await screen.findByRole('button', { name: 'Remove from project: Write copy' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Remove from project: Write copy' }),
+    );
     await waitFor(() => {
       expect(projects.taskProjectOf(openTask.id)).toBeNull();
     });
@@ -277,8 +288,12 @@ describe('board tab', () => {
     await user.click(screen.getByRole('radio', { name: 'Board' }));
     const todo = await screen.findByRole('region', { name: 'To do' });
     expect(within(todo).getByText('Write copy')).toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: 'In progress' })).getByText('Build pages')).toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: 'Done' })).getByText('Pick a theme')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'In progress' })).getByText('Build pages'),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'Done' })).getByText('Pick a theme'),
+    ).toBeInTheDocument();
     expect(screen.queryByText('Loose task')).not.toBeInTheDocument();
   });
 

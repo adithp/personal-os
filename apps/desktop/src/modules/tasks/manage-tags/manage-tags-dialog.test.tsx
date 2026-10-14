@@ -196,7 +196,13 @@ describe('Manage tags dialog', () => {
 
   it('shows the server reason when a tag used in notes is deleted', async () => {
     const work = makeTag({ name: 'work' });
-    const fake = createFakeApi([], [work], [], [], [makeNote({ title: 'N', contentMd: 'a #work' })]);
+    const fake = createFakeApi(
+      [],
+      [work],
+      [],
+      [],
+      [makeNote({ title: 'N', contentMd: 'a #work' })],
+    );
     const { user } = await openDialog(fake);
     await user.click(await screen.findByRole('button', { name: 'Delete work' }));
     const group = await screen.findByRole('group', { name: 'work question' });
@@ -208,7 +214,13 @@ describe('Manage tags dialog', () => {
 
   it('shows the server reason when a tag used in notes gets a name notes cannot read', async () => {
     const work = makeTag({ name: 'work' });
-    const fake = createFakeApi([], [work], [], [], [makeNote({ title: 'N', contentMd: 'a #work' })]);
+    const fake = createFakeApi(
+      [],
+      [work],
+      [],
+      [],
+      [makeNote({ title: 'N', contentMd: 'a #work' })],
+    );
     const { user } = await openDialog(fake);
     await user.click(await screen.findByRole('button', { name: 'Rename work' }));
     const box = screen.getByRole('textbox', { name: 'Rename work' });

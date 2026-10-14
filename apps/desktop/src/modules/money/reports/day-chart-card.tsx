@@ -63,7 +63,9 @@ export function DayChartCard({ summary }: { summary: MonthSummary }) {
         <ReportTable
           label="Spending per day"
           head={['Day', 'Spent']}
-          rows={data.filter((d) => d.expensePaise > 0).map((d) => [shortDay(d.date), formatInr(d.expensePaise)])}
+          rows={data
+            .filter((d) => d.expensePaise > 0)
+            .map((d) => [shortDay(d.date), formatInr(d.expensePaise)])}
         />
       ) : (
         <div

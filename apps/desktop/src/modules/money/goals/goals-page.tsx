@@ -16,7 +16,13 @@ type Dialog =
   | { type: 'money'; goal: SavingsGoal; mode: 'add' | 'withdraw' }
   | null;
 
-function GoalCard({ goal, open }: { goal: SavingsGoal; open: (dialog: NonNullable<Dialog>) => void }) {
+function GoalCard({
+  goal,
+  open,
+}: {
+  goal: SavingsGoal;
+  open: (dialog: NonNullable<Dialog>) => void;
+}) {
   const text = `${formatInr(goal.savedPaise)} of ${formatInr(goal.targetPaise)}`;
   return (
     <li>
@@ -31,7 +37,7 @@ function GoalCard({ goal, open }: { goal: SavingsGoal; open: (dialog: NonNullabl
               </span>
             ) : null}
           </span>
-          <span className="text-body tabular-nums text-fg-secondary">
+          <span className="text-body text-fg-secondary tabular-nums">
             {text} · {String(goal.percent)}%
           </span>
         </div>

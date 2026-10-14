@@ -29,7 +29,11 @@ async function assertNameFree(
 ): Promise<void> {
   const live = await scope.select(categories, { where: scope.isLive(categories) });
   const wanted = name.toLowerCase();
-  if (live.some((row) => row.id !== exceptId && row.kind === kind && row.name.toLowerCase() === wanted)) {
+  if (
+    live.some(
+      (row) => row.id !== exceptId && row.kind === kind && row.name.toLowerCase() === wanted,
+    )
+  ) {
     throw conflict('name_taken', 'A category with this name already exists');
   }
 }

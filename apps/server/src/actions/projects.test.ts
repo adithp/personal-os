@@ -135,9 +135,10 @@ describe('clients', () => {
     const [entity] = await t.db.select().from(entities).where(eq(entities.id, client.id));
     expect(entity?.title).toBe('Acme 2');
     await doUndo(alice(), updated);
-    expect(
-      (await run<Client>(alice(), 'clients.get', { id: client.id })).data,
-    ).toMatchObject({ name: 'Acme', company: 'Acme Ltd' });
+    expect((await run<Client>(alice(), 'clients.get', { id: client.id })).data).toMatchObject({
+      name: 'Acme',
+      company: 'Acme Ltd',
+    });
     const same = await run<Client>(alice(), 'clients.update', { id: client.id, name: 'Acme' });
     expect(same.undo).toBeNull();
   });
@@ -179,7 +180,9 @@ describe('clients', () => {
     ).toBe(404);
     expect(await statusCode(registry.run(bob(), 'clients.delete', { id: client.id }))).toBe(404);
     expect((await run<Client[]>(bob(), 'clients.list', {})).data).toEqual([]);
-    expect(await statusCode(registry.run(bob(), 'projects.create', { title: 'P', clientId: client.id }))).toBe(404);
+    expect(
+      await statusCode(registry.run(bob(), 'projects.create', { title: 'P', clientId: client.id })),
+    ).toBe(404);
   });
 });
 
@@ -267,7 +270,9 @@ describe('projects', () => {
     ).toEqual([a.id]);
     await doUndo(alice(), set);
     expect((await getProject(alice(), a.id)).status).toBe('active');
-    expect((await run(alice(), 'projects.setStatus', { id: a.id, status: 'active' })).undo).toBeNull();
+    expect(
+      (await run(alice(), 'projects.setStatus', { id: a.id, status: 'active' })).undo,
+    ).toBeNull();
   });
 
   it('deletes and restores', async () => {
@@ -369,8 +374,9 @@ describe('project items', () => {
     await run(alice(), 'goals.setTaskGoal', { taskId: task.id, goalId: goal.id });
     await run(alice(), 'projects.setTaskProject', { taskId: task.id, projectId: project.id });
     expect((await getProject(alice(), project.id)).progress.total).toBe(1);
-    const goalNow = (await run<{ progress: { total: number } }>(alice(), 'goals.get', { id: goal.id }))
-      .data;
+    const goalNow = (
+      await run<{ progress: { total: number } }>(alice(), 'goals.get', { id: goal.id })
+    ).data;
     expect(goalNow.progress.total).toBe(1);
     const full = (await run<Task>(alice(), 'tasks.get', { id: task.id })).data;
     expect(full.goal?.id).toBe(goal.id);
@@ -391,12 +397,18 @@ describe('project items', () => {
     ).toBe(400);
     expect(
       await statusCode(
-        registry.run(alice(), 'projects.setTaskProject', { taskId: MISSING, projectId: project.id }),
+        registry.run(alice(), 'projects.setTaskProject', {
+          taskId: MISSING,
+          projectId: project.id,
+        }),
       ),
     ).toBe(404);
     expect(
       await statusCode(
-        registry.run(alice(), 'projects.setNoteProject', { noteId: MISSING, projectId: project.id }),
+        registry.run(alice(), 'projects.setNoteProject', {
+          noteId: MISSING,
+          projectId: project.id,
+        }),
       ),
     ).toBe(404);
     expect(
@@ -417,9 +429,9 @@ describe('project items', () => {
         registry.run(alice(), 'projects.setTaskProject', { taskId: parent.id, projectId: goal.id }),
       ),
     ).toBe(404);
-    expect(await statusCode(registry.run(alice(), 'projects.taskProject', { taskId: MISSING }))).toBe(
-      404,
-    );
+    expect(
+      await statusCode(registry.run(alice(), 'projects.taskProject', { taskId: MISSING })),
+    ).toBe(404);
   });
 
   it('stops at 500 items with project_full', async () => {
@@ -435,16 +447,14 @@ describe('project items', () => {
     await t.db.execute(
       sql`insert into tasks (id, user_id, title) select id, user_id, title from entities where title like 'x%'`,
     );
-    await t.db
-      .insert(links)
-      .values(
-        rows.map((row) => ({
-          userId: ALICE,
-          sourceId: row.id,
-          targetId: project.id,
-          relation: 'belongs_to' as const,
-        })),
-      );
+    await t.db.insert(links).values(
+      rows.map((row) => ({
+        userId: ALICE,
+        sourceId: row.id,
+        targetId: project.id,
+        relation: 'belongs_to' as const,
+      })),
+    );
     try {
       await run(alice(), 'projects.setTaskProject', { taskId: task.id, projectId: project.id });
       expect.unreachable();
@@ -494,7 +504,11 @@ describe('milestones', () => {
       projectId: project.id,
       title: 'Two',
     });
-    expect(first.data).toMatchObject({ title: 'One', dueAt: '2026-12-30T18:30:00.000Z', doneAt: null });
+    expect(first.data).toMatchObject({
+      title: 'One',
+      dueAt: '2026-12-30T18:30:00.000Z',
+      doneAt: null,
+    });
     expect(second.data.position).toBeGreaterThan(first.data.position);
     expect(
       (await run<Milestone[]>(alice(), 'milestones.list', { projectId: project.id })).data.map(
@@ -526,7 +540,11 @@ describe('milestones', () => {
       (await run<Milestone[]>(alice(), 'milestones.list', { projectId: project.id })).data,
     ).toHaveLength(2);
     await doUndo(alice(), first);
-    expect(await statusCode(registry.run(alice(), 'milestones.update', { id: first.data.id, title: 'x' }))).toBe(404);
+    expect(
+      await statusCode(
+        registry.run(alice(), 'milestones.update', { id: first.data.id, title: 'x' }),
+      ),
+    ).toBe(404);
   });
 
   it('validates and keeps milestones private', async () => {
@@ -538,11 +556,13 @@ describe('milestones', () => {
       registry.run(alice(), 'milestones.create', { projectId: project.id, title: ' ' }),
     ).rejects.toBeInstanceOf(ZodError);
     expect(
-      await statusCode(registry.run(alice(), 'milestones.create', { projectId: MISSING, title: 'x' })),
+      await statusCode(
+        registry.run(alice(), 'milestones.create', { projectId: MISSING, title: 'x' }),
+      ),
     ).toBe(404);
-    expect(await statusCode(registry.run(bob(), 'milestones.list', { projectId: project.id }))).toBe(
-      404,
-    );
+    expect(
+      await statusCode(registry.run(bob(), 'milestones.list', { projectId: project.id })),
+    ).toBe(404);
     for (const name of ['milestones.delete', 'milestones.restore']) {
       expect(await statusCode(registry.run(bob(), name, { id: milestone.id }))).toBe(404);
     }
@@ -612,22 +632,32 @@ describe('time tracking', () => {
     });
     expect(updated.data).toMatchObject({ seconds: 7200, taskId: task.id, note: null });
     await doUndo(alice(), updated);
-    expect(
-      (await run<TimeEntry[]>(alice(), 'time.list', {})).data[0],
-    ).toMatchObject({ seconds: 3600, taskId: null, note: 'x' });
+    expect((await run<TimeEntry[]>(alice(), 'time.list', {})).data[0]).toMatchObject({
+      seconds: 3600,
+      taskId: null,
+      note: 'x',
+    });
 
     expect(
       await statusCode(
-        registry.run(alice(), 'time.update', { id: added.data.id, endedAt: '2026-10-01T09:00:00.000Z' }),
+        registry.run(alice(), 'time.update', {
+          id: added.data.id,
+          endedAt: '2026-10-01T09:00:00.000Z',
+        }),
       ),
     ).toBe(400);
     expect(
       await statusCode(
-        registry.run(alice(), 'time.update', { id: added.data.id, endedAt: '2026-10-03T10:00:00.000Z' }),
+        registry.run(alice(), 'time.update', {
+          id: added.data.id,
+          endedAt: '2026-10-03T10:00:00.000Z',
+        }),
       ),
     ).toBe(400);
     expect(
-      await statusCode(registry.run(alice(), 'time.update', { id: added.data.id, taskId: MISSING })),
+      await statusCode(
+        registry.run(alice(), 'time.update', { id: added.data.id, taskId: MISSING }),
+      ),
     ).toBe(404);
     await expect(
       registry.run(alice(), 'time.add', {
@@ -659,7 +689,10 @@ describe('time tracking', () => {
     const started = await run<TimeEntry>(alice(), 'time.start', { projectId: project.id });
     expect(
       await statusCode(
-        registry.run(alice(), 'time.update', { id: started.data.id, endedAt: new Date().toISOString() }),
+        registry.run(alice(), 'time.update', {
+          id: started.data.id,
+          endedAt: new Date().toISOString(),
+        }),
       ),
     ).toBe(400);
     const deleted = await run(alice(), 'time.delete', { id: started.data.id });
@@ -679,7 +712,9 @@ describe('time tracking', () => {
     await add(b.id, '2026-10-02T10:00:00.000Z', '2026-10-02T11:00:00.000Z');
     const all = (await run<TimeEntry[]>(alice(), 'time.list', {})).data;
     expect(all.map((e) => e.projectTitle)).toEqual(['B', 'A']);
-    expect((await run<TimeEntry[]>(alice(), 'time.list', { projectId: a.id })).data).toHaveLength(1);
+    expect((await run<TimeEntry[]>(alice(), 'time.list', { projectId: a.id })).data).toHaveLength(
+      1,
+    );
     expect(
       (await run<TimeEntry[]>(alice(), 'time.list', { from: '2026-10-02T00:00:00.000Z' })).data,
     ).toHaveLength(1);
@@ -745,12 +780,16 @@ describe('time tracking', () => {
   it('keeps time entries private to their user', async () => {
     const project = await projectOf(alice(), 'P');
     const entry = await run<TimeEntry>(alice(), 'time.start', { projectId: project.id });
-    expect(await statusCode(registry.run(bob(), 'time.start', { projectId: project.id }))).toBe(404);
+    expect(await statusCode(registry.run(bob(), 'time.start', { projectId: project.id }))).toBe(
+      404,
+    );
     expect((await run<TimeEntry[]>(bob(), 'time.list', {})).data).toEqual([]);
     expect((await run<TimeEntry | null>(bob(), 'time.running', {})).data).toBeNull();
     expect((await run<TimeSummary>(bob(), 'time.summary', {})).data.totalSeconds).toBe(0);
     for (const name of ['time.update', 'time.delete', 'time.restore']) {
-      expect(await statusCode(registry.run(bob(), name, { id: entry.data.id, note: 'x' }))).toBe(404);
+      expect(await statusCode(registry.run(bob(), name, { id: entry.data.id, note: 'x' }))).toBe(
+        404,
+      );
     }
     expect(await statusCode(registry.run(bob(), 'time.stop', { id: entry.data.id }))).toBe(404);
     // Bob can run his own timer at the same time

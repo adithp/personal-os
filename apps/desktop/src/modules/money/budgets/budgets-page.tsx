@@ -84,7 +84,9 @@ export function BudgetsPage() {
                       {name}
                     </span>
                     <span className="flex items-center gap-3">
-                      <span className={`text-body tabular-nums ${over ? 'text-danger' : 'text-fg-secondary'}`}>
+                      <span
+                        className={`text-body tabular-nums ${over ? 'text-danger' : 'text-fg-secondary'}`}
+                      >
                         {text} · {String(budget.percent)}%
                       </span>
                       <Button

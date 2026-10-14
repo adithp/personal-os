@@ -23,11 +23,23 @@ interface Listed {
 }
 interface Renewed {
   subscription: Sub;
-  transaction: { id: string; amountPaise: number; occurredOn: string; note: string | null; subscriptionId: string | null; kind: string } | null;
+  transaction: {
+    id: string;
+    amountPaise: number;
+    occurredOn: string;
+    note: string | null;
+    subscriptionId: string | null;
+    kind: string;
+  } | null;
 }
 
 const wallet = async (name = 'W', ctx = h.alice()) =>
-  (await h.run<{ id: string }>(ctx, 'finance.wallets.create', { name, openingBalancePaise: 100000 })).data;
+  (
+    await h.run<{ id: string }>(ctx, 'finance.wallets.create', {
+      name,
+      openingBalancePaise: 100000,
+    })
+  ).data;
 const add = async (input: Record<string, unknown>) =>
   await h.run<Sub>(h.alice(), 'subscriptions.create', {
     name: 'Netflix',
@@ -41,13 +53,18 @@ const upcoming = async (input: Record<string, unknown> = {}, ctx = h.alice()) =>
   (await h.run<Sub[]>(ctx, 'subscriptions.upcoming', input)).data;
 const renew = async (id: string, input: Record<string, unknown> = {}) =>
   await h.run<Renewed>(h.alice(), 'subscriptions.renew', { id, ...input });
-const undo = (result: Result<unknown>) => h.run(h.alice(), undoOf(result).action, undoOf(result).input);
+const undo = (result: Result<unknown>) =>
+  h.run(h.alice(), undoOf(result).action, undoOf(result).input);
 const transactions = async () =>
   (await h.run<{ id: string }[]>(h.alice(), 'finance.transactions.list', {})).data;
 
 describe('subscriptions.create, update, delete', () => {
   it('creates with costs, days until renewal and an undo that deletes it', async () => {
-    const created = await add({ cycle: 'weekly', amountPaise: 10000, nextRenewalOn: addDays(today(), 3) });
+    const created = await add({
+      cycle: 'weekly',
+      amountPaise: 10000,
+      nextRenewalOn: addDays(today(), 3),
+    });
     expect(created.data).toMatchObject({
       status: 'active',
       monthlyPaise: Math.round((10000 * 52) / 12),
@@ -76,14 +93,31 @@ describe('subscriptions.create, update, delete', () => {
   it('updates with an undo of the old values and pauses; summary counts active only', async () => {
     const a = await add({ name: 'A', amountPaise: 1200, cycle: 'monthly' });
     await add({ name: 'B', amountPaise: 1200, cycle: 'yearly' });
-    expect((await list()).summary).toEqual({ activeCount: 2, monthlyPaise: 1200 + 100, yearlyPaise: 14400 + 1200 });
-    const paused = await h.run<Sub>(h.alice(), 'subscriptions.update', { id: a.data.id, status: 'paused', name: 'A2' });
+    expect((await list()).summary).toEqual({
+      activeCount: 2,
+      monthlyPaise: 1200 + 100,
+      yearlyPaise: 14400 + 1200,
+    });
+    const paused = await h.run<Sub>(h.alice(), 'subscriptions.update', {
+      id: a.data.id,
+      status: 'paused',
+      name: 'A2',
+    });
     expect(paused.data).toMatchObject({ status: 'paused', name: 'A2', overdue: false });
-    expect((await list()).summary).toEqual({ activeCount: 1, monthlyPaise: 100, yearlyPaise: 1200 });
+    expect((await list()).summary).toEqual({
+      activeCount: 1,
+      monthlyPaise: 100,
+      yearlyPaise: 1200,
+    });
     expect((await list({ status: 'paused' })).items.map((s) => s.name)).toEqual(['A2']);
     await undo(paused);
-    expect((await list()).items.find((s) => s.id === a.data.id)).toMatchObject({ status: 'active', name: 'A' });
-    expect((await h.run(h.alice(), 'subscriptions.update', { id: a.data.id, name: 'A' })).undo).toBeNull();
+    expect((await list()).items.find((s) => s.id === a.data.id)).toMatchObject({
+      status: 'active',
+      name: 'A',
+    });
+    expect(
+      (await h.run(h.alice(), 'subscriptions.update', { id: a.data.id, name: 'A' })).undo,
+    ).toBeNull();
   });
 
   it('orders by renewal day and flags overdue ones', async () => {
@@ -126,7 +160,9 @@ describe('subscriptions.upcoming', () => {
     await h.run(h.alice(), 'subscriptions.update', { id: paused.data.id, status: 'paused' });
     expect((await upcoming()).map((s) => s.name)).toEqual(['Overdue', 'Soon', 'Edge']);
     expect((await upcoming({ days: 7 })).map((s) => s.name)).toEqual(['Overdue', 'Soon']);
-    expect(await failure(h.run(h.alice(), 'subscriptions.upcoming', { days: 0 }))).toBeInstanceOf(ZodError);
+    expect(await failure(h.run(h.alice(), 'subscriptions.upcoming', { days: 0 }))).toBeInstanceOf(
+      ZodError,
+    );
   });
 });
 
@@ -144,11 +180,16 @@ describe('subscriptions.renew and undo_renew', () => {
       subscriptionId: data.id,
     });
     const balance = async () =>
-      (await h.run<{ balancePaise: number }[]>(h.alice(), 'finance.wallets.list', {})).data[0]?.balancePaise;
+      (await h.run<{ balancePaise: number }[]>(h.alice(), 'finance.wallets.list', {})).data[0]
+        ?.balancePaise;
     expect(await balance()).toBe(100000 - 64900);
     expect(renewed.undo).toEqual({
       action: 'subscriptions.undo_renew',
-      input: { id: data.id, previousRenewalOn: '2030-01-31', transactionId: renewed.data.transaction?.id },
+      input: {
+        id: data.id,
+        previousRenewalOn: '2030-01-31',
+        transactionId: renewed.data.transaction?.id,
+      },
     });
     const undone = await undo(renewed);
     expect(undone.undo ?? null).toBeNull();
@@ -216,7 +257,11 @@ describe('subscriptions.renew and undo_renew', () => {
     });
     expect(await transactions()).toHaveLength(1);
     await fails(
-      h.run(h.bob(), 'subscriptions.undo_renew', { id: a.data.id, previousRenewalOn: today(), transactionId: null }),
+      h.run(h.bob(), 'subscriptions.undo_renew', {
+        id: a.data.id,
+        previousRenewalOn: today(),
+        transactionId: null,
+      }),
       404,
     );
   });

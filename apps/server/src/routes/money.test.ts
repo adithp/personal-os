@@ -65,8 +65,12 @@ interface Written<T = Record<string, any>> {
   item: T;
   undo: { action: string; input: Record<string, unknown> } | null;
 }
-const write = async (method: 'POST' | 'PATCH' | 'PUT', url: string, payload: unknown, headers = alice) =>
-  (await call(method, url, headers, payload)).json<Written>();
+const write = async (
+  method: 'POST' | 'PATCH' | 'PUT',
+  url: string,
+  payload: unknown,
+  headers = alice,
+) => (await call(method, url, headers, payload)).json<Written>();
 const items = async (url: string, headers = alice) =>
   (await call('GET', url, headers)).json<{ items: Record<string, any>[] }>().items;
 
@@ -97,11 +101,17 @@ describe('login is required on every money route', () => {
 
 describe('wallets, categories and transactions', () => {
   it('creates a wallet (201), lists balances, hides archived ones, and undoes', async () => {
-    const response = await call('POST', '/wallets', alice, { name: 'HDFC', openingBalancePaise: 5000 });
+    const response = await call('POST', '/wallets', alice, {
+      name: 'HDFC',
+      openingBalancePaise: 5000,
+    });
     expect(response.statusCode).toBe(201);
     const created = response.json<Written>();
     expect(created.item).toMatchObject({ name: 'HDFC', balancePaise: 5000 });
-    expect(created.undo).toEqual({ action: 'finance.wallets.delete', input: { id: created.item.id } });
+    expect(created.undo).toEqual({
+      action: 'finance.wallets.delete',
+      input: { id: created.item.id },
+    });
     const archived = await write('PATCH', `/wallets/${created.item.id}`, { archived: true });
     expect(await items('/wallets')).toEqual([]);
     expect(await items('/wallets?includeArchived=true')).toHaveLength(1);
@@ -120,7 +130,11 @@ describe('wallets, categories and transactions', () => {
     const taken = await call('POST', '/wallets', alice, { name: 'a' });
     expect(taken.statusCode).toBe(409);
     expect(taken.json()).toMatchObject({ error: { code: 'name_taken' } });
-    await call('POST', '/transactions', alice, { kind: 'income', amountPaise: 1, walletId: wallet.id });
+    await call('POST', '/transactions', alice, {
+      kind: 'income',
+      amountPaise: 1,
+      walletId: wallet.id,
+    });
     const inUse = await call('DELETE', `/wallets/${wallet.id}`);
     expect(inUse.statusCode).toBe(409);
     expect(inUse.json()).toMatchObject({ error: { code: 'wallet_in_use' } });
@@ -152,13 +166,30 @@ describe('wallets, categories and transactions', () => {
     });
     expect(created.statusCode).toBe(201);
     const tx = created.json<Written>();
-    await write('POST', '/transactions', { kind: 'expense', amountPaise: 100, walletId: a.id, occurredOn: '2026-01-01' });
+    await write('POST', '/transactions', {
+      kind: 'expense',
+      amountPaise: 100,
+      walletId: a.id,
+      occurredOn: '2026-01-01',
+    });
     expect((await items('/transactions')).map((x) => x.amountPaise)).toEqual([400, 100]);
-    expect((await items(`/transactions?walletId=${b.id}&limit=5&offset=0`)).map((x) => x.amountPaise)).toEqual([400]);
-    expect((await items('/transactions?q=MOV&from=2026-01-15&kind=transfer')).map((x) => x.amountPaise)).toEqual([400]);
+    expect(
+      (await items(`/transactions?walletId=${b.id}&limit=5&offset=0`)).map((x) => x.amountPaise),
+    ).toEqual([400]);
+    expect(
+      (await items('/transactions?q=MOV&from=2026-01-15&kind=transfer')).map((x) => x.amountPaise),
+    ).toEqual([400]);
     expect((await call('GET', '/transactions?limit=0')).statusCode).toBe(400);
     expect((await call('GET', '/transactions?from=2026-02-30')).statusCode).toBe(400);
-    expect((await call('POST', '/transactions', alice, { kind: 'transfer', amountPaise: 1, walletId: a.id })).statusCode).toBe(400);
+    expect(
+      (
+        await call('POST', '/transactions', alice, {
+          kind: 'transfer',
+          amountPaise: 1,
+          walletId: a.id,
+        })
+      ).statusCode,
+    ).toBe(400);
     const updated = await write('PATCH', `/transactions/${tx.item.id}`, { amountPaise: 450 });
     expect(updated.item.amountPaise).toBe(450);
     const deleted = (await call('DELETE', `/transactions/${tx.item.id}`)).json<Written>();
@@ -191,20 +222,37 @@ describe('repeats, budgets, goals and the summary', () => {
     expect(await items('/recurring-transactions')).toEqual([]);
     await call('POST', '/undo', alice, deleted.undo);
     expect(await items('/recurring-transactions')).toHaveLength(1);
-    expect((await call('PATCH', `/recurring-transactions/${item.id}`, bob, { active: false })).statusCode).toBe(404);
+    expect(
+      (await call('PATCH', `/recurring-transactions/${item.id}`, bob, { active: false }))
+        .statusCode,
+    ).toBe(404);
   });
 
   it('sets budgets with PUT (200), lists progress for a month, and deletes', async () => {
     const wallet = (await write('POST', '/wallets', { name: 'W' })).item;
     const food = (await items('/categories')).find((c) => c.name === 'Food')!;
     const month = today().slice(0, 7);
-    const set = await call('PUT', '/budgets', alice, { categoryId: food.id, month, amountPaise: 10000 });
+    const set = await call('PUT', '/budgets', alice, {
+      categoryId: food.id,
+      month,
+      amountPaise: 10000,
+    });
     expect(set.statusCode).toBe(200);
-    await call('POST', '/transactions', alice, { kind: 'expense', amountPaise: 2500, walletId: wallet.id, categoryId: food.id });
-    expect(await items(`/budgets?month=${month}`)).toMatchObject([{ spentPaise: 2500, percent: 25 }]);
+    await call('POST', '/transactions', alice, {
+      kind: 'expense',
+      amountPaise: 2500,
+      walletId: wallet.id,
+      categoryId: food.id,
+    });
+    expect(await items(`/budgets?month=${month}`)).toMatchObject([
+      { spentPaise: 2500, percent: 25 },
+    ]);
     expect(await items('/budgets')).toHaveLength(1);
     expect((await call('GET', '/budgets?month=bad')).statusCode).toBe(400);
-    expect((await call('PUT', '/budgets', alice, { categoryId: MISSING, month, amountPaise: 1 })).statusCode).toBe(400);
+    expect(
+      (await call('PUT', '/budgets', alice, { categoryId: MISSING, month, amountPaise: 1 }))
+        .statusCode,
+    ).toBe(400);
     const { item, undo } = set.json<Written>();
     expect(undo?.action).toBe('finance.budgets.delete');
     expect((await call('DELETE', `/budgets/${item.id}`, bob)).statusCode).toBe(404);
@@ -214,25 +262,40 @@ describe('repeats, budgets, goals and the summary', () => {
   });
 
   it('manages savings goals and contributes', async () => {
-    const created = await call('POST', '/savings-goals', alice, { name: 'Trip', targetPaise: 10000 });
+    const created = await call('POST', '/savings-goals', alice, {
+      name: 'Trip',
+      targetPaise: 10000,
+    });
     expect(created.statusCode).toBe(201);
     const { item } = created.json<Written>();
     const added = await write('POST', `/savings-goals/${item.id}/contribute`, { deltaPaise: 2500 });
     expect(added.item).toMatchObject({ savedPaise: 2500, percent: 25 });
-    expect((await call('POST', `/savings-goals/${item.id}/contribute`, alice, { deltaPaise: -9999 })).statusCode).toBe(400);
-    expect((await call('POST', `/savings-goals/${item.id}/contribute`, bob, { deltaPaise: 1 })).statusCode).toBe(404);
+    expect(
+      (await call('POST', `/savings-goals/${item.id}/contribute`, alice, { deltaPaise: -9999 }))
+        .statusCode,
+    ).toBe(400);
+    expect(
+      (await call('POST', `/savings-goals/${item.id}/contribute`, bob, { deltaPaise: 1 }))
+        .statusCode,
+    ).toBe(404);
     await call('POST', '/undo', alice, added.undo);
     expect((await items('/savings-goals'))[0]?.savedPaise).toBe(0);
     const deleted = (await call('DELETE', `/savings-goals/${item.id}`)).json<Written>();
     expect(await items('/savings-goals')).toEqual([]);
     expect((await call('POST', `/savings-goals/${item.id}/restore`)).statusCode).toBe(200);
     expect(deleted.undo?.action).toBe('finance.goals.restore');
-    expect((await call('PATCH', `/savings-goals/${item.id}`, alice, { name: 'Trip 2' })).statusCode).toBe(200);
+    expect(
+      (await call('PATCH', `/savings-goals/${item.id}`, alice, { name: 'Trip 2' })).statusCode,
+    ).toBe(200);
   });
 
   it('answers the summary as { summary }', async () => {
     const wallet = (await write('POST', '/wallets', { name: 'W' })).item;
-    await call('POST', '/transactions', alice, { kind: 'expense', amountPaise: 300, walletId: wallet.id });
+    await call('POST', '/transactions', alice, {
+      kind: 'expense',
+      amountPaise: 300,
+      walletId: wallet.id,
+    });
     const response = await call('GET', '/finance/summary');
     expect(response.statusCode).toBe(200);
     expect(response.json<{ summary: Record<string, unknown> }>().summary).toMatchObject({
@@ -255,17 +318,25 @@ describe('subscriptions', () => {
     });
     expect(created.statusCode).toBe(201);
     const { item } = created.json<Written>();
-    const list = (await call('GET', '/subscriptions')).json<{ items: Record<string, any>[]; summary: Record<string, number> }>();
+    const list = (await call('GET', '/subscriptions')).json<{
+      items: Record<string, any>[];
+      summary: Record<string, number>;
+    }>();
     expect(list.items[0]).toMatchObject({ overdue: true, daysUntilRenewal: -1 });
     expect(list.summary).toMatchObject({ activeCount: 1, monthlyPaise: 64900 });
-    expect((await call('GET', '/subscriptions?status=paused')).json<{ items: unknown[] }>().items).toEqual([]);
+    expect(
+      (await call('GET', '/subscriptions?status=paused')).json<{ items: unknown[] }>().items,
+    ).toEqual([]);
     expect((await call('GET', '/subscriptions?status=nope')).statusCode).toBe(400);
     expect(await items('/subscriptions/upcoming?days=7')).toHaveLength(1);
     expect((await call('GET', '/subscriptions/upcoming?days=0')).statusCode).toBe(400);
 
     const renewed = await call('POST', `/subscriptions/${item.id}/renew`, alice, {});
     expect(renewed.statusCode).toBe(200);
-    const body = renewed.json<Written<{ subscription: Record<string, any>; transaction: Record<string, any> | null }>>();
+    const body =
+      renewed.json<
+        Written<{ subscription: Record<string, any>; transaction: Record<string, any> | null }>
+      >();
     expect(body.item.subscription.overdue).toBe(false);
     expect(body.item.transaction).toMatchObject({ amountPaise: 64900, subscriptionId: item.id });
     expect(await items('/transactions')).toHaveLength(1);
@@ -275,7 +346,11 @@ describe('subscriptions', () => {
   });
 
   it('answers 409 not_active, 404 for others, and handles update, delete and restore', async () => {
-    const { item } = await write('POST', '/subscriptions', { name: 'X', amountPaise: 100, nextRenewalOn: today() });
+    const { item } = await write('POST', '/subscriptions', {
+      name: 'X',
+      amountPaise: 100,
+      nextRenewalOn: today(),
+    });
     await write('PATCH', `/subscriptions/${item.id}`, { status: 'paused' });
     const refused = await call('POST', `/subscriptions/${item.id}/renew`, alice, {});
     expect(refused.statusCode).toBe(409);

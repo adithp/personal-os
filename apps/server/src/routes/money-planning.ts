@@ -27,7 +27,9 @@ export function moneyPlanningRoutes(app: FastifyInstance, run: Run): void {
     const { data } = await run(request, 'finance.budgets.list', query);
     return { items: data };
   });
-  app.put('/budgets', async (request) => written(await run(request, 'finance.budgets.set', request.body)));
+  app.put('/budgets', async (request) =>
+    written(await run(request, 'finance.budgets.set', request.body)),
+  );
   app.delete('/budgets/:id', async (request) => {
     const { id } = idParams.parse(request.params);
     return written(await run(request, 'finance.budgets.delete', { id }));

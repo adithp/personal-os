@@ -59,12 +59,10 @@ export const milestoneImplementations = [
     scope.transaction(async (tx) => {
       await findProject(tx, input.projectId);
       const existing = await tx.select(projectMilestones, {
-        where: and(
-          tx.isLive(projectMilestones),
-          eq(projectMilestones.projectId, input.projectId),
-        ),
+        where: and(tx.isLive(projectMilestones), eq(projectMilestones.projectId, input.projectId)),
       });
-      const position = existing.reduce((max, row) => Math.max(max, row.position), 0) + POSITION_STEP;
+      const position =
+        existing.reduce((max, row) => Math.max(max, row.position), 0) + POSITION_STEP;
       const [created] = await tx.insert(projectMilestones, {
         projectId: input.projectId,
         title: input.title,

@@ -56,7 +56,8 @@ export function categoriesOf(habits: readonly Habit[]): string[] {
 }
 
 /** "1 day" / "5 days". */
-export const daysText = (count: number): string => `${String(count)} ${count === 1 ? 'day' : 'days'}`;
+export const daysText = (count: number): string =>
+  `${String(count)} ${count === 1 ? 'day' : 'days'}`;
 
 /** 0.8333 -> "83%". */
 export const percentText = (rate: number): string => `${String(Math.round(rate * 100))}%`;

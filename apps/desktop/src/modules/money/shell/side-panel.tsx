@@ -76,7 +76,9 @@ export function MoneySidePanel() {
                 aria-current={active ? 'page' : undefined}
                 className={cx(
                   rowClass,
-                  active ? 'bg-tint font-medium text-fg' : 'text-fg-secondary hover:bg-tint hover:text-fg',
+                  active
+                    ? 'bg-tint font-medium text-fg'
+                    : 'text-fg-secondary hover:bg-tint hover:text-fg',
                 )}
               >
                 <Glyph size={18} stroke={1.5} aria-hidden className="shrink-0" />

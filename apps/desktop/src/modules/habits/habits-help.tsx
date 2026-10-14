@@ -7,7 +7,7 @@ import { trapTab } from '../tasks/inbox/trap-tab';
 const SHORTCUTS: readonly { keys: readonly string[]; action: string }[] = [
   { keys: ['N'], action: 'New habit' },
   { keys: ['↑', '↓'], action: 'Move between habits' },
-  { keys: ['Space'], action: "Check today (or add one for a counter)" },
+  { keys: ['Space'], action: 'Check today (or add one for a counter)' },
   { keys: ['Enter'], action: 'Open details' },
   { keys: ['E'], action: 'Edit habit' },
   { keys: ['Esc'], action: 'Close details' },

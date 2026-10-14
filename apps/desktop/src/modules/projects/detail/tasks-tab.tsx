@@ -13,7 +13,13 @@ import { useProjectActions, useProjectTasks } from '../projects-queries';
 const OPTION = '[role="option"]';
 
 /** "Add existing task": a popover with a search box over the open tasks; choosing one links it. */
-function AddExistingPopover({ project, linked }: { project: Project; linked: ReadonlySet<string> }) {
+function AddExistingPopover({
+  project,
+  linked,
+}: {
+  project: Project;
+  linked: ReadonlySet<string>;
+}) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const wrapper = useRef<HTMLDivElement>(null);
@@ -162,15 +168,7 @@ function AddExistingPopover({ project, linked }: { project: Project; linked: Rea
   );
 }
 
-function TaskRow({
-  task,
-  project,
-  now,
-}: {
-  task: Task;
-  project: Project;
-  now: Date;
-}) {
+function TaskRow({ task, project, now }: { task: Task; project: Project; now: Date }) {
   const { complete, update } = useTaskActions();
   const { setTaskProject } = useProjectActions();
   const selectedId = useTasksUi((state) => state.selectedTaskId);
@@ -227,7 +225,9 @@ export function TasksTab({ project, now }: { project: Project; now: Date }) {
   const { setTaskProject } = useProjectActions();
   const [title, setTitle] = useState('');
 
-  const list = (tasks.data ?? []).filter((task) => task.archivedAt === null || task.status === 'done');
+  const list = (tasks.data ?? []).filter(
+    (task) => task.archivedAt === null || task.status === 'done',
+  );
   const open = list.filter((task) => task.status !== 'done');
   const done = list.filter((task) => task.status === 'done');
   const linked = new Set((tasks.data ?? []).map((task) => task.id));

@@ -121,9 +121,9 @@ describe('habits routes', () => {
     expect(logged.json<Written>().item.currentStreak).toBe(1);
     const removed = await call('DELETE', `/habits/${item.id}/log?date=2026-10-14`);
     expect(removed.json<Written>().item.today.done).toBe(false);
-    expect((await call('PUT', `/habits/${item.id}/log`, alice, { date: '2026-10-20' })).statusCode).toBe(
-      400,
-    );
+    expect(
+      (await call('PUT', `/habits/${item.id}/log`, alice, { date: '2026-10-20' })).statusCode,
+    ).toBe(400);
     expect((await call('PUT', `/habits/${item.id}/log`, bob, {})).statusCode).toBe(404);
   });
 

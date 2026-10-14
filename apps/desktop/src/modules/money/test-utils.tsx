@@ -128,11 +128,7 @@ export function makeFake(seed: MoneySeed = {}): FakeApi {
 }
 
 /** Opens the Money page at a section with seeded data (or on a mock from makeFake). */
-export async function openMoney(
-  seed: MoneySeed = {},
-  search = '',
-  fake: FakeApi | null = null,
-) {
+export async function openMoney(seed: MoneySeed = {}, search = '', fake: FakeApi | null = null) {
   const api = fake ?? makeFake(seed);
   const router = await renderApp(`/money${search}`, signedInAuth().auth, api.api);
   return { router, fake: api, user: userEvent.setup() };

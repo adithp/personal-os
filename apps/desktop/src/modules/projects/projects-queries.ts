@@ -137,10 +137,18 @@ export function useMilestones(projectId: string | null) {
 }
 
 /** Time entries, newest first. */
-export function useTimeEntries(filter: { projectId?: string; taskId?: string; limit?: number } = {}) {
+export function useTimeEntries(
+  filter: { projectId?: string; taskId?: string; limit?: number } = {},
+) {
   const api = useApi();
   return useQuery({
-    queryKey: [...TIME_KEY, 'list', filter.projectId ?? 'all', filter.taskId ?? 'all', filter.limit ?? 0],
+    queryKey: [
+      ...TIME_KEY,
+      'list',
+      filter.projectId ?? 'all',
+      filter.taskId ?? 'all',
+      filter.limit ?? 0,
+    ],
     queryFn: async () =>
       (
         await api.request<{ items: TimeEntry[] }>('GET', '/time-entries', {

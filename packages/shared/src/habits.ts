@@ -177,7 +177,12 @@ export type UpdateHabitInput = z.input<typeof updateHabitInput>;
 export const logHabitInput = z.object({
   id,
   date: habitDateSchema.optional(),
-  count: z.number().int().min(1).max(HABIT_TARGET_MAX * 10).optional(),
+  count: z
+    .number()
+    .int()
+    .min(1)
+    .max(HABIT_TARGET_MAX * 10)
+    .optional(),
 });
 export type LogHabitInput = z.input<typeof logHabitInput>;
 
@@ -232,7 +237,8 @@ export const habitActions = {
   }),
   log: defineAction({
     name: 'habits.log',
-    description: 'Mark a habit done for an India day (default today), or set its count for the day.',
+    description:
+      'Mark a habit done for an India day (default today), or set its count for the day.',
     permission: 'write',
     input: logHabitInput,
   }),
@@ -256,7 +262,8 @@ export const habitActions = {
 // ---------------------------------------------------------------------------------------------
 
 /** An India calendar day as a whole number of days since 1970-01-01. */
-export const dayNumberOf = (date: string): number => Math.floor(Date.parse(`${date}T00:00:00Z`) / DAY_MS);
+export const dayNumberOf = (date: string): number =>
+  Math.floor(Date.parse(`${date}T00:00:00Z`) / DAY_MS);
 
 /** YYYY-MM-DD of a day number. */
 export const dateOfDay = (day: number): string => new Date(day * DAY_MS).toISOString().slice(0, 10);

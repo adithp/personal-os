@@ -25,7 +25,12 @@ const call = (
   path: string,
   body?: unknown,
   query?: Record<string, string>,
-) => fake.handle(method, path, { body, query }) as { item?: unknown; items?: unknown[]; undo?: unknown };
+) =>
+  fake.handle(method, path, { body, query }) as {
+    item?: unknown;
+    items?: unknown[];
+    undo?: unknown;
+  };
 
 describe('the Projects mock API', () => {
   it('leaves routes of other modules alone', () => {
@@ -132,7 +137,10 @@ describe('the Projects mock API', () => {
     const two = makeProject({ title: 'Two' });
     const task = makeTask();
     fake.seed({ projects: [one, two], tasks: [{ task, projectId: one.id }] });
-    expect(call(fake, 'GET', `/tasks/${task.id}/project`).item).toEqual({ id: one.id, title: 'One' });
+    expect(call(fake, 'GET', `/tasks/${task.id}/project`).item).toEqual({
+      id: one.id,
+      title: 'One',
+    });
     const moved = call(fake, 'PUT', `/tasks/${task.id}/project`, { projectId: two.id });
     expect(fake.taskProjectOf(task.id)).toBe(two.id);
     expect(moved.undo).toEqual({
@@ -150,7 +158,9 @@ describe('the Projects mock API', () => {
     fake.seed({ projects: [one, two] });
     call(fake, 'POST', '/time-entries/start', { projectId: one.id });
     vi.setSystemTime(new Date('2025-10-07T09:31:30.000Z'));
-    expect((call(fake, 'GET', '/time-entries/running').item as { seconds: number }).seconds).toBe(90);
+    expect((call(fake, 'GET', '/time-entries/running').item as { seconds: number }).seconds).toBe(
+      90,
+    );
     call(fake, 'POST', '/time-entries/start', { projectId: two.id });
     expect(fake.entries().filter((entry) => entry.endedAt === null)).toHaveLength(1);
     expect(fake.entries().find((entry) => entry.projectId === one.id)?.seconds).toBe(90);

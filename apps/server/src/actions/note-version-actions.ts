@@ -63,7 +63,8 @@ export const noteVersionImplementations = [
         orderBy: [desc(noteVersions.createdAt), desc(noteVersions.id)],
       },
     );
-    const text = (index: number) => markdownToPlainText((rows[index]?.contentMd as string | undefined) ?? '');
+    const text = (index: number) =>
+      markdownToPlainText((rows[index]?.contentMd as string | undefined) ?? '');
     const data = rows.map((row, index): NoteVersionSummary => ({
       id: row.id as string,
       createdAt: iso(row.createdAt as Date),

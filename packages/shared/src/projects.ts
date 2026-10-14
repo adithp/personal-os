@@ -143,7 +143,8 @@ export const createProjectInput = z
     color: hexColor.nullable().optional(),
   })
   .refine(
-    (input) => !input.startAt || !input.dueAt || Date.parse(input.dueAt) >= Date.parse(input.startAt),
+    (input) =>
+      !input.startAt || !input.dueAt || Date.parse(input.dueAt) >= Date.parse(input.startAt),
     { message: 'The due date cannot be before the start date', path: ['dueAt'] },
   );
 export type CreateProjectInput = z.infer<typeof createProjectInput>;

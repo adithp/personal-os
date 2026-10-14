@@ -70,7 +70,9 @@ export function TimePage() {
       <header>
         <h1 className="text-page font-semibold text-fg">Time</h1>
         <p className="min-h-[15px] text-small text-fg-muted">
-          {summary.isSuccess ? `${formatDuration(summary.data.totalSeconds)} in the last 8 weeks` : ' '}
+          {summary.isSuccess
+            ? `${formatDuration(summary.data.totalSeconds)} in the last 8 weeks`
+            : ' '}
         </p>
       </header>
 

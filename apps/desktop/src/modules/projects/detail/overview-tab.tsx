@@ -7,7 +7,15 @@ import { useProjectNotes } from '../projects-queries';
 import { useProjectsUi } from '../projects-ui-store';
 import { MilestonesCard } from './milestones-card';
 
-function Stat({ label, value, danger = false }: { label: string; value: string; danger?: boolean }) {
+function Stat({
+  label,
+  value,
+  danger = false,
+}: {
+  label: string;
+  value: string;
+  danger?: boolean;
+}) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
       <dt className="text-small text-fg-muted">{label}</dt>

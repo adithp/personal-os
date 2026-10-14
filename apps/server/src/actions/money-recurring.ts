@@ -77,7 +77,11 @@ export const recurringImplementations = [
       const { values, old } = changes(current, input, FIELDS);
       if (Object.keys(values).length === 0) return { data: toRecurring(current), undo: null };
       const merged = { ...current, ...values } as typeof current;
-      if (('endsOn' in values || 'nextOn' in values) && merged.endsOn && merged.endsOn < merged.nextOn) {
+      if (
+        ('endsOn' in values || 'nextOn' in values) &&
+        merged.endsOn &&
+        merged.endsOn < merged.nextOn
+      ) {
         throw invalid('The end day is before the next day of this repeat');
       }
       await checkShape(

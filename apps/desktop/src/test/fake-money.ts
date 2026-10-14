@@ -150,7 +150,9 @@ function build() {
     input: { id, ...previous },
   });
 
-  const addTransaction = (input: Partial<Transaction> & Pick<Transaction, 'kind' | 'amountPaise' | 'walletId'>) => {
+  const addTransaction = (
+    input: Partial<Transaction> & Pick<Transaction, 'kind' | 'amountPaise' | 'walletId'>,
+  ) => {
     const tx: Transaction = {
       id: nextMoneyId(),
       toWalletId: null,
@@ -208,7 +210,9 @@ function build() {
     live(subscriptions)
       .map(subView)
       .filter((sub) => !status || sub.status === status)
-      .sort((a, b) => (a.nextRenewalOn < b.nextRenewalOn ? -1 : a.nextRenewalOn > b.nextRenewalOn ? 1 : 0));
+      .sort((a, b) =>
+        a.nextRenewalOn < b.nextRenewalOn ? -1 : a.nextRenewalOn > b.nextRenewalOn ? 1 : 0,
+      );
 
   /* ---------------------------------------------------------------- undo */
 
@@ -238,7 +242,8 @@ function build() {
         const existing = live(budgets).find(
           (b) => b.categoryId === stored.categoryId && b.month === stored.month,
         );
-        if (existing) budgets.rows.set(existing.id, { ...existing, amountPaise: stored.amountPaise });
+        if (existing)
+          budgets.rows.set(existing.id, { ...existing, amountPaise: stored.amountPaise });
         else {
           const fresh = makeBudget({ ...stored });
           budgets.rows.set(fresh.id, fresh);
@@ -270,14 +275,19 @@ function build() {
 
     if (method === 'POST' && path === '/undo') {
       const { action, input } = body as { action: string; input: Record<string, unknown> };
-      if (!action.startsWith('finance.') && !action.startsWith('subscriptions.')) return NOT_HANDLED;
+      if (!action.startsWith('finance.') && !action.startsWith('subscriptions.'))
+        return NOT_HANDLED;
       return undoAction(action, input);
     }
 
     /* wallets */
     if (route('GET', '/wallets')) {
       const archived = String(query.includeArchived) === 'true';
-      return { items: live(wallets).filter((w) => archived || !w.archived).map(walletView) };
+      return {
+        items: live(wallets)
+          .filter((w) => archived || !w.archived)
+          .map(walletView),
+      };
     }
     if (route('POST', '/wallets')) {
       const input = parse(createWalletInput, body);
@@ -293,7 +303,10 @@ function build() {
         updatedAt: now(),
       };
       wallets.rows.set(wallet.id, wallet);
-      return write(walletView(wallet), { action: 'finance.wallets.delete', input: { id: wallet.id } });
+      return write(walletView(wallet), {
+        action: 'finance.wallets.delete',
+        input: { id: wallet.id },
+      });
     }
     if ((hit = route('PATCH', '/wallets/([^/]+)'))) {
       const id = hit[1] ?? '';
@@ -306,7 +319,11 @@ function build() {
       const id = hit[1] ?? '';
       const wallet = find(wallets, id, 'Wallet');
       if (live(transactions).some((tx) => tx.walletId === id || tx.toWalletId === id)) {
-        throw new ApiError(409, 'wallet_in_use', 'This wallet has transactions. Archive it instead.');
+        throw new ApiError(
+          409,
+          'wallet_in_use',
+          'This wallet has transactions. Archive it instead.',
+        );
       }
       wallets.gone.add(id);
       return write(walletView(wallet), { action: 'finance.wallets.restore', input: { id } });
@@ -473,7 +490,11 @@ function build() {
         existing
           ? {
               action: 'finance.budgets.set',
-              input: { categoryId: input.categoryId, month: input.month, amountPaise: existing.amountPaise },
+              input: {
+                categoryId: input.categoryId,
+                month: input.month,
+                amountPaise: existing.amountPaise,
+              },
             }
           : { action: 'finance.budgets.delete', input: { id: stored.id } },
       );
@@ -484,7 +505,11 @@ function build() {
       budgets.rows.delete(id);
       return write(budgetView(stored, live(transactions)), {
         action: 'finance.budgets.set',
-        input: { categoryId: stored.categoryId, month: stored.month, amountPaise: stored.amountPaise },
+        input: {
+          categoryId: stored.categoryId,
+          month: stored.month,
+          amountPaise: stored.amountPaise,
+        },
       });
     }
 
@@ -584,7 +609,11 @@ function build() {
       const input = parse(renewSubscriptionInput, { id, ...body });
       const sub = find(subscriptions, id, 'Subscription');
       const paidOn = input.paidOn ?? today();
-      const next = { ...sub, nextRenewalOn: nextRenewal(sub.nextRenewalOn, sub.cycle), updatedAt: now() };
+      const next = {
+        ...sub,
+        nextRenewalOn: nextRenewal(sub.nextRenewalOn, sub.cycle),
+        updatedAt: now(),
+      };
       subscriptions.rows.set(id, next);
       const tx =
         sub.walletId && input.createTransaction

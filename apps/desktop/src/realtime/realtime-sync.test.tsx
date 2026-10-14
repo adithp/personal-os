@@ -118,16 +118,15 @@ describe('startRealtimeSync', () => {
     fake.setStatus('SUBSCRIBED');
     expect(useRealtimeStore.getState().status).toBe('live');
     vi.advanceTimersByTime(300);
-    expect(invalidatedKeys().sort()).toEqual([
-      ['goals'],
-      ['money'],
-      ['note-folders'],
-      ['note-templates'],
-      ['notes'],
-      ['tags'],
-      ['task-favorites'],
-      ['tasks'],
-    ]);
+    // Every key any module lists: derived from the registry so a new module need not edit this test
+    const expected = [
+      ...new Map(
+        Object.values(realtimeRegistry)
+          .flat()
+          .map((key) => [JSON.stringify(key), key]),
+      ).values(),
+    ];
+    expect(invalidatedKeys().sort()).toEqual(expected.sort());
   });
 
   it('shows connecting, live, reconnecting for TIMED_OUT and CLOSED, then off after stopping', async () => {

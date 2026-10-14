@@ -52,7 +52,9 @@ function Row({ item, wallets, categories, onEdit }: RowProps) {
   const toWallet = item.toWalletId ? (wallets.get(item.toWalletId)?.name ?? 'Wallet') : null;
   const category = item.categoryId ? categories.get(item.categoryId) : undefined;
   const title =
-    item.kind === 'transfer' ? `${wallet} to ${toWallet ?? 'Wallet'}` : (category?.name ?? 'Uncategorised');
+    item.kind === 'transfer'
+      ? `${wallet} to ${toWallet ?? 'Wallet'}`
+      : (category?.name ?? 'Uncategorised');
   const amount = signedAmount(item.kind, item.amountPaise);
 
   return (
@@ -78,7 +80,7 @@ function Row({ item, wallets, categories, onEdit }: RowProps) {
             {item.note ?? ''}
           </span>
         </span>
-        <span className="text-body font-medium tabular-nums text-fg">{amount}</span>
+        <span className="text-body font-medium text-fg tabular-nums">{amount}</span>
       </button>
     </li>
   );
@@ -98,7 +100,7 @@ export function TransactionList({
         <GlassCard key={day} role="region" aria-label={dayHeading(day, today)} padding="compact">
           <div className="flex items-baseline justify-between px-2 pb-1">
             <h2 className="text-card font-medium text-fg">{dayHeading(day, today)}</h2>
-            <span className="text-small tabular-nums text-fg-muted">{netText(dayNet(rows))}</span>
+            <span className="text-small text-fg-muted tabular-nums">{netText(dayNet(rows))}</span>
           </div>
           <ul className="flex flex-col">
             {rows.map((item) => (

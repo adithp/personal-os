@@ -29,7 +29,10 @@ export function MoneyBar({
     >
       <div
         className={cx('h-full rounded-full', over ? 'bg-danger' : color ? '' : 'bg-module-money')}
-        style={{ width: `${String(percent)}%`, ...(color && !over ? { backgroundColor: color } : {}) }}
+        style={{
+          width: `${String(percent)}%`,
+          ...(color && !over ? { backgroundColor: color } : {}),
+        }}
       />
     </div>
   );

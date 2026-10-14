@@ -51,7 +51,8 @@ export function daysBetween(from: string, to: string): number {
 /** The default color of wallets, goals and subscriptions (module mint). */
 export const DEFAULT_COLOR = '#9EE0C8';
 
-export const andAll = (first: SQL, ...rest: (SQL | undefined)[]): SQL => and(first, ...rest) ?? first;
+export const andAll = (first: SQL, ...rest: (SQL | undefined)[]): SQL =>
+  and(first, ...rest) ?? first;
 
 export const liveById = (scope: UserScope, table: SoftDeletableTable, id: string): SQL =>
   andAll(eq(table.id, id), scope.isLive(table));

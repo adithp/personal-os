@@ -19,7 +19,15 @@ import { implement } from './registry';
 
 /** Transactions (docs/features/money.md): income, expense, and transfers between two wallets. */
 
-const FIELDS = ['kind', 'amountPaise', 'occurredOn', 'walletId', 'toWalletId', 'categoryId', 'note'];
+const FIELDS = [
+  'kind',
+  'amountPaise',
+  'occurredOn',
+  'walletId',
+  'toWalletId',
+  'categoryId',
+  'note',
+];
 
 /** Escapes % and _ so the text is searched literally. */
 const likePattern = (text: string) => `%${text.replace(/[\\%_]/g, '\\$&')}%`;
@@ -30,7 +38,10 @@ export const transactionImplementations = [
       where: andAll(
         scope.isLive(transactions),
         input.walletId
-          ? or(eq(transactions.walletId, input.walletId), eq(transactions.toWalletId, input.walletId))
+          ? or(
+              eq(transactions.walletId, input.walletId),
+              eq(transactions.toWalletId, input.walletId),
+            )
           : undefined,
         input.categoryId ? eq(transactions.categoryId, input.categoryId) : undefined,
         input.kind ? eq(transactions.kind, input.kind) : undefined,

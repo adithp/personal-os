@@ -11,7 +11,11 @@ describe('Projects UI store', () => {
     const { openProject, setTab, closeProject } = useProjectsUi.getState();
     openProject('p1');
     setTab('board');
-    expect(useProjectsUi.getState()).toMatchObject({ view: 'projects', projectId: 'p1', tab: 'board' });
+    expect(useProjectsUi.getState()).toMatchObject({
+      view: 'projects',
+      projectId: 'p1',
+      tab: 'board',
+    });
     closeProject();
     expect(useProjectsUi.getState()).toMatchObject({ projectId: null, tab: 'overview' });
   });

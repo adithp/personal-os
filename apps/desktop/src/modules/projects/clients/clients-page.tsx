@@ -135,7 +135,9 @@ export function ClientsPage({ onNew, onHelp }: { onNew: () => void; onHelp: () =
               ) : null}
               <p className="flex items-center justify-between text-small text-fg-secondary">
                 <span>
-                  {client.projectCount === 1 ? '1 project' : `${String(client.projectCount)} projects`}
+                  {client.projectCount === 1
+                    ? '1 project'
+                    : `${String(client.projectCount)} projects`}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <IconClock size={14} stroke={1.5} aria-hidden />
