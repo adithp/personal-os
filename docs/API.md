@@ -79,7 +79,7 @@ Goal details: `title` 1 to 200 characters, `description` up to 20,000 (or null),
 | GET | /links?entityId= | Links for an entity (backlinks, project items) |
 | POST | /links | Create a link |
 | GET | /graph?focus=&depth=&types= | Nodes and edges for the knowledge graph |
-| POST | /search | Global search. Body { q, types?, limit? } (a POST so the search text stays out of access logs); answer { item: { q, groups } }. Tasks and tags now; mode semantic, Gmail and Drive later |
+| POST | /search | Global search (q 1 to 100 characters, control characters become spaces; types: task, tag; limit 1 to 20, default 5, per group; text with no letters or digits answers groups []; an aborted request on the client is an AbortError, not an ApiError). Body { q, types?, limit? } (a POST so the search text stays out of access logs); answer { item: { q, groups } }. Tasks and tags now; mode semantic, Gmail and Drive later |
 | GET | /notes/:id/versions | Note history |
 | POST | /notes/:id/restore/:versionId | Restore a version |
 | GET | /calendar/events?from=&to= | Events in a range |

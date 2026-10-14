@@ -231,11 +231,15 @@ Fit and scrolling:
 
 ### Command palette
 - Opens with Ctrl K, or by clicking the dashboard search bar. Esc, or Ctrl K again, closes it. It is only available on signed-in screens.
-- A glass-strong panel, 560 px wide, radius 16, near the top of the window over a dimmed page. A search field with an Esc hint, a list, and a hint line ("↑ ↓ to move · Enter to run · Esc to close").
+- A glass-strong panel, 560 px wide, radius 16, near the top of the window over a dimmed page. A search field with an Esc hint, a list, and a hint line ("↑ ↓ to move · Enter to open · Esc to close").
 - Groups: Go to (every module in dock order, with its shortcut), Appearance (dark, light, or system theme; the current one is marked), and Dock (toggle auto-hide, showing On or Off).
 - Module commands use a 22 px icon square in the module color; other commands use a neutral square.
-- Typing filters by whole or partial words in the title or its keywords (for example "night" finds the dark theme). The selected row uses the input background.
-- For now it only runs commands. Searching tasks, notes, mail, and files comes with those modules.
+- Typing filters the commands at once by whole or partial words in the title or its keywords (for example "night" finds the dark theme); the app does this itself (cmdk runs with `shouldFilter={false}`). The selected row uses the input background.
+- The placeholder is "Search or type a command…". Data results come below the commands, in groups Tasks and Tags, with the same muted 11 px headings; the selection does not jump when results arrive. The server is asked 150 ms after typing stops, from 2 characters (one character only filters commands); typed-over requests are cancelled.
+- Result rows are 36 px (48 px with a snippet line). A task row has a 22 px Tasks-yellow icon square, the title, an optional muted one-line snippet, and a muted 11 px text on the right: Archived, Done, the due day (red when overdue), or Subtask. A tag row has a neutral square with a 10 px dot in the tag's color.
+- Matched word starts in titles and snippets are marked with `.search-mark`: a soft accent background (30% in dark mode, 50% in light mode), radius 8, never bold (semibold is for headings only).
+- While new results load, the old rows stay at 60% opacity and cannot be opened; with no old rows, a muted "Searching…" row shows after 300 ms. No match: centered "Nothing found for “abc”." with an 11 px line "Search finds tasks and tags by the start of their words.". Error: the commands still work and a danger-colored row says "Search is not available right now." (503 schema_behind shows "Database update needed: run pnpm db:migrate"). A hidden `role="status"` region announces the result count.
+- An empty field shows "Recent" (the last 5 items opened from the palette, kept on this device) above the commands. Enter on a task opens `/tasks/my-tasks?task=<id>` (adds `archived=true` for an archived task); on a tag it opens My tasks filtered by that tag.
 - All Ctrl shortcuts live in one registry (apps/desktop/src/commands/shortcuts.ts). The Tasks page has its own plain-key shortcuts (N, Space, Enter, Delete, Esc, arrows, ?; see docs/features/tasks-redesign.md) that never use Ctrl, so they cannot clash with the global ones. Shortcut keys are cancelled in the page so Windows' own use of them (for example Ctrl J for downloads) does not also run.
 
 ## 10. Mobile (Phase 2)

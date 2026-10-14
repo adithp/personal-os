@@ -70,12 +70,12 @@ personal-os/
 │   │   └── src/
 │   │       ├── api/      backend client + TanStack Query provider
 │   │       ├── auth/     Supabase email and password login, session
-│   │       ├── commands/ command palette + Ctrl shortcut registry
+│   │       ├── commands/ command palette (commands + data search: search-queries, search-kinds, highlight) + Ctrl shortcut registry
 │   │       ├── dock/     bottom dock, magnification, auto-hide
 │   │       ├── modules/  one folder per module (dashboard, settings, tasks built so far)
 │   │       ├── routes/   TanStack Router file routes (routeTree.gen.ts is generated)
 │   │       ├── shell/    title bar, background, app layout, toasts
-│   │       ├── store/    Zustand stores (settings, palette, toasts, window effect)
+│   │       ├── store/    Zustand stores (settings, palette, recent items, toasts, window effect)
 │   │       └── test/     test setup and fakes
 │   ├── server/           Fastify backend
 │   │   └── src/
@@ -83,7 +83,7 @@ personal-os/
 │   │       ├── actions/      action registry + handlers
 │   │       ├── auth/         JWT check (jose)
 │   │       ├── config/       environment settings
-│   │       ├── lib/          user-scope helper, database, schema check
+│   │       ├── lib/          user-scope helper (select, selectFields), full-text search helpers (search.ts), database, schema check
 │   │       ├── ai/           (planned) agent loop, skills, OmniRoute client
 │   │       ├── integrations/ (planned) google (gmail, calendar, drive)
 │   │       └── jobs/         (planned) scheduled jobs (croner)

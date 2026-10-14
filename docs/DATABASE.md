@@ -106,5 +106,6 @@ Each module table uses the same id as its entity row.
 - reminders: id, entity_id, remind_at, sent_at, channel (desktop, mobile)
 
 ## 4. Search
-- entities.search_vector (tsvector, with a GIN index) exists but is not filled yet. A trigger that fills it from the title and module text (task description, note content) arrives with full-text search (Step 2).
+- entities.search_vector (tsvector) has a GIN index (entities_search_vector_idx). For tasks, migration 0010_tasks_search_vector.sql fills it with triggers on tasks (insert, and update of title or description): title weight A, description weight B, `simple` configuration (no stemming, no stop words; decision 42), and backfilled existing tasks (which also refreshed their entities.updated_at). Other modules add their own trigger when they join search.
+- Queries (apps/server/src/lib/search.ts, the only full-text SQL): each typed word becomes a prefix term (word:*), joined by AND, matched with @@ and ranked with ts_rank(..., 1). Snippets use ts_headline with empty markers (plain text). Tags have no search vector: they are matched with lower(name) LIKE 'word%'.
 - Semantic search uses embeddings with pgvector and cosine distance.

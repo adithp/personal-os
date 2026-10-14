@@ -20,7 +20,7 @@ Every data change goes through the action registry (docs/AI_SYSTEM.md). The UI a
    - `read`: runs automatically.
    - `write`: runs, and returns an undo.
    - `external` (email to others, events with guests) and `destructive` (deletes, bulk changes): need `ctx.confirmed`. A button press in the app counts as confirmation; the AI path must ask.
-4. **Handler:** use only `ctx.scope` (the `UserScope` helper: `select`, `insert`, `update`, `delete`, `softDelete`, `transaction`). It adds `user_id` to every query. No other database connection, no raw SQL outside `apps/server/src/lib` (a test enforces it). Wrap multi-step changes in `scope.transaction`.
+4. **Handler:** use only `ctx.scope` (the `UserScope` helper: `select`, `selectFields` (chosen columns or computed SQL values such as a search rank, still filtered by user_id), `insert`, `update`, `delete`, `softDelete`, `transaction`). It adds `user_id` to every query. No other database connection, no raw SQL outside `apps/server/src/lib` (a test enforces it). Wrap multi-step changes in `scope.transaction`.
 5. **Undo:** every `write` and `destructive` action returns `undo: { action, input }` that puts things back (another registered action plus its input), or `null` when nothing changed. Undo of a create is a delete; of an update, an update with the previous values; of a delete, a restore.
 6. **Errors:** throw `HttpError(status, code, message)` (404 `not_found` for another user's rows, never 403, so ids do not leak; 409 for conflicts; 400 `validation_error` for state problems). Zod errors become 400 automatically.
 7. **Docs:** update the action list in docs/AI_SYSTEM.md (section 5) and the module's feature doc (docs-sync skill).
