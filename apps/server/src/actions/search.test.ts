@@ -154,6 +154,30 @@ describe('search.global: tasks', () => {
     expect(titles(await search(alice(), { q: 'rent' }), 'task')).toHaveLength(4);
   });
 
+  it('keeps an older open match first when many newer done tasks match as well', async () => {
+    const open = await makeTask(alice(), { title: 'rent' });
+    for (let n = 0; n < 25; n += 1) {
+      const done = await makeTask(alice(), { title: 'rent' });
+      await registry.run(alice(), 'tasks.complete', { id: done.id });
+    }
+    const items = (await search(alice(), { q: 'rent', limit: 5 })).groups[0]?.items ?? [];
+    expect(items).toHaveLength(5);
+    expect(items[0]?.id).toBe(open.id);
+  });
+
+  it('is not shortened by many orphaned subtasks', async () => {
+    for (const n of [1, 2, 3]) await makeTask(alice(), { title: `rent ${String(n)}` });
+    const parent = await makeTask(alice(), { title: 'Move house' });
+    for (let n = 0; n < 120; n += 1) {
+      await makeTask(alice(), { title: 'rent', parentTaskId: parent.id });
+    }
+    // Only the parent row is marked deleted, so the subtasks stay matchable orphans.
+    await t.db.execute(sql`update tasks set deleted_at = now() where id = ${parent.id}`);
+    const titlesFound = titles(await search(alice(), { q: 'rent', limit: 3 }), 'task');
+    expect(titlesFound).toHaveLength(3);
+    expect(titlesFound.every((title) => title.startsWith('rent '))).toBe(true);
+  });
+
   it('survives punctuation, a NUL byte and Malayalam', async () => {
     await makeTask(alice(), { title: 'വാടക കൊടുക്കണം' });
     await makeTask(alice(), { title: 'Pay rent' });

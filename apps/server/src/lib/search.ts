@@ -46,7 +46,7 @@ export interface EntityMatch {
 /** Live entities of one type whose search_vector matches, best first (rank, then newest). */
 export async function matchEntities(
   scope: UserScope,
-  input: { text: string; type: EntityType; limit: number },
+  input: { text: string; type: EntityType; limit: number; offset?: number },
 ): Promise<EntityMatch[]> {
   if (!hasSearchWords(input.text)) return [];
   const query = prefixQuery(input.text);
@@ -62,6 +62,7 @@ export async function matchEntities(
       ),
       orderBy: [desc(rank), desc(entities.updatedAt)],
       limit: input.limit,
+      offset: input.offset,
     },
   );
   return rows.map((row) => ({
