@@ -2,6 +2,8 @@ import { createActionRegistry, type ActionObserver, type ActionRegistry } from '
 import { tagImplementations } from './tags';
 import { favoriteImplementations } from './favorites';
 import { goalImplementations } from './goals';
+import { noteFolderImplementations } from './note-folders';
+import { noteImplementations } from './notes';
 import { recurrenceImplementations } from './recurrence';
 import { searchImplementations } from './search';
 import { tagManagementImplementations } from './tag-management';
@@ -26,6 +28,8 @@ export function createRegistry(observers: readonly ActionObserver[] = []): Actio
       ...favoriteImplementations,
       ...goalImplementations,
       ...searchImplementations,
+      ...noteImplementations,
+      ...noteFolderImplementations,
     ],
     observers,
   );

@@ -11,5 +11,7 @@ export const REALTIME_TABLES = [
   'task_favorites',
   'links',
   'goals',
+  'notes',
+  'note_folders',
 ] as const;
 export type RealtimeTable = (typeof REALTIME_TABLES)[number];

@@ -4,3 +4,4 @@ export * from './tasks';
 export * from './tags';
 export * from './favorites';
 export * from './goals';
+export * from './notes';

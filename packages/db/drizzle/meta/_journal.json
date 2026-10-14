@@ -85,6 +85,20 @@
       "when": 1791957644873,
       "tag": "0011_realtime_publication",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791960109837,
+      "tag": "0012_notes_and_folders",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791960112309,
+      "tag": "0013_notes_triggers",
+      "breakpoints": true
     }
   ]
 }

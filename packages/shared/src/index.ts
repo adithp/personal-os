@@ -10,6 +10,8 @@ export * from './env';
 export * from './favorites';
 export * from './goals';
 export * from './modules';
+export * from './note-text';
+export * from './notes';
 export * from './realtime';
 export * from './recurrence';
 export * from './search';

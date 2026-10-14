@@ -1,7 +1,7 @@
 import { ENTITY_TYPES, LINK_RELATIONS, REALTIME_TABLES } from '@personal-os/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { entities, goals, links, taskFavorites, tasks } from './schema';
+import { entities, goals, links, noteFolders, notes, taskFavorites, tasks } from './schema';
 import {
   asRole,
   createTestDb,
@@ -75,6 +75,8 @@ describe('the generated migrations', () => {
       '0009_goals_updated_at_trigger.sql',
       '0010_tasks_search_vector.sql',
       '0011_realtime_publication.sql',
+      '0012_notes_and_folders.sql',
+      '0013_notes_triggers.sql',
     ]);
     const all = migrationFiles().flatMap(migrationStatements).join('\n').toUpperCase();
     for (const dangerous of [
@@ -97,6 +99,8 @@ describe('the generated migrations', () => {
       'entity_tags',
       'goals',
       'links',
+      'note_folders',
+      'notes',
       'tags',
       'task_favorites',
       'tasks',
@@ -234,6 +238,8 @@ describe('Row Level Security is on, with an own-rows policy', () => {
       'entity_tags',
       'goals',
       'links',
+      'note_folders',
+      'notes',
       'tags',
       'task_favorites',
       'tasks',
@@ -647,5 +653,99 @@ describe('realtime publication', () => {
     for (const statement of migrationStatements('0011_realtime_publication.sql')) {
       await t.pg.exec(statement);
     }
+  });
+});
+
+describe('notes and note folders', () => {
+  async function note(
+    userId: string,
+    title: string,
+    extra: Partial<typeof notes.$inferInsert> = {},
+  ) {
+    const e = await entity(userId, title, 'note');
+    const [row] = await t.db
+      .insert(notes)
+      .values({ id: e.id, userId, title, ...extra })
+      .returning();
+    if (!row) throw new Error('insert failed');
+    return row;
+  }
+
+  it('is an entity of type note with empty text and revision 1 by default', async () => {
+    const row = await note(ALICE, 'Plan');
+    expect(row).toMatchObject({
+      contentMd: '',
+      contentText: '',
+      revision: 1,
+      pinned: false,
+      folderId: null,
+    });
+  });
+
+  it('allows one live title per user ignoring case, but not for another user or a trashed note', async () => {
+    await note(ALICE, 'Plan');
+    expect(await dbError(note(ALICE, 'plan'))).toContain('notes_user_title_idx');
+    await note(BOB, 'Plan');
+    await t.db.update(notes).set({ deletedAt: new Date() }).where(eq(notes.title, 'Plan'));
+    await note(ALICE, 'PLAN');
+  });
+
+  it('keeps folder names unique per parent ignoring case, and lets a note live in a folder', async () => {
+    const [root] = await t.db
+      .insert(noteFolders)
+      .values({ userId: ALICE, name: 'Work' })
+      .returning();
+    if (!root) throw new Error('no folder');
+    expect(
+      await dbError(t.db.insert(noteFolders).values({ userId: ALICE, name: 'work' })),
+    ).toContain('note_folders_root_name_idx');
+    await t.db.insert(noteFolders).values({ userId: ALICE, name: 'Work', parentId: root.id });
+    expect(
+      await dbError(
+        t.db.insert(noteFolders).values({ userId: ALICE, name: 'WORK', parentId: root.id }),
+      ),
+    ).toContain('note_folders_child_name_idx');
+    const row = await note(ALICE, 'In folder', { folderId: root.id });
+    expect(row.folderId).toBe(root.id);
+  });
+
+  it('refuses a folder of another user', async () => {
+    const [theirs] = await t.db
+      .insert(noteFolders)
+      .values({ userId: BOB, name: 'Theirs' })
+      .returning();
+    if (!theirs) throw new Error('no folder');
+    expect(await dbError(note(ALICE, 'X', { folderId: theirs.id }))).toContain('notes_folder_fk');
+  });
+
+  it('refreshes updated_at and fills the search vector from the title and the plain text', async () => {
+    const row = await note(ALICE, 'Rent plan', { contentText: 'pay Nair monthly' });
+    const vector = String(
+      (await rows(`select search_vector::text as v from entities where id = '${row.id}'`))[0]?.v,
+    );
+    expect(vector).toContain("'rent':1A");
+    expect(vector).toMatch(/'nair':\d+B/);
+    await new Promise((resolve) => setTimeout(resolve, 15));
+    const [after] = await t.db
+      .update(notes)
+      .set({ contentText: 'something else' })
+      .where(eq(notes.id, row.id))
+      .returning();
+    expect(after?.updatedAt.getTime()).toBeGreaterThan(row.updatedAt.getTime());
+    expect(
+      String(
+        (await rows(`select search_vector::text as v from entities where id = '${row.id}'`))[0]?.v,
+      ),
+    ).toContain("'else'");
+  });
+
+  it('lets a user see only their own notes and folders', async () => {
+    await note(ALICE, 'Mine');
+    await note(BOB, 'Theirs');
+    await t.db.insert(noteFolders).values({ userId: BOB, name: 'F' });
+    expect(
+      (await asRole(t.db, ALICE, (tx) => tx.select().from(notes))).map((r) => r.title),
+    ).toEqual(['Mine']);
+    expect(await asRole(t.db, ALICE, (tx) => tx.select().from(noteFolders))).toHaveLength(0);
   });
 });

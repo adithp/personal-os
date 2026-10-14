@@ -6,6 +6,7 @@ import { unauthorized } from '../lib/http-error';
 import type { Db } from '../lib/user-scope';
 import { favoriteRoutes } from './favorites';
 import { goalRoutes } from './goals';
+import { noteRoutes } from './notes';
 import { searchRoutes } from './search';
 import { tagRoutes } from './tags';
 import { taskDependencyRoutes } from './task-dependencies';
@@ -45,6 +46,7 @@ export const v1Routes: FastifyPluginAsync<V1Options> = async (app, { verifier, d
       favoriteRoutes(protectedApp, { db, registry });
       goalRoutes(protectedApp, { db, registry });
       searchRoutes(protectedApp, { db, registry });
+      noteRoutes(protectedApp, { db, registry });
       undoRoutes(protectedApp, { db, registry });
     }
 
