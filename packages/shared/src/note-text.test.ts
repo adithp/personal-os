@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyTemplate,
   countWords,
   excerptOf,
+  indiaDay,
   markdownToPlainText,
+  parseTags,
   parseWikilinks,
+  rewriteTag,
   rewriteWikilinks,
   unescapeMarkdown,
 } from './note-text';
@@ -147,5 +151,169 @@ describe('code detection for wikilinks', () => {
     expect(targets(`${'x'.repeat(30_000)} [[late]]`)).toEqual(['late']);
     expect(targets('[['.repeat(50_000))).toEqual([]);
     expect(Date.now() - started).toBeLessThan(3000);
+  });
+});
+
+describe('parseTags', () => {
+  it('finds tags after a space or at a line start, with letters, digits, _ - and /', () => {
+    expect(parseTags('#one two #Two_b three #a-b/c\n#last')).toEqual([
+      'one',
+      'Two_b',
+      'a-b/c',
+      'last',
+    ]);
+  });
+
+  it('keeps the first spelling and drops duplicates ignoring case', () => {
+    expect(parseTags('#Work and #work and #WORK')).toEqual(['Work']);
+  });
+
+  it('needs a letter or underscore, so numbers and dates are not tags', () => {
+    expect(parseTags('#1984 #2024-05 #y1984 #12/3 #1_')).toEqual(['y1984', '1_']);
+  });
+
+  it('ignores heading markers', () => {
+    expect(parseTags('# Heading\n## Second\n### Third #real')).toEqual(['real']);
+    expect(parseTags('#\n# ')).toEqual([]);
+  });
+
+  it('needs a space or a line start before the #', () => {
+    expect(parseTags('a#b word#c (#d) "#e" x\t#f')).toEqual(['f']);
+    expect(parseTags('##double ###triple')).toEqual([]);
+  });
+
+  it('ignores URL fragments, wikilink headings and markdown link targets', () => {
+    expect(parseTags('see https://x.com/page#section and [[Note#Heading]] and [a](http://b/#c)')).toEqual(
+      [],
+    );
+    expect(parseTags('https://x.com/#top #ok')).toEqual(['ok']);
+  });
+
+  it('ignores tags in inline code and fenced code, and reads text after them', () => {
+    expect(parseTags('`#a` #b ``x `#c` y`` #d')).toEqual(['b', 'd']);
+    expect(parseTags('```\n#fenced\n```\n#after')).toEqual(['after']);
+    expect(parseTags('~~~js\n#x\n~~~\n#y')).toEqual(['y']);
+    expect(parseTags('`code`#glued')).toEqual([]);
+    expect(parseTags('`code` #spaced')).toEqual(['spaced']);
+  });
+
+  it('undoes the \\_ escapes the editor writes', () => {
+    expect(parseTags('#my\\_tag and #a\\-b')).toEqual(['my_tag', 'a-b']);
+  });
+
+  it('stops at punctuation and reads Malayalam and accented letters', () => {
+    expect(parseTags('#done. #a,b #കേരളം #café!')).toEqual(['done', 'a', 'കേരളം', 'café']);
+  });
+
+  it('skips names longer than a tag name can be', () => {
+    expect(parseTags(`#${'a'.repeat(41)} #${'b'.repeat(40)}`)).toEqual(['b'.repeat(40)]);
+  });
+
+  it('works on quotes, list items and a Windows line break', () => {
+    expect(parseTags('> #quote\r\n- #item\r\n- [ ] #todo')).toEqual(['quote', 'item', 'todo']);
+  });
+
+  it('stays fast on adversarial text', () => {
+    const started = Date.now();
+    expect(parseTags('#'.repeat(100_000))).toEqual([]);
+    expect(parseTags('# '.repeat(50_000))).toEqual([]);
+    expect(parseTags(' #\\'.repeat(50_000))).toEqual([]);
+    expect(parseTags('a'.repeat(200_000))).toEqual([]);
+    expect(parseTags(`#${'a'.repeat(200_000)}`)).toEqual([]);
+    expect(parseTags(`#${'\\_'.repeat(50_000)}`)).toEqual([]);
+    expect(parseTags(' #1'.repeat(50_000))).toEqual([]);
+    expect(parseTags('`'.repeat(100_000))).toEqual([]);
+    expect(parseTags(`${'``a`'.repeat(10_000)} #end`)).toBeInstanceOf(Array);
+    expect(parseTags(' #a'.repeat(20_000))).toEqual(['a']);
+    expect(Date.now() - started).toBeLessThan(3000);
+  });
+});
+
+describe('rewriteTag', () => {
+  it('renames a tag ignoring case and leaves other text and tags alone', () => {
+    expect(rewriteTag('#Work and #work, #worker and #other', 'WORK', 'job')).toBe(
+      '#job and #job, #worker and #other',
+    );
+  });
+
+  it('renames only whole names, so #work/sub is a different tag', () => {
+    expect(rewriteTag('#work/sub #work', 'work', 'job')).toBe('#work/sub #job');
+  });
+
+  it('does not touch code, URL fragments, headings or glued text', () => {
+    const md = (last: string) =>
+      ['`#work`', '```', '#work', '```', 'http://a/#work a#work', '# work', last].join('\n');
+    expect(rewriteTag(md('#work'), 'work', 'job')).toBe(md('#job'));
+  });
+
+  it('matches a tag written with \\_ escapes and writes the new name as given', () => {
+    expect(rewriteTag('#my\\_tag x', 'my_tag', 'New_Name')).toBe('#New_Name x');
+  });
+
+  it('returns the same text when the tag is not there', () => {
+    expect(rewriteTag('nothing #else', 'work', 'job')).toBe('nothing #else');
+    expect(rewriteTag('', 'work', 'job')).toBe('');
+  });
+
+  it('is not fooled by a replacement with $ characters', () => {
+    expect(rewriteTag('#a', 'a', '$&$1')).toBe('#$&$1');
+  });
+
+  it('stays fast on adversarial text', () => {
+    const started = Date.now();
+    rewriteTag(' #a'.repeat(50_000), 'a', 'b');
+    rewriteTag('#'.repeat(100_000), 'a', 'b');
+    rewriteTag(`#${'a'.repeat(200_000)}`, 'a', 'b');
+    expect(Date.now() - started).toBeLessThan(3000);
+  });
+});
+
+describe('applyTemplate', () => {
+  // 2026-10-13 20:00 UTC is 2026-10-14 01:30 in India
+  const now = new Date('2026-10-13T20:00:00Z');
+
+  it('fills title, date and time in India time', () => {
+    expect(applyTemplate('# {{title}}\n{{date}} {{time}}', { title: 'Plan', now })).toBe(
+      '# Plan\n2026-10-14 01:30',
+    );
+  });
+
+  it('uses the India day just after midnight and just before it', () => {
+    const t = (iso: string) => applyTemplate('{{date}} {{time}}', { title: 'x', now: new Date(iso) });
+    expect(t('2026-10-13T18:29:59Z')).toBe('2026-10-13 23:59');
+    expect(t('2026-10-13T18:30:00Z')).toBe('2026-10-14 00:00');
+    expect(t('2026-12-31T18:40:00Z')).toBe('2027-01-01 00:10');
+  });
+
+  it('allows spaces and any case inside the braces, and repeats', () => {
+    expect(applyTemplate('{{ Title }} {{DATE}} {{title}}', { title: 'A', now })).toBe(
+      'A 2026-10-14 A',
+    );
+  });
+
+  it('leaves unknown variables and format strings alone', () => {
+    expect(applyTemplate('{{date:YYYY}} {{name}} {title} {{ }}', { title: 'A', now })).toBe(
+      '{{date:YYYY}} {{name}} {title} {{ }}',
+    );
+  });
+
+  it('does not expand variables written in the title, or treat $ specially', () => {
+    expect(applyTemplate('{{title}}', { title: '{{date}} $& $1', now })).toBe('{{date}} $& $1');
+  });
+
+  it('stays fast on adversarial text', () => {
+    const started = Date.now();
+    applyTemplate('{{'.repeat(100_000), { title: 'x', now });
+    applyTemplate(`{{${' '.repeat(200_000)}`, { title: 'x', now });
+    applyTemplate('{{ title'.repeat(50_000), { title: 'x', now });
+    applyTemplate('{{ '.repeat(50_000), { title: 'x', now });
+    expect(Date.now() - started).toBeLessThan(3000);
+  });
+});
+
+describe('indiaDay', () => {
+  it('is the India calendar day of an instant', () => {
+    expect(indiaDay(new Date('2026-10-13T18:29:59Z'))).toBe('2026-10-13');
+    expect(indiaDay(new Date('2026-10-13T18:30:00Z'))).toBe('2026-10-14');
   });
 });

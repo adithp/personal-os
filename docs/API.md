@@ -48,7 +48,7 @@ Responses:
 | Method | Path | Purpose |
 |---|---|---|
 | GET | /health | Server health (full path /api/v1/health, no auth). Returns {"status":"ok","time":<UTC>} |
-| GET | /tags | List tags: `{ items: [...] }`, each with `taskCount` and `favoriteCount` (live tasks of any status that have it, and favorites that use it) |
+| GET | /tags | List tags: `{ items: [...] }`, each with `taskCount` and `favoriteCount` (live tasks of any status that have it, and favorites that use it); N3 adds an optional `noteCount` (live notes whose text has it; missing means 0) |
 | POST | /tags | Create a tag: 201 when created; 200 with the existing tag when the name exists (ignoring case). `undo` is null |
 | PATCH | /tags/:id | Rename or recolor a tag |
 | DELETE | /tags/:id | Delete a tag: removed from every task (the tasks stay) and from favorites; returns the tag and an undo |
@@ -80,11 +80,11 @@ Goal details: `title` 1 to 200 characters, `description` up to 20,000 (or null),
 | POST | /links | Create a link |
 | GET | /graph?focus=&depth=&types= | Nodes and edges for the knowledge graph |
 | POST | /search | Global search (q 1 to 100 characters, control characters become spaces; types: task, tag; limit 1 to 20, default 5, per group; text with no letters or digits answers groups []; an aborted request on the client is an AbortError, not an ApiError). Body { q, types?, limit? } (a POST so the search text stays out of access logs); answer { item: { q, groups } }. Tasks and tags now; mode semantic, Gmail and Drive later |
-| GET | /notes?folderId=&trash=&sort=updated or title or created&limit=&offset= | Notes without their text (id, title, folderId, pinned, 140-character excerpt, dates); folderId none means no folder; pinned first |
+| GET | /notes?folderId=&tagId=&dailyOnly=&trash=&sort=updated or title or created&limit=&offset= | Notes without their text (id, title, folderId, pinned, 140-character excerpt, dates; N3 adds optional `tagNames` and `dailyDate`); folderId none means no folder; `tagId` and `dailyOnly` are N3 filters; pinned first |
 | GET | /notes/titles | `{ items: [{ id, title }] }` of every live note (link suggestions) |
 | GET | /notes/:id/links | `{ item: { backlinks: [{ noteId, title, context }], outgoing: [{ target, noteId \| null }] } }` |
 | GET | /notes/:id | One note with `contentMd` and `revision` (a trashed note too) |
-| POST | /notes | Create (title optional: Untitled, Untitled 2, ...); 201 |
+| POST | /notes | Create (title optional: Untitled, Untitled 2, ...); 201. N3 adds `templateId` (ignored when `contentMd` is sent; `{{title}}`, `{{date}}`, `{{time}}` filled in India time) |
 | PATCH | /notes/:id | Body `baseRevision` plus contentMd, folderId or pinned; `force: true` is Keep mine; the revision is only checked when `contentMd` is sent (pin and folder moves never conflict); 409 `note_conflict` when the revision is old (the 409 has no note in its body: fetch GET /notes/:id) |
 | POST | /notes/:id/rename | Answers `{ item, undo }` where `item` is the note plus `updatedNoteIds` (other notes whose [[links]] were rewritten). Body `title` (unique among live notes ignoring case, no [ ] \| #; 409 `note_title_taken`) |
 | DELETE | /notes/:id | Move to the trash |
@@ -94,6 +94,10 @@ Goal details: `title` 1 to 200 characters, `description` up to 20,000 (or null),
 | GET, POST | /note-folders | List with `noteCount` / create (`name`, `parentId`); 400 `folder_too_deep` (3 levels), 409 `folder_name_taken` |
 | PATCH, DELETE | /note-folders/:id | Rename or move (400 into itself or its own subfolders) / delete an empty folder (409 `folder_not_empty`) |
 | POST | /note-folders/:id/restore | Bring a deleted folder back (top level if its parent is gone) |
+| POST | /notes/daily | Stage N3 contract (answers 501 until built). Body `{ date? }` (YYYY-MM-DD, an India day, default today): returns `{ item, undo }` with that day's note, created if missing (title `YYYY-MM-DD`, or `YYYY-MM-DD (daily)` when a normal note has that title; text from the daily-default template; undo `notes.delete` only when created). Declared before `/notes/:id` |
+| GET, POST | /note-templates | Stage N3 contract (501 until built). List (`id`, `name`, `contentMd`, `isDailyDefault`, dates; by name) / create (`name` 1 to 80, unique among live templates ignoring case, 409 `template_name_taken`; `contentMd` up to 200000; `isDailyDefault` clears the flag on the others); 201 |
+| PATCH, DELETE | /note-templates/:id | Change name, text or `isDailyDefault` / delete (undo restores) |
+| POST | /note-templates/:id/restore | Bring a deleted template back |
 | GET | /notes/:id/versions | Note history |
 | POST | /notes/:id/restore/:versionId | Restore a version |
 | GET | /calendar/events?from=&to= | Events in a range |

@@ -13,5 +13,6 @@ export const REALTIME_TABLES = [
   'goals',
   'notes',
   'note_folders',
+  'note_templates',
 ] as const;
 export type RealtimeTable = (typeof REALTIME_TABLES)[number];

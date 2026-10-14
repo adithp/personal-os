@@ -1,3 +1,5 @@
+import { TAG_NAME_MAX } from './tags';
+
 /**
  * Pure text helpers for notes (research memo docs/design/research/notes.md D1, D9, §4). The server
  * uses them on every save (plain text for search and list excerpts); the app uses countWords.
@@ -222,4 +224,90 @@ export function rewriteWikilinks(markdown: string, oldTitle: string, newTitle: s
           }),
     )
     .join('');
+}
+
+// ---- tags in notes (stage N3, memo notes.md D10) ----
+
+/** `#name` where the name is letters, digits, `_`, `-`, `/` (and `\_` or `\-`, which the editor writes). */
+const TAG = /#((?:\\[_-]|[\p{L}\p{M}\p{N}_\-/])+)/gu;
+
+/**
+ * Visits every tag in a note and rebuilds the text with what `visit` returns for it (undefined keeps
+ * the tag). A tag follows a space or a line start (so URL fragments and `a#b` are not tags), is not
+ * in code, is not a heading marker (`# ` has a space), and has a letter or `_` (not only digits,
+ * `-` and `/`, so `#1984` and `#2024-05-01` are not tags).
+ */
+function mapTags(markdown: string, visit: (name: string) => string | undefined): string {
+  let previous = '\n';
+  let out = '';
+  for (const part of splitCode(markdown)) {
+    if (part.code) {
+      out += part.text;
+      previous = part.text.endsWith('\n') ? '\n' : '`';
+      continue;
+    }
+    out += part.text.replace(TAG, (whole: string, raw: string, offset: number) => {
+      const before = offset === 0 ? previous : (part.text[offset - 1] ?? '');
+      if (!/\s/.test(before)) return whole;
+      const name = raw.replace(/\\([_-])/g, '$1');
+      if (name.length > TAG_NAME_MAX || !/[\p{L}\p{M}_]/u.test(name)) return whole;
+      return visit(name) ?? whole;
+    });
+    previous = part.text.slice(-1) || previous;
+  }
+  return out;
+}
+
+/** The unique tag names of a note (first spelling wins, compared ignoring case), in order of appearance. */
+export function parseTags(markdown: string): string[] {
+  const seen = new Map<string, string>();
+  mapTags(markdown, (name) => {
+    const key = name.toLowerCase();
+    if (!seen.has(key)) seen.set(key, name);
+    return undefined;
+  });
+  return [...seen.values()];
+}
+
+/** Rewrites `#oldName` (ignoring case, outside code, whole name only) to `#newName`; the rest is untouched. */
+export function rewriteTag(markdown: string, oldName: string, newName: string): string {
+  const wanted = oldName.trim().toLowerCase();
+  return mapTags(markdown, (name) => (name.toLowerCase() === wanted ? `#${newName}` : undefined));
+}
+
+// ---- templates and daily notes (stage N3, memo notes.md D11, D12) ----
+
+const INDIA_TIME_ZONE = 'Asia/Kolkata';
+const TEMPLATE_VARIABLE = /\{\{[ \t]{0,10}(title|date|time)[ \t]{0,10}\}\}/gi;
+
+/** Date and time in India as YYYY-MM-DD and HH:mm. */
+function indiaDateTime(now: Date): { date: string; time: string } {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: INDIA_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    time: `${get('hour')}:${get('minute')}`,
+  };
+}
+
+/** The India calendar day of an instant, as YYYY-MM-DD (the date of a daily note). */
+export function indiaDay(now: Date): string {
+  return indiaDateTime(now).date;
+}
+
+/** Fills `{{title}}`, `{{date}}` (YYYY-MM-DD) and `{{time}}` (HH:mm), India time, in one pass. */
+export function applyTemplate(markdown: string, context: { title: string; now: Date }): string {
+  const { date, time } = indiaDateTime(context.now);
+  return markdown.replace(TEMPLATE_VARIABLE, (_whole, variable: string) => {
+    const name = variable.toLowerCase();
+    return name === 'title' ? context.title : name === 'date' ? date : time;
+  });
 }

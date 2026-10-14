@@ -50,6 +50,8 @@ export const tagSchema = z.object({
   /** Only tags.list fills these: live tasks with the tag (any status, archived too) and favorites that use it. */
   taskCount: z.number().int().min(0).optional(),
   favoriteCount: z.number().int().min(0).optional(),
+  /** Only tags.list fills this: live notes whose text has the tag (N3). Missing means 0. */
+  noteCount: z.number().int().min(0).optional(),
 });
 export type Tag = z.infer<typeof tagSchema>;
 

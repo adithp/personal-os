@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  date,
   foreignKey,
   index,
   integer,
@@ -60,6 +61,8 @@ export const notes = pgTable(
     folderId: uuid('folder_id'),
     pinned: boolean('pinned').notNull().default(false),
     revision: integer('revision').notNull().default(1),
+    /** Set on a daily note: its India calendar day (YYYY-MM-DD), stage N3. */
+    dailyDate: date('daily_date', { mode: 'string' }),
     ...deletedAtColumn(),
   },
   (table) => [
@@ -78,11 +81,41 @@ export const notes = pgTable(
     uniqueIndex('notes_user_title_idx')
       .on(table.userId, sql`lower(${table.title})`)
       .where(sql`${table.deletedAt} is null`),
+    // One live daily note per India day (NULL dates are never equal, so normal notes are free)
+    uniqueIndex('notes_user_daily_date_idx')
+      .on(table.userId, table.dailyDate)
+      .where(sql`${table.deletedAt} is null`),
     index('notes_user_updated_idx').on(table.userId, table.updatedAt),
     index('notes_user_folder_idx').on(table.userId, table.folderId),
     ownRowsPolicy('notes', table.userId),
   ],
 ).enableRLS();
 
+/**
+ * A note template (memo D3, D11), stage N3. A plain table, not an entity, so templates never show up
+ * in links, search or the graph. At most one live template per user is the daily default.
+ */
+export const noteTemplates = pgTable(
+  'note_templates',
+  {
+    ...baseColumns(),
+    name: text('name').notNull(),
+    contentMd: text('content_md').notNull().default(''),
+    isDailyDefault: boolean('is_daily_default').notNull().default(false),
+    ...deletedAtColumn(),
+  },
+  (table) => [
+    uniqueIndex('note_templates_user_name_idx')
+      .on(table.userId, sql`lower(${table.name})`)
+      .where(sql`${table.deletedAt} is null`),
+    uniqueIndex('note_templates_daily_default_idx')
+      .on(table.userId)
+      .where(sql`${table.isDailyDefault} and ${table.deletedAt} is null`),
+    index('note_templates_user_id_idx').on(table.userId),
+    ownRowsPolicy('note_templates', table.userId),
+  ],
+).enableRLS();
+
 export type NoteRow = typeof notes.$inferSelect;
+export type NoteTemplateRow = typeof noteTemplates.$inferSelect;
 export type NoteFolderRow = typeof noteFolders.$inferSelect;

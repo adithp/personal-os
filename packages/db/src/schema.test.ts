@@ -1,7 +1,16 @@
 import { ENTITY_TYPES, LINK_RELATIONS, REALTIME_TABLES } from '@personal-os/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { entities, goals, links, noteFolders, notes, taskFavorites, tasks } from './schema';
+import {
+  entities,
+  goals,
+  links,
+  noteFolders,
+  noteTemplates,
+  notes,
+  taskFavorites,
+  tasks,
+} from './schema';
 import {
   asRole,
   createTestDb,
@@ -77,6 +86,8 @@ describe('the generated migrations', () => {
       '0011_realtime_publication.sql',
       '0012_notes_and_folders.sql',
       '0013_notes_triggers.sql',
+      '0014_note_templates_and_daily.sql',
+      '0015_note_templates_triggers.sql',
     ]);
     const all = migrationFiles().flatMap(migrationStatements).join('\n').toUpperCase();
     for (const dangerous of [
@@ -100,6 +111,7 @@ describe('the generated migrations', () => {
       'goals',
       'links',
       'note_folders',
+      'note_templates',
       'notes',
       'tags',
       'task_favorites',
@@ -239,6 +251,7 @@ describe('Row Level Security is on, with an own-rows policy', () => {
       'goals',
       'links',
       'note_folders',
+      'note_templates',
       'notes',
       'tags',
       'task_favorites',
@@ -747,5 +760,85 @@ describe('notes and note folders', () => {
       (await asRole(t.db, ALICE, (tx) => tx.select().from(notes))).map((r) => r.title),
     ).toEqual(['Mine']);
     expect(await asRole(t.db, ALICE, (tx) => tx.select().from(noteFolders))).toHaveLength(0);
+  });
+
+  it('allows one live daily note per user and day, and none for normal notes', async () => {
+    const daily = (userId: string, title: string, day: string) =>
+      note(userId, title, { dailyDate: day });
+    const first = await daily(ALICE, '2026-10-14', '2026-10-14');
+    expect(first.dailyDate).toBe('2026-10-14');
+    expect(await dbError(daily(ALICE, '2026-10-14 (daily)', '2026-10-14'))).toContain(
+      'notes_user_daily_date_idx',
+    );
+    await daily(ALICE, '2026-10-15', '2026-10-15');
+    await daily(BOB, '2026-10-14', '2026-10-14');
+    // Normal notes have no date and never clash with each other
+    await note(ALICE, 'One');
+    await note(ALICE, 'Two');
+    // A trashed daily note frees the day
+    await t.db.update(notes).set({ deletedAt: new Date() }).where(eq(notes.id, first.id));
+    await daily(ALICE, '2026-10-14 (daily)', '2026-10-14');
+  });
+});
+
+describe('note_templates', () => {
+  const template = (userId: string, name: string, extra = {}) =>
+    t.db
+      .insert(noteTemplates)
+      .values({ userId, name, ...extra })
+      .returning();
+
+  it('starts empty and not the daily default', async () => {
+    const [row] = await template(ALICE, 'Meeting');
+    expect(row).toMatchObject({ contentMd: '', isDailyDefault: false, deletedAt: null });
+  });
+
+  it('allows one live name per user ignoring case, but not for another user or a deleted one', async () => {
+    await template(ALICE, 'Meeting');
+    expect(await dbError(template(ALICE, 'meeting'))).toContain('note_templates_user_name_idx');
+    await template(BOB, 'Meeting');
+    await t.db.update(noteTemplates).set({ deletedAt: new Date() }).where(eq(noteTemplates.userId, ALICE));
+    await template(ALICE, 'MEETING');
+  });
+
+  it('allows only one live daily default per user', async () => {
+    await template(ALICE, 'A', { isDailyDefault: true });
+    expect(await dbError(template(ALICE, 'B', { isDailyDefault: true }))).toContain(
+      'note_templates_daily_default_idx',
+    );
+    await template(ALICE, 'C');
+    await template(ALICE, 'D');
+    await template(BOB, 'A', { isDailyDefault: true });
+    // Clearing the flag on the old one first lets another take it
+    await t.db
+      .update(noteTemplates)
+      .set({ isDailyDefault: false })
+      .where(and(eq(noteTemplates.userId, ALICE), eq(noteTemplates.name, 'A')));
+    await template(ALICE, 'E', { isDailyDefault: true });
+  });
+
+  it('lets a deleted template keep its flag without blocking a new default', async () => {
+    await template(ALICE, 'Old', { isDailyDefault: true });
+    await t.db.update(noteTemplates).set({ deletedAt: new Date() }).where(eq(noteTemplates.name, 'Old'));
+    await template(ALICE, 'New', { isDailyDefault: true });
+  });
+
+  it('refreshes updated_at on update', async () => {
+    const [row] = await template(ALICE, 'Stamp');
+    await new Promise((resolve) => setTimeout(resolve, 15));
+    const [after] = await t.db
+      .update(noteTemplates)
+      .set({ contentMd: 'x', updatedAt: new Date('2000-01-01') })
+      .where(eq(noteTemplates.id, row?.id ?? ''))
+      .returning();
+    expect(after?.updatedAt.getTime()).toBeGreaterThan(row?.updatedAt.getTime() ?? 0);
+  });
+
+  it('lets a user see only their own templates', async () => {
+    await template(ALICE, 'Mine');
+    await template(BOB, 'Theirs');
+    expect(
+      (await asRole(t.db, ALICE, (tx) => tx.select().from(noteTemplates))).map((r) => r.name),
+    ).toEqual(['Mine']);
   });
 });

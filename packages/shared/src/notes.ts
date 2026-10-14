@@ -44,6 +44,10 @@ export const noteSummarySchema = z.object({
   folderId: id.nullable(),
   pinned: z.boolean(),
   excerpt: z.string(),
+  /** Names of the tags written in the text (`#tag`), N3. Missing means not filled in. */
+  tagNames: z.array(z.string()).optional(),
+  /** The India day (YYYY-MM-DD) of a daily note, N3. Missing or null for a normal note. */
+  dailyDate: z.string().nullable().optional(),
   createdAt: isoTime,
   updatedAt: isoTime,
   deletedAt: isoTime.nullable(),
@@ -72,6 +76,10 @@ export type NoteFolder = z.infer<typeof noteFolderSchema>;
 export const listNotesInput = z.object({
   /** A folder id, or 'none' for notes in no folder. Omit for all notes. */
   folderId: z.union([id, z.literal('none')]).optional(),
+  /** Only notes whose text has this tag (N3). */
+  tagId: id.optional(),
+  /** Only daily notes, newest day first (N3). */
+  dailyOnly: z.union([z.boolean(), z.stringbool()]).optional(),
   /** Only trashed notes. */
   trash: z.union([z.boolean(), z.stringbool()]).default(false),
   sort: noteSortSchema.default('updated'),
@@ -81,6 +89,8 @@ export const listNotesInput = z.object({
 /** What the app sends: the schema also reads query strings, so its own input type is unknown. */
 export interface ListNotesInput {
   folderId?: string;
+  tagId?: string;
+  dailyOnly?: boolean;
   trash?: boolean;
   sort?: NoteSort;
   limit?: number;
@@ -94,6 +104,8 @@ export const createNoteInput = z.object({
   title: noteTitleSchema.optional(),
   folderId: id.nullable().optional(),
   contentMd: z.string().max(NOTE_CONTENT_MAX).optional(),
+  /** Start from this template (N3): {{title}}, {{date}} and {{time}} are filled in. Ignored when `contentMd` is given. */
+  templateId: id.optional(),
 });
 export type CreateNoteInput = z.input<typeof createNoteInput>;
 
@@ -233,6 +245,106 @@ export const NOTE_CONTEXT_MAX = 160;
 /** The answer of notes.rename: the note plus the ids of other notes whose [[links]] were rewritten. */
 export const renamedNoteSchema = noteSchema.extend({ updatedNoteIds: z.array(id) });
 export type RenamedNote = z.infer<typeof renamedNoteSchema>;
+
+// ---- stage N3: templates and daily notes (memo notes.md D11, D12, D18) ----
+
+export const NOTE_TEMPLATE_NAME_MAX = 80;
+
+const templateName = z.string().trim().min(1, 'Add a name').max(NOTE_TEMPLATE_NAME_MAX);
+const templateContent = z.string().max(NOTE_CONTENT_MAX);
+
+/** A note template. Names are unique among live templates, ignoring case; at most one is the daily default. */
+export const noteTemplateSchema = z.object({
+  id,
+  name: z.string(),
+  contentMd: z.string(),
+  isDailyDefault: z.boolean(),
+  createdAt: isoTime,
+  updatedAt: isoTime,
+});
+export type NoteTemplate = z.infer<typeof noteTemplateSchema>;
+
+export const createNoteTemplateInput = z.object({
+  name: templateName,
+  contentMd: templateContent.default(''),
+  /** Setting it clears the flag on every other template. */
+  isDailyDefault: z.boolean().default(false),
+});
+export type CreateNoteTemplateInput = z.input<typeof createNoteTemplateInput>;
+
+export const updateNoteTemplateInput = z
+  .object({
+    id,
+    name: templateName.optional(),
+    contentMd: templateContent.optional(),
+    isDailyDefault: z.boolean().optional(),
+  })
+  .refine(
+    (input) =>
+      input.name !== undefined ||
+      input.contentMd !== undefined ||
+      input.isDailyDefault !== undefined,
+    'Nothing to change',
+  );
+export type UpdateNoteTemplateInput = z.input<typeof updateNoteTemplateInput>;
+
+export const noteTemplateIdInput = z.object({ id });
+
+/** A calendar day written YYYY-MM-DD that exists (2026-02-30 does not). */
+export const dailyDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
+  .refine((value) => {
+    const date = new Date(`${value}T00:00:00Z`);
+    return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
+  }, 'Not a real date');
+
+/** `date` is an India calendar day; missing means today in India. */
+export const openDailyInput = z.object({ date: dailyDateSchema.optional() });
+export type OpenDailyInput = z.input<typeof openDailyInput>;
+
+export const noteTemplateActions = {
+  list: defineAction({
+    name: 'noteTemplates.list',
+    description: 'List note templates (name order).',
+    permission: 'read',
+    input: z.object({}),
+  }),
+  create: defineAction({
+    name: 'noteTemplates.create',
+    description: 'Create a note template; {{title}}, {{date}} and {{time}} are filled in later.',
+    permission: 'write',
+    input: createNoteTemplateInput,
+  }),
+  update: defineAction({
+    name: 'noteTemplates.update',
+    description: 'Rename a template, change its text, or mark it as the one for daily notes.',
+    permission: 'write',
+    input: updateNoteTemplateInput,
+  }),
+  delete: defineAction({
+    name: 'noteTemplates.delete',
+    description: 'Delete a note template (can be undone).',
+    permission: 'write',
+    input: noteTemplateIdInput,
+  }),
+  restore: defineAction({
+    name: 'noteTemplates.restore',
+    description: 'Bring a deleted note template back.',
+    permission: 'write',
+    input: noteTemplateIdInput,
+  }),
+} as const;
+
+export const noteDailyActions = {
+  openDaily: defineAction({
+    name: 'notes.openDaily',
+    description:
+      'Open the daily note of a day (default today, India time); creates it from the daily template when missing.',
+    permission: 'write',
+    input: openDailyInput,
+  }),
+} as const;
 
 export const noteLinkActions = {
   titles: defineAction({
