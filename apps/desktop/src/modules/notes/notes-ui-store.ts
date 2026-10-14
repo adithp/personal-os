@@ -7,7 +7,7 @@ export type NotesPlace = string;
 export const DEFAULT_PLACE: NotesPlace = 'all';
 export const DEFAULT_NOTE_SORT: NoteSort = 'updated';
 
-export const RIGHT_PANEL_TABS = ['links', 'outline'] as const;
+export const RIGHT_PANEL_TABS = ['links', 'outline', 'history'] as const;
 export type RightPanelTab = (typeof RIGHT_PANEL_TABS)[number];
 
 interface NotesUiState {

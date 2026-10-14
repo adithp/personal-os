@@ -226,7 +226,9 @@ describe('the right panel', () => {
     await user.click(await screen.findByRole('radio', { name: 'Links' }));
     await user.keyboard('{ArrowRight}');
     expect(screen.getByRole('radio', { name: 'Outline' })).toBeChecked();
-    expect(within(panel()).queryByRole('radio', { name: 'History' })).toBeNull();
+    await user.keyboard('{ArrowRight}');
+    expect(within(panel()).getByRole('radio', { name: 'History' })).toBeChecked();
+    expect(await screen.findByText(/No earlier versions yet/)).toBeInTheDocument();
   });
 
   it('shows icons only in the side panel below 1252 px while it is open', async () => {
