@@ -72,10 +72,11 @@ Each module table uses the same id as its entity row.
 - file_refs: id, drive_file_id, name, mime_type, web_link, modified_at, parent_folder_id
 
 ### Projects
-- projects: id, name, type (freelance, college, personal, software), status (planned, active, on_hold, done), client_id, start_date, due_date, description, progress
-- milestones: id, project_id, name, due_date, done
-- clients: id, name, email, phone, company, notes
-- time_entries: id, project_id, task_id, started_at, ended_at, minutes, note
+Written by the Projects lane (SQL in packages/db/drizzle-pending/projects/ until the orchestrator merges it as real migrations: 01 tables, 02 triggers, Realtime and grants). All four tables have user_id, RLS (`<table>_own_rows`), created_at, updated_at (set_updated_at trigger), deleted_at, and are in the Realtime publication with `GRANT SELECT` to authenticated and no access for anon.
+- clients: id (the id of its entities row, type `client`; composite foreign key, cascade), name, email, phone, company, notes. Deleting soft-deletes the row and its entity; its projects keep `client_id` and show no client until it is restored.
+- projects: id (the id of its entities row, type `project`), title, description, status (enum `project_status`: active, on_hold, done, archived; default active), client_id (composite foreign key to clients, no cascade), start_at and due_at (start of the India day), color (hex or null). Indexes on user_id, (user_id, status), client_id. Tasks and notes join a project through a live `belongs_to` link (source task or note, target project); one project per item; a goal link is separate, so a task can be in one goal and one project. Progress, milestone counts, note count and tracked time are computed, never stored.
+- project_milestones: id, project_id (composite foreign key, cascade), title, due_at, done_at, position.
+- time_entries: id, project_id (composite foreign key, cascade), task_id (composite foreign key to tasks, nullable), started_at, ended_at (null while the timer runs), note. Check `ended_at is null or ended_at >= started_at`; the partial unique index `time_entries_one_running_idx` allows one running live entry per user.
 
 ### Money
 - wallets: id, name, type (cash, bank, card, upi, other), balance_paise, currency

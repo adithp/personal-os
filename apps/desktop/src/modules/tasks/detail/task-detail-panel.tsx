@@ -5,6 +5,7 @@ import {
   type TaskPriority,
   type TaskStatus,
 } from '@personal-os/shared';
+import { TaskProjectRow } from '../../projects/task-project-row';
 import { GoalSection } from './goal-section';
 import { Button, GlassCard, IconButton, SegmentedControl } from '@personal-os/ui';
 import { IconX } from '@tabler/icons-react';
@@ -180,6 +181,7 @@ function DetailBody({ task, onClose }: { task: Task; onClose: () => void }) {
       </Row>
 
       <GoalSection task={task} />
+      <TaskProjectRow taskId={task.id} isSubtask={isSubtask} />
 
       {isSubtask ? null : (
         <Row label="Subtasks">
