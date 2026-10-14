@@ -155,7 +155,7 @@ export const searchResultSchema = z.object({ q: z.string(), groups: z.array(sear
 - Confidence: **High** for the shape, the field names follow the existing Task type.
 
 **D9. Ranking.**
-- Choice: in SQL, `ts_rank(search_vector, query, 1)` (frequency, divided by 1 + log of length), then `updated_at desc`. The task provider reads the top `limit × 4` matches, then in code multiplies the rank of done or archived tasks by 0.5, sorts again, and keeps `limit`. Tags: exact name first, then shorter names, then by name.
+- Choice: in SQL, `ts_rank(search_vector, query, 1)` (frequency, divided by 1 + log of length), then `updated_at desc`. The task provider reads the top `max(limit × 10, 100) per page, up to 4 pages` matches, then in code multiplies the rank of done or archived tasks by 0.5, sorts again, and keeps `limit`. Tags: exact name first, then shorter names, then by name.
 - Reason: E4 showed `ts_rank_cd` lets repeated words in a description beat a short exact title; open-first follows Linear (S16) without hiding done work.
 - Rejected: `ts_rank_cd` (E4); strict open-first ordering (an exact match on a done task would sink under weak open matches).
 - Confidence: **Medium** (tune after real use).
