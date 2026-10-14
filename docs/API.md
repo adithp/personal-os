@@ -91,6 +91,26 @@ Goal details: `title` 1 to 200 characters, `description` up to 20,000 (or null),
 | DELETE | /tasks/:id/blockers/:blockerId | Stop that task from blocking this one (returns the task and an undo; null when there was no such link) |
 | GET | /tasks/report | Numbers for the Tasks report: query `period=week` or `month`; returns `{ item }` with the India days of the period (done, onTime, late, noDueDate per day), totals, the previous period up to the same point, `overdueNow`, done by tag (top 5, other tags, no tag). 400 `validation_error` for a missing or unknown period. The answer also has `period`, `timeZone` (Asia/Kolkata), `today`, `start`, `end` (dates `YYYY-MM-DD`; a week runs Monday to Sunday; `days` has one entry per day, future days at zero), `added` in totals and previous, and `hasEverDone` |
 | POST | /tasks/:id/move | Drag and drop: body `status`, `dueAt`, `dueAllDay`, `afterId` (task just above), `beforeId` (task just below), at least one; returns the task and an undo. The position goes between the two neighbours; 400 when a neighbour is the task itself, has a different parent, or `afterId` is not above `beforeId`; 404 for an unknown, deleted or other user's task or neighbour. The status and dates change exactly like in PATCH /tasks/:id |
+| GET | /clients, /clients/:id | Clients (`projectCount`, `trackedSeconds`): `{ items }` / `{ item }` |
+| POST | /clients | Create (name, email, phone, company, notes); 201 |
+| PATCH | /clients/:id | Change details; DELETE /clients/:id deletes (projects stay, shown without a client); undo is clients.restore |
+| GET | /projects | Projects with `progress`, `milestones`, `noteCount`, `trackedSeconds`, `client`: `{ items }`, optional `?status=` and `?clientId=` |
+| GET | /projects/:id | One project |
+| POST | /projects | Create (title, description, clientId, startAt, dueAt as India day starts, color `#RRGGBB`); 201; 404 for an unknown client |
+| PATCH | /projects/:id | Change fields; DELETE /projects/:id deletes (tasks, notes, milestones, time stay); undo is projects.restore |
+| POST | /projects/:id/status | Body `{ status }`: active, on_hold, done, archived |
+| GET | /projects/:id/items | `{ item: { tasks, notes } }`: top-level tasks (archived too, as in GET /tasks) and notes `{ id, title, updatedAt }` |
+| GET | /tasks/:id/project | `{ item: { id, title } | null }` |
+| PUT | /tasks/:id/project, /notes/:id/project | Body `{ projectId }` (or null): put in a project, move, or take out; returns the project and an undo; 409 `project_full` at 500 items; a subtask answers 400 |
+| GET, POST | /projects/:id/milestones | List (`{ items }`) / create (title, dueAt); 201 |
+| PATCH, DELETE | /milestones/:id | Change title, dueAt, or `done` (true sets doneAt); delete (undo is milestones.restore) |
+| GET | /time-entries | Newest first; filters `projectId`, `taskId`, `from`, `to` (on the start time), `limit` (default 200, max 500); entries of a deleted project are hidden |
+| GET | /time-entries/running | `{ item: entry | null }` |
+| GET | /time-entries/summary | `{ item: { totalSeconds, byProject, byWeek } }` over the last `weeks` (default 8, max 26) India weeks starting Monday 00:00; optional `projectId`; all three figures cover those weeks |
+| POST | /time-entries/start | Body `{ projectId, taskId?, note? }`: stops the running timer, starts a new one; 201; undo deletes the new entry |
+| POST | /time-entries/stop | Body `{ id? }`: stops the running timer; 404 when none runs; no undo |
+| POST | /time-entries | Add a finished entry (projectId, taskId?, startedAt, endedAt, note?; at most 24 hours); 201 |
+| PATCH, DELETE | /time-entries/:id | Change taskId, startedAt, endedAt, note (400 for the end of a running entry, an end before the start, or over 24 hours); delete (undo is time.restore; restoring a running entry answers 409 `timer_running` while another runs) |
 | POST | /undo | Run the `undo` returned by a write: body `{ "action": "tasks.restore", "input": { "id": "..." } }`. Only write and destructive actions can be run this way; anything else answers 400 cannot_undo |
 | GET | /me | The signed-in user from the token: {id, email, role}. Used to check that login works end to end |
 | GET | /links?entityId= | Links for an entity (backlinks, project items) |
