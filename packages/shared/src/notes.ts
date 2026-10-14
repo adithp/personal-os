@@ -213,3 +213,38 @@ export const noteFolderActions = {
     input: folderIdInput,
   }),
 } as const;
+
+// ---- stage N2: links (memo notes.md D6, D8, D9, D18) ----
+
+/** One live note for the `[[` autocomplete: id and title only. */
+export const noteTitleItemSchema = z.object({ id, title: z.string() });
+export type NoteTitle = z.infer<typeof noteTitleItemSchema>;
+
+export const noteLinksSchema = z.object({
+  /** Live notes that link here, with the text around the first link (cut to 160 characters). */
+  backlinks: z.array(z.object({ noteId: id, title: z.string(), context: z.string() })),
+  /** Links in this note; `noteId` is null when no live note has that title. */
+  outgoing: z.array(z.object({ target: z.string(), noteId: id.nullable() })),
+});
+export type NoteLinks = z.infer<typeof noteLinksSchema>;
+
+export const NOTE_CONTEXT_MAX = 160;
+
+/** The answer of notes.rename: the note plus the ids of other notes whose [[links]] were rewritten. */
+export const renamedNoteSchema = noteSchema.extend({ updatedNoteIds: z.array(id) });
+export type RenamedNote = z.infer<typeof renamedNoteSchema>;
+
+export const noteLinkActions = {
+  titles: defineAction({
+    name: 'notes.titles',
+    description: 'List the id and title of every live note (for link suggestions).',
+    permission: 'read',
+    input: z.object({}),
+  }),
+  links: defineAction({
+    name: 'notes.links',
+    description: 'Backlinks and outgoing links of a note.',
+    permission: 'read',
+    input: noteIdInput,
+  }),
+} as const;

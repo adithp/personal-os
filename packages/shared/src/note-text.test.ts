@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { countWords, excerptOf, markdownToPlainText, unescapeMarkdown } from './note-text';
+import {
+  countWords,
+  excerptOf,
+  markdownToPlainText,
+  parseWikilinks,
+  rewriteWikilinks,
+  unescapeMarkdown,
+} from './note-text';
 
 describe('unescapeMarkdown', () => {
   it('undoes escapes and the three entities', () => {
@@ -58,5 +65,37 @@ describe('markdownToPlainText on hostile input', () => {
     const out = markdownToPlainText(line);
     expect(out.length).toBeLessThanOrEqual(4000);
     expect(out.startsWith('[')).toBe(true);
+  });
+});
+
+describe('parseWikilinks', () => {
+  it('finds plain, aliased and heading links in order', () => {
+    expect(parseWikilinks('a [[One]] b [[Two|second]] c [[Three#Part]] [[One]]')).toEqual([
+      { target: 'One', label: null, heading: null },
+      { target: 'Two', label: 'second', heading: null },
+      { target: 'Three', label: null, heading: 'Part' },
+      { target: 'One', label: null, heading: null },
+    ]);
+  });
+
+  it('skips fenced and inline code and undoes escapes', () => {
+    const md = '```\n[[in fence]]\n```\nuse `[[inline]]` and [[real\_one]]';
+    expect(parseWikilinks(md).map((link) => link.target)).toEqual(['real_one']);
+  });
+
+  it('ignores empty or broken brackets and handles Malayalam', () => {
+    expect(parseWikilinks('[[ ]] [[a]b]] [[വാടക]]').map((link) => link.target)).toEqual(['വാടക']);
+  });
+});
+
+describe('rewriteWikilinks', () => {
+  it('renames every form ignoring case and keeps heading and label', () => {
+    const md = '[[Old]] [[old|x]] [[OLD#h]] [[Other]]';
+    expect(rewriteWikilinks(md, 'Old', 'New')).toBe('[[New]] [[New|x]] [[New#h]] [[Other]]');
+  });
+
+  it('leaves code alone', () => {
+    const md = '`[[Old]]`\n```\n[[Old]]\n```\n[[Old]]';
+    expect(rewriteWikilinks(md, 'old', 'New')).toBe('`[[Old]]`\n```\n[[Old]]\n```\n[[New]]');
   });
 });

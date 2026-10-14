@@ -68,3 +68,92 @@ export function excerptOf(plainText: string, max = 140): string {
   const space = cut.lastIndexOf(' ');
   return `${(space > max * 0.6 ? cut.slice(0, space) : cut).trimEnd()}…`;
 }
+
+// ---- wikilinks (stage N2, memo notes.md D6, D8, D9) ----
+
+export interface Wikilink {
+  /** The note title as written, without a heading part. */
+  target: string;
+  /** The text after `|`, if any. */
+  label: string | null;
+  /** The part after `#` in `[[Note#Heading]]`, if any. */
+  heading: string | null;
+}
+
+const WIKILINK = /\[\[([^[\]|\n]+?)(?:\|([^[\]\n]+?))?\]\]/g;
+
+/** Splits a document into pieces that are code (fenced blocks, inline code) or normal text. */
+function splitCode(markdown: string): { text: string; code: boolean }[] {
+  const parts: { text: string; code: boolean }[] = [];
+  let inFence = false;
+  let buffer = '';
+  const flush = (code: boolean) => {
+    if (buffer) parts.push({ text: buffer, code });
+    buffer = '';
+  };
+  const lines = markdown.split('\n');
+  lines.forEach((line, index) => {
+    const withBreak = index < lines.length - 1 ? `${line}\n` : line;
+    if (/^\s*(```|~~~)/.test(line)) {
+      if (!inFence) flush(false);
+      buffer += withBreak;
+      inFence = !inFence;
+      if (!inFence) flush(true);
+      return;
+    }
+    if (inFence) {
+      buffer += withBreak;
+      return;
+    }
+    // Inline code spans inside a normal line
+    const pieces = withBreak.split(/(`+[^`]*`+)/);
+    for (const piece of pieces) {
+      if (/^`+[^`]*`+$/.test(piece)) {
+        flush(false);
+        parts.push({ text: piece, code: true });
+      } else buffer += piece;
+    }
+  });
+  flush(inFence);
+  return parts;
+}
+
+function readLink(match: RegExpExecArray): Wikilink | null {
+  const inner = unescapeMarkdown(match[1] ?? '');
+  const hash = inner.indexOf('#');
+  const target = (hash === -1 ? inner : inner.slice(0, hash)).trim();
+  if (!target) return null;
+  const heading = hash === -1 ? null : inner.slice(hash + 1).trim() || null;
+  const label = match[2] ? unescapeMarkdown(match[2]).trim() || null : null;
+  return { target, label, heading };
+}
+
+/** Every wikilink outside code, in order (duplicates kept). Backslash escapes are undone. */
+export function parseWikilinks(markdown: string): Wikilink[] {
+  const found: Wikilink[] = [];
+  for (const part of splitCode(markdown)) {
+    if (part.code) continue;
+    for (const match of part.text.matchAll(WIKILINK)) {
+      const link = readLink(match as RegExpExecArray);
+      if (link) found.push(link);
+    }
+  }
+  return found;
+}
+
+/** Rewrites links to `oldTitle` (ignoring case, outside code) so they point to `newTitle`; keeps `#heading` and `|label`. */
+export function rewriteWikilinks(markdown: string, oldTitle: string, newTitle: string): string {
+  const wanted = oldTitle.trim().toLowerCase();
+  return splitCode(markdown)
+    .map((part) =>
+      part.code
+        ? part.text
+        : part.text.replace(WIKILINK, (whole, rawTarget: string, rawLabel?: string) => {
+            const link = readLink([whole, rawTarget, rawLabel] as unknown as RegExpExecArray);
+            if (link?.target.toLowerCase() !== wanted) return whole;
+            const heading = link.heading ? `#${link.heading}` : '';
+            return `[[${newTitle}${heading}${rawLabel ? `|${rawLabel}` : ''}]]`;
+          }),
+    )
+    .join('');
+}

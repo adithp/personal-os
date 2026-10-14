@@ -20,6 +20,18 @@ export function noteRoutes(app: FastifyInstance, options: ActionRouteOptions): v
     return { item: data, undo: null };
   });
 
+  // Before /notes/:id so "titles" is not read as an id
+  app.get('/notes/titles', async (request) => {
+    const { data } = await run(request, 'notes.titles', {});
+    return { items: data };
+  });
+
+  app.get('/notes/:id/links', async (request) => {
+    const { id } = idParams.parse(request.params);
+    const { data } = await run(request, 'notes.links', { id });
+    return { item: data };
+  });
+
   app.get('/notes/:id', async (request) => {
     const { id } = idParams.parse(request.params);
     const { data } = await run(request, 'notes.get', { id });
@@ -40,8 +52,7 @@ export function noteRoutes(app: FastifyInstance, options: ActionRouteOptions): v
   app.post('/notes/:id/rename', async (request) => {
     const { id } = idParams.parse(request.params);
     const { data, undo } = await run(request, 'notes.rename', { ...bodyOf(request.body), id });
-    // The action has no place for the ids of notes whose links were rewritten (link stage later)
-    return { item: data, undo: undo ?? null, updatedNoteIds: [] as string[] };
+    return { item: data, undo: undo ?? null };
   });
 
   app.delete('/notes/:id', async (request) => {

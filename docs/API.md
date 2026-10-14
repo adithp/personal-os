@@ -81,6 +81,8 @@ Goal details: `title` 1 to 200 characters, `description` up to 20,000 (or null),
 | GET | /graph?focus=&depth=&types= | Nodes and edges for the knowledge graph |
 | POST | /search | Global search (q 1 to 100 characters, control characters become spaces; types: task, tag; limit 1 to 20, default 5, per group; text with no letters or digits answers groups []; an aborted request on the client is an AbortError, not an ApiError). Body { q, types?, limit? } (a POST so the search text stays out of access logs); answer { item: { q, groups } }. Tasks and tags now; mode semantic, Gmail and Drive later |
 | GET | /notes?folderId=&trash=&sort=updated or title or created&limit=&offset= | Notes without their text (id, title, folderId, pinned, 140-character excerpt, dates); folderId none means no folder; pinned first |
+| GET | /notes/titles | `{ items: [{ id, title }] }` of every live note (link suggestions) |
+| GET | /notes/:id/links | `{ item: { backlinks: [{ noteId, title, context }], outgoing: [{ target, noteId \| null }] } }` |
 | GET | /notes/:id | One note with `contentMd` and `revision` (a trashed note too) |
 | POST | /notes | Create (title optional: Untitled, Untitled 2, ...); 201 |
 | PATCH | /notes/:id | Body `baseRevision` plus contentMd, folderId or pinned; `force: true` is Keep mine; the revision is only checked when `contentMd` is sent (pin and folder moves never conflict); 409 `note_conflict` when the revision is old (the 409 has no note in its body: fetch GET /notes/:id) |

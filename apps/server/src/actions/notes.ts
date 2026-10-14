@@ -308,9 +308,9 @@ export const noteImplementations = [
         );
         if (!updated) throw notFound();
         await tx.update(entities, { title }, eq(entities.id, id));
-        await rewriteLinksOnRename(tx, id, before.title, title);
+        const updatedNoteIds = await rewriteLinksOnRename(tx, id, before.title, title);
         return {
-          data: toNote(updated),
+          data: { ...toNote(updated), updatedNoteIds },
           undo: {
             action: 'notes.rename',
             input: { id, title: before.title },
