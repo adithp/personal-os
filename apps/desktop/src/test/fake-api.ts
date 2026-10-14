@@ -154,10 +154,24 @@ export function createFakeApi(
   initialNotes: Note[] = [],
   initialFolders: NoteFolder[] = [],
 ) {
-  const notesFake = createNotesFake(initialNotes, initialFolders);
-  const templatesFake = createNoteTemplatesFake(notesFake);
   const store = new Map<string, Task>(initial.map((task) => [task.id, task]));
   const tagStore = new Map<string, Tag>(initialTags.map((tag) => [tag.id, tag]));
+  const notesFake = createNotesFake(
+    initialNotes,
+    initialFolders,
+    // A #tag in a saved note finds or creates the tag, like the server does
+    (name) => {
+      const existing = [...tagStore.values()].find(
+        (tag) => tag.name.toLowerCase() === name.toLowerCase(),
+      );
+      if (existing) return existing;
+      const tag = makeTag({ name, color: nextTagColor(tagStore.size) });
+      tagStore.set(tag.id, tag);
+      return tag;
+    },
+    (id) => tagStore.get(id)?.name,
+  );
+  const templatesFake = createNoteTemplatesFake(notesFake);
   const deleted = new Set<string>();
   const favoriteStore = new Map<string, Favorite>(
     initialFavorites.map((favorite) => [favorite.id, favorite]),
@@ -481,6 +495,7 @@ export function createFakeApi(
           taskCount: liveTasks().filter((task) => task.tags.some((ref) => ref.id === tag.id))
             .length,
           favoriteCount: liveFavorites().filter((fav) => fav.view.tagIds?.includes(tag.id)).length,
+          noteCount: notesFake.noteCountOf(tag.name),
         })),
       };
     }

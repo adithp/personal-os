@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   note: undefined as Note | undefined,
   titles: [] as { id: string; title: string }[] | undefined,
   refetchTitles: vi.fn(),
+  tags: [{ name: 'work', color: '#F7D96B' }] as { name: string; color: string }[] | undefined,
   query: undefined as { isPending?: boolean; isError?: boolean; error?: unknown } | undefined,
   update: vi.fn(),
   rename: vi.fn(),
@@ -38,6 +39,9 @@ vi.mock('../links-queries', () => ({
     isError: false,
     refetch: mocks.refetchTitles,
   }),
+}));
+vi.mock('../../tasks/tags-queries', () => ({
+  useTags: () => ({ data: mocks.tags }),
 }));
 vi.mock('../shell/use-notes-nav', () => ({
   useNotesNav: () => ({ noteId: null, place: 'all', openNote: mocks.openNote }),
@@ -111,6 +115,14 @@ describe('NoteEditorPane', () => {
     expect(screen.getByText('Hello world')).toBeInTheDocument();
     expect(screen.getByText('2 words · Edited 2 min ago')).toBeInTheDocument();
     expect(screen.getByText('Saved')).toBeInTheDocument();
+  });
+
+  it('draws #tags in the text as chips in the tag color', () => {
+    mocks.note = makeNote({ contentMd: 'Ship #work today' });
+    render(<NoteEditorPane noteId="n1" />);
+    const chip = document.querySelector<HTMLElement>('.note-tag');
+    expect(chip).toHaveTextContent('#work');
+    expect(chip?.style.getPropertyValue('--tag-color')).toBe('#F7D96B');
   });
 
   it('saves nothing just because the note was opened', async () => {

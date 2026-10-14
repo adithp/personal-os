@@ -6,6 +6,7 @@ import {
   NOTE_CONTEXT_MAX,
   NOTE_LIST_LIMIT_DEFAULT,
   noteTitleSchema,
+  parseTags,
   parseWikilinks,
   rewriteWikilinks,
   type Note,
@@ -86,7 +87,14 @@ export const NOT_NOTES = Symbol('not-a-notes-route');
  * title is taken, purge, folders up to 3 levels with unique names per parent, and only empty
  * folders can be deleted.
  */
-export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteFolder[] = []) {
+export function createNotesFake(
+  initialNotes: Note[] = [],
+  initialFolders: NoteFolder[] = [],
+  /** Finds (ignoring case) or creates the tag with this name, like `tags.create` does for note text. */
+  ensureTag: (name: string) => unknown = () => undefined,
+  /** The name of a tag, for the `tagId` filter. */
+  tagNameOf: (id: string) => string | undefined = () => undefined,
+) {
   const noteStore = new Map<string, Note>(initialNotes.map((note) => [note.id, note]));
   const folderStore = new Map<string, NoteFolder>(
     initialFolders.map((folder) => [folder.id, folder]),
@@ -128,10 +136,21 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
     return parsed.data;
   };
 
+  /** Like the server, a save finds or creates a tag for each #tag in the text. */
+  const syncTags = (contentMd: string) => {
+    for (const name of parseTags(contentMd)) ensureTag(name);
+  };
+  const hasTag = (note: Note, name: string) =>
+    parseTags(note.contentMd).some((tag) => tag.toLowerCase() === name.toLowerCase());
+  /** Live notes whose text has this tag name (the `noteCount` of `tags.list`). */
+  const noteCountOf = (name: string) => liveNotes().filter((note) => hasTag(note, name)).length;
+
   const summary = (note: Note) => {
     const { contentMd: _content, revision: _revision, ...rest } = note;
-    return rest;
+    return { ...rest, tagNames: parseTags(note.contentMd) };
   };
+  /** A full note as the routes answer it: the summary fields include `tagNames`. */
+  const full = (note: Note): Note => ({ ...note, tagNames: parseTags(note.contentMd) });
 
   const folderView = (folder: NoteFolder): NoteFolder => ({
     ...folder,
@@ -206,7 +225,8 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
       deletedAt: null,
     };
     noteStore.set(note.id, note);
-    return { item: note, undo: { action: 'notes.delete', input: { id: note.id } } };
+    syncTags(contentMd);
+    return { item: full(note), undo: { action: 'notes.delete', input: { id: note.id } } };
   };
 
   const updateNote = (id: string, body: Record<string, unknown>) => {
@@ -224,6 +244,7 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
       next.contentMd = body.contentMd;
       next.excerpt = excerptOf(body.contentMd);
       next.revision = current.revision + 1;
+      syncTags(body.contentMd);
     }
     if (body.folderId !== undefined) {
       const folderId = typeof body.folderId === 'string' ? body.folderId : null;
@@ -241,7 +262,7 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
       Object.keys(previous).length > 0
         ? { action: 'notes.update', input: { id, baseRevision: next.revision, ...previous } }
         : null;
-    return { item: next, undo };
+    return { item: full(next), undo };
   };
 
   const renameNote = (id: string, body: Record<string, unknown>) => {
@@ -338,11 +359,14 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
   const listNotes = (query: RequestOptions['query'] = {}) => {
     const trash = flag(query.trash);
     const folderId = query.folderId === undefined ? undefined : textOf(query.folderId);
+    const tagId = query.tagId === undefined ? undefined : textOf(query.tagId);
+    const tagName = tagId === undefined ? undefined : (tagNameOf(tagId) ?? '\u0000');
     const sort = textOf(query.sort) || 'updated';
     const limit = query.limit === undefined ? NOTE_LIST_LIMIT_DEFAULT : Number(query.limit);
     const offset = query.offset === undefined ? 0 : Number(query.offset);
     return [...noteStore.values()]
       .filter((note) => (note.deletedAt !== null) === trash)
+      .filter((note) => tagName === undefined || hasTag(note, tagName))
       .filter((note) => {
         if (folderId === undefined) return true;
         return folderId === 'none' ? note.folderId === null : note.folderId === folderId;
@@ -485,7 +509,7 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
       if (method === 'GET' && !verb) {
         const found = noteStore.get(id);
         if (!found) throw missing();
-        return { item: found };
+        return { item: full(found) };
       }
       if (method === 'PATCH' && !verb) return updateNote(id, body);
       if (method === 'POST' && verb === 'rename') return renameNote(id, body);
@@ -522,6 +546,8 @@ export function createNotesFake(initialNotes: Note[] = [], initialFolders: NoteF
     notes: () => liveNotes(),
     /** Notes in Trash. */
     trashed: () => [...noteStore.values()].filter((note) => note.deletedAt !== null),
+    /** How many live notes have the tag with this name in their text (`noteCount` of `tags.list`). */
+    noteCountOf,
     /** Live folders, with their note counts. */
     folders: () => liveFolders().map(folderView),
   };

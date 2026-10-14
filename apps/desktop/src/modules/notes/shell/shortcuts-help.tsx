@@ -11,6 +11,7 @@ interface Shortcut {
 
 const NOTES: readonly Shortcut[] = [
   { keys: ['N'], action: 'New note' },
+  { keys: ['D'], action: 'Open today’s daily note' },
   { keys: ['↑', '↓'], action: 'Move between notes' },
   { keys: ['Enter'], action: 'Open the note and start writing' },
   { keys: ['Delete'], action: 'Move to trash' },

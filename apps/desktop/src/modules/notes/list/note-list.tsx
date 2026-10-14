@@ -12,7 +12,10 @@ import { useMemo, useRef, useState } from 'react';
 import { ApiError } from '../../../api/api-client';
 import { useNow } from '../../dashboard/greeting';
 import { AnchoredMenu, MenuItem } from '../../tasks/favorites/anchored-menu';
+import { useTags } from '../../tasks/tags-queries';
+import { useOpenDaily } from '../daily/use-open-daily';
 import { useNoteFolders } from '../folders-queries';
+import { isFolderPlace, tagIdOf } from '../notes-search';
 import {
   useCreateNote,
   useDeleteNote,
@@ -55,9 +58,12 @@ export function NoteList() {
   const sort = useNotesUi((state) => state.sort);
   const setSort = useNotesUi((state) => state.setSort);
   const folders = useNoteFolders();
+  const tagsQuery = useTags();
   const trash = nav.place === 'trash';
-  const folder =
-    !trash && nav.place !== 'all' ? folders.data?.find((f) => f.id === nav.place) : null;
+  const folderPlace = isFolderPlace(nav.place);
+  const folder = folderPlace ? folders.data?.find((f) => f.id === nav.place) : null;
+  const tagId = tagIdOf(nav.place);
+  const tagName = tagId === null ? null : tagsQuery.data?.find((t) => t.id === tagId)?.name;
 
   const [limit, setLimit] = useState(NOTE_LIST_LIMIT_DEFAULT);
   const [filter, setFilter] = useState('');
@@ -70,7 +76,13 @@ export function NoteList() {
   const filterBox = useRef<HTMLInputElement>(null);
 
   const filters: ListNotesInput = {
-    ...(trash ? { trash: true } : nav.place === 'all' ? {} : { folderId: nav.place }),
+    ...(trash
+      ? { trash: true }
+      : tagId !== null
+        ? { tagId }
+        : folderPlace
+          ? { folderId: nav.place }
+          : {}),
     sort,
     limit,
   };
@@ -82,6 +94,7 @@ export function NoteList() {
   const emptyTrash = useEmptyTrash();
   const pin = usePinNote();
   const move = useMoveNote();
+  const daily = useOpenDaily();
 
   const loaded = useMemo(() => notes.data ?? [], [notes.data]);
   const shown = useMemo(() => filterByTitle(pinnedFirst(loaded), filter), [loaded, filter]);
@@ -94,9 +107,11 @@ export function NoteList() {
 
   const placeName = trash
     ? 'Trash'
-    : nav.place === 'all'
-      ? 'All notes'
-      : (folder?.name ?? 'Folder');
+    : tagId !== null
+      ? `#${tagName ?? 'tag'}`
+      : nav.place === 'all'
+        ? 'All notes'
+        : (folder?.name ?? 'Folder');
   const countText = !ready
     ? ' '
     : filtering
@@ -106,9 +121,7 @@ export function NoteList() {
   const createNote = async () => {
     if (create.isPending) return;
     try {
-      const note = await create.mutateAsync(
-        !trash && nav.place !== 'all' ? { folderId: nav.place } : {},
-      );
+      const note = await create.mutateAsync(folderPlace ? { folderId: nav.place } : {});
       nav.show(trash ? 'all' : nav.place, note.id);
     } catch {
       // The hook showed the server's message
@@ -163,6 +176,9 @@ export function NoteList() {
       if (trash) setConfirm({ kind: 'purge', note });
       else trashNote(note);
     },
+    onDaily: () => {
+      if (!daily.isPending) void daily.open();
+    },
     onHelp: () => {
       setHelpOpen(true);
     },
@@ -187,6 +203,13 @@ export function NoteList() {
         <EmptyState
           title="Trash is empty"
           text="Notes you delete wait here until you remove them for good."
+        />
+      );
+    if (tagId !== null)
+      return (
+        <EmptyState
+          title="No notes with this tag"
+          text={`Notes that have #${tagName ?? 'the tag'} in their text show here.`}
         />
       );
     return (

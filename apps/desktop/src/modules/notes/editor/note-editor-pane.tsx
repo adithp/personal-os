@@ -3,6 +3,7 @@ import { Button } from '@personal-os/ui';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ApiError } from '../../../api/api-client';
+import { useTags } from '../../tasks/tags-queries';
 import { useNoteTitles } from '../links-queries';
 import { useCreateNote, useNote, useRenameNote, useUpdateNote } from '../notes-queries';
 import { RightPanelToggle, headingsOf, publishOutline, registerHeadingJump } from '../right-panel';
@@ -12,6 +13,7 @@ import { createNoteExtensions } from './extensions';
 import './note-editor.css';
 import { reloadQuietly } from './quiet-reload';
 import { serializeNote } from './serialize';
+import { refreshNoteTags, type NoteTagInfo } from './tags/note-tags';
 import { readDraft, useAutosave, type SaveFn, type SaveStatus } from './use-autosave';
 import { LINK_UNKNOWN, refreshWikilinks } from './wikilink/wikilink';
 import { onWindowCloseFlush } from './window-close';
@@ -110,6 +112,17 @@ function createLinkBridge() {
   };
 }
 
+/** The tag options for one editor (colors and the `#` menu), plus the setter that keeps them current. */
+function createTagBridge() {
+  let tags: NoteTagInfo[] = [];
+  return {
+    options: { getTags: () => tags },
+    set(next: NoteTagInfo[]) {
+      tags = next;
+    },
+  };
+}
+
 interface NoteEditorProps {
   note: Note;
   refetch: () => Promise<{ data?: Note }>;
@@ -134,7 +147,10 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
   const creating = useRef(false);
   // The wikilink callbacks are created once; they read the latest values through this bridge
   const [bridge] = useState(createLinkBridge);
-  const [extensions] = useState(() => createNoteExtensions(bridge.options));
+  // The tags for the colors and the `#` menu, read through a ref like the titles above
+  const tagsQuery = useTags();
+  const [tagBridge] = useState(createTagBridge);
+  const [extensions] = useState(() => createNoteExtensions(bridge.options, tagBridge.options));
 
   const save: SaveFn = async (markdown, baseRevision, options) => {
     knownContent.current = markdown;
@@ -205,6 +221,11 @@ function NoteEditor({ note, refetch }: NoteEditorProps) {
     bridge.setTitles(titles);
     if (!editor.isDestroyed) refreshWikilinks(editor);
   }, [bridge, editor, titles]);
+  const tagData = tagsQuery.data;
+  useEffect(() => {
+    tagBridge.set((tagData ?? []).map(({ name, color }) => ({ name, color })));
+    if (!editor.isDestroyed) refreshNoteTags(editor);
+  }, [editor, tagBridge, tagData]);
   const { folderId } = note;
   const { openNote } = nav;
   useEffect(() => {

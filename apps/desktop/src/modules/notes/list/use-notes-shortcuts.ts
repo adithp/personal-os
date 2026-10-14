@@ -9,6 +9,8 @@ export interface NotesShortcutHandlers {
   onOpen: (noteId: string) => void;
   /** Delete on a row. */
   onDelete: (noteId: string) => void;
+  /** D: open (or create) today's daily note. */
+  onDaily: () => void;
   onHelp: () => void;
 }
 
@@ -19,7 +21,7 @@ const POPUPS = '[role="menu"], [role="dialog"], [role="alertdialog"], [role="lis
 /**
  * The plain-key shortcuts of the Notes page: N new note, Up and Down between notes, Enter opens
  * the focused note, Delete moves it to Trash (or deletes it for good in Trash), ? shows the help.
- * Never with Ctrl, Meta or Alt; not while typing in a field or the editor, not inside a menu or
+ * D opens today's daily note. Never with Ctrl, Meta or Alt; not while typing in a field or the editor, not inside a menu or
  * dialog, and not while the command palette is open.
  */
 export function useNotesShortcuts(handlers: NotesShortcutHandlers): void {
@@ -36,7 +38,7 @@ export function useNotesShortcuts(handlers: NotesShortcutHandlers): void {
       const target = event.target instanceof Element ? event.target : null;
       if (target?.closest(`${TYPING}, ${POPUPS}`)) return;
 
-      const { rootRef, onNew, onOpen, onDelete, onHelp } = latest.current;
+      const { rootRef, onNew, onOpen, onDelete, onDaily, onHelp } = latest.current;
       const row = target?.closest<HTMLElement>('[data-note-row]') ?? null;
       const noteId = row?.dataset.noteId;
       // Enter and arrows work on the row itself, not on a button inside it (Enter there clicks it)
@@ -47,6 +49,11 @@ export function useNotesShortcuts(handlers: NotesShortcutHandlers): void {
         case 'N':
           event.preventDefault();
           if (!event.repeat) onNew();
+          return;
+        case 'd':
+        case 'D':
+          event.preventDefault();
+          if (!event.repeat) onDaily();
           return;
         case '?':
           event.preventDefault();

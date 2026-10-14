@@ -10,6 +10,7 @@ import { noteKeys } from '../query-keys';
 import { useNotesNav } from '../shell/use-notes-nav';
 import { jumpToHeading, useLiveOutline } from './outline-bus';
 import { parseOutline } from './outline';
+import { TagsSection } from './tags-section';
 import { useRovingList } from './use-roving-list';
 
 // History joins this list in stage N4
@@ -175,6 +176,8 @@ function LinksTab({ noteId, folderId }: LinksTabProps) {
           <OutgoingList outgoing={outgoing} onCreate={createAndOpen} creating={create.isPending} />
         )}
       </section>
+
+      <TagsSection noteId={noteId} />
     </div>
   );
 }
