@@ -1,16 +1,20 @@
 import { entities, entityTags, tasks, type TaskRow } from '@personal-os/db';
 import { parseRecurrence, taskActions, type Recurrence } from '@personal-os/shared';
 import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
-import { createRequire } from 'node:module';
-import type * as RRuleModule from 'rrule';
+import * as rruleModule from 'rrule';
 import type { Options } from 'rrule';
 import type { UserScope } from '../lib/user-scope';
 import { implement } from './registry';
 import { applyChange, nextPosition } from './tasks';
 
-// rrule is a CommonJS package: Node cannot import its named exports from an ES module, so load it
-// with require (the types still come from the package)
-const { RRule } = createRequire(import.meta.url)('rrule') as typeof RRuleModule;
+// rrule is a CommonJS package. Plain Node (pnpm dev:server, tsx) cannot import its named exports
+// from an ES module and gives them on `default`; the production bundle (tsup) turns the import into
+// a namespace with the names. A normal import works in both and the bundler includes the package
+// (a runtime require would not be bundled: lessons 2026-10-13 and 2026-10-14).
+const { RRule } =
+  'RRule' in rruleModule
+    ? rruleModule
+    : (rruleModule as unknown as { default: typeof rruleModule }).default;
 
 /** India is UTC+05:30 all year (no daylight saving), so a fixed offset is exact. */
 const IST_MS = (5 * 60 + 30) * 60 * 1000;
