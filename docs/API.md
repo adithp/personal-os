@@ -47,6 +47,20 @@ Responses:
 - Task create and update accept `title` (1 to 500 characters), `description` (up to 20000), `status`, `priority` (1 to 4), `dueAt`, `dueAllDay`, `reminderAt`, and `tagIds` (up to 20; on update it replaces the task's tags); create also accepts `tagNames` (tag names without # or spaces or invisible characters, each found ignoring capitals or created with the next palette color; together with `tagIds` at most 20, else 400); create and update accept `recurrenceRule` (it must be exactly one of the presets: `FREQ=DAILY`, `FREQ=WEEKLY;BYDAY=` with 1 to 7 two-letter days in Monday-to-Sunday order without repeats, `FREQ=MONTHLY;BYMONTHDAY=1..31`, `FREQ=YEARLY`, or null on update to stop repeating; anything else is 400 `validation_error`; a repeating task needs a due date, also when the due date is cleared later, else 400 `validation_error` "A repeating task needs a due date"; `dueAt` must be between the years 2000 and 2100). Completing a repeating task (complete, update to done, or move into Done) creates the next copy and returns an undo with action `tasks.reopen`; update also accepts `position` (a number from -1e9 to 1e9, smaller is higher in the manual order; POST /tasks/:id/move works it out and the undo of a move uses it); create also accepts `parentTaskId` (the parent must itself be top-level). `dueAllDay: true` needs a `dueAt`; the server stores the start of that day in India time. Clearing `dueAt` on an all-day task clears the flag. Create also accepts `goalId` (the goal must exist, else 404; a goal with 500 tasks gives 409 `goal_full`; linked in the same step). The list filter `goalId` returns the live top-level tasks of that goal of every status, archived too (the `archived` filter is ignored; an unknown or deleted goal gives an empty list).
 - Tag input: `name` (1 to 40 characters, no spaces, no `#`) and an optional `color` (`#RRGGBB`; missing means the next color of the module palette).
 
+## Habits routes
+| Method | Path | Purpose |
+|---|---|---|
+| GET | /habits | Active habits oldest first: `{ items }`; `?archived=true` lists the archived ones (newest archived first). Each habit carries `today` (`{ date, scheduled, count, done }`), `currentStreak`, `bestStreak` and `atRisk` |
+| POST | /habits | Create; 201 `{ item, undo }` (undo = habits.archive). Body: `name` (1 to 80), optional `category` (up to 40, null), `schedule` (default daily; weekly `days` 1 to 7 ISO weekdays, at least one; custom `everyDays` 2 to 365), `target` (1 to 100, default 1), `reminderTime` (`HH:MM` or null), `color` (`#RRGGBB` or null), `notes` (up to 5000), `startDate` (an India day, default today) |
+| GET | /habits/:id | One habit, archived too |
+| PATCH | /habits/:id | Change any create field; needs at least one (400 "Nothing to change"); the undo carries the old values |
+| POST | /habits/:id/archive, /habits/:id/restore | Archive keeps the history; each undoes the other; a repeat is a no-op with undo null |
+| PUT | /habits/:id/log | Body `{ date?, count? }`: sets the count of an India day (default today, default count = the target). 400 for a future day or a day before the start date, 409 `habit_archived` on an archived habit. The undo is habits.unlog, or habits.log with the old count |
+| DELETE | /habits/:id/log?date= | Removes the check-in of a day (default today); the undo puts the old count back |
+| GET | /habits/:id/stats?range=week\|month\|year&anchor= | `{ item }`: `days` of the period around `anchor` (default today; week Monday to Sunday), `scheduledCount`, `doneCount`, `rate`, `currentStreak`, `bestStreak`, `totalDone` |
+
+Streaks are counted in scheduled days (India calendar days): days a habit is not scheduled on are skipped, and today does not break the streak while it is still open.
+
 ## Special routes
 | Method | Path | Purpose |
 |---|---|---|
