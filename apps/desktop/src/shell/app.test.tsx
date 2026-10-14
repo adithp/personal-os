@@ -41,21 +41,22 @@ afterEach(() => {
 });
 
 describe('placeholder pages', () => {
-  // Dashboard, Settings, and Tasks are real screens now (see modules/)
-  it.each(MODULE_IDS.filter((id) => id !== 'settings' && id !== 'dashboard' && id !== 'tasks'))(
-    '%s page shows its name, color and roadmap step',
-    async (id) => {
-      await renderApp(modulePath(id));
-      const { name, roadmapStep } = MODULES[id];
+  // Dashboard, Settings, Tasks, and Notes are real screens now (see modules/)
+  it.each(
+    MODULE_IDS.filter(
+      (id) => id !== 'settings' && id !== 'dashboard' && id !== 'tasks' && id !== 'notes',
+    ),
+  )('%s page shows its name, color and roadmap step', async (id) => {
+    await renderApp(modulePath(id));
+    const { name, roadmapStep } = MODULES[id];
 
-      const main = screen.getByRole('main');
-      expect(within(main).getByRole('heading', { level: 1, name })).toBeInTheDocument();
-      expect(within(main).getByText(`Coming in step ${String(roadmapStep)}`)).toBeInTheDocument();
-      expect(main.querySelector(`[data-module="${id}"]`)).toHaveStyle({
-        backgroundColor: `var(--module-${id})`,
-      });
-    },
-  );
+    const main = screen.getByRole('main');
+    expect(within(main).getByRole('heading', { level: 1, name })).toBeInTheDocument();
+    expect(within(main).getByText(`Coming in step ${String(roadmapStep)}`)).toBeInTheDocument();
+    expect(main.querySelector(`[data-module="${id}"]`)).toHaveStyle({
+      backgroundColor: `var(--module-${id})`,
+    });
+  });
 
   it('matches the ROADMAP.md steps', () => {
     const expected: Record<string, number> = {

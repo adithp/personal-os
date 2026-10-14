@@ -3,6 +3,8 @@ import type {
   Goal,
   GoalStatus,
   FavoriteView,
+  Note,
+  NoteFolder,
   ReportPeriod,
   Tag,
   Task,
@@ -19,6 +21,9 @@ import {
 import { vi } from 'vitest';
 import { ApiError, type ApiClient, type RequestOptions } from '../api/api-client';
 import { positionBetween } from '../modules/tasks/drag/position';
+import { createNotesFake, NOT_NOTES } from './fake-notes';
+
+export { makeFolder, makeNote } from './fake-notes';
 
 let counter = 0;
 const idFor = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -145,7 +150,10 @@ export function createFakeApi(
   initialTags: Tag[] = [],
   initialFavorites: Favorite[] = [],
   initialGoals: Goal[] = [],
+  initialNotes: Note[] = [],
+  initialFolders: NoteFolder[] = [],
 ) {
+  const notesFake = createNotesFake(initialNotes, initialFolders);
   const store = new Map<string, Task>(initial.map((task) => [task.id, task]));
   const tagStore = new Map<string, Tag>(initialTags.map((tag) => [tag.id, tag]));
   const deleted = new Set<string>();
@@ -305,6 +313,9 @@ export function createFakeApi(
 
   const handle = (method: string, path: string, options: RequestOptions): unknown => {
     const body = (options.body ?? {}) as Record<string, unknown>;
+
+    const noteAnswer = notesFake.handle(method, path, options);
+    if (noteAnswer !== NOT_NOTES) return noteAnswer;
 
     if (method === 'GET' && path === '/tasks/report') {
       const period = options.query?.period === 'month' ? 'month' : 'week';
@@ -788,6 +799,10 @@ export function createFakeApi(
         .sort((a, b) => a.position - b.position)
         .map(view),
     tags: () => [...tagStore.values()],
+    /** Live notes (with text and revision), notes in Trash, and live folders. */
+    notes: notesFake.notes,
+    trashedNotes: notesFake.trashed,
+    noteFolders: notesFake.folders,
     /** What GET /tasks/report answers for its period (other periods get an empty report). */
     setReport: (report: TaskReport) => {
       reportOverride = report;

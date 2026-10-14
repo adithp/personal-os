@@ -118,7 +118,14 @@ describe('startRealtimeSync', () => {
     fake.setStatus('SUBSCRIBED');
     expect(useRealtimeStore.getState().status).toBe('live');
     vi.advanceTimersByTime(300);
-    expect(invalidatedKeys().sort()).toEqual([['goals'], ['tags'], ['task-favorites'], ['tasks']]);
+    expect(invalidatedKeys().sort()).toEqual([
+      ['goals'],
+      ['note-folders'],
+      ['notes'],
+      ['tags'],
+      ['task-favorites'],
+      ['tasks'],
+    ]);
   });
 
   it('shows connecting, live, reconnecting for TIMED_OUT and CLOSED, then off after stopping', async () => {
