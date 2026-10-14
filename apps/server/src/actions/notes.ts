@@ -7,6 +7,7 @@ import {
   type NoteRow,
 } from '@personal-os/db';
 import {
+  NOTE_CONTENT_MAX,
   NOTE_TITLE_MAX,
   applyTemplate,
   excerptOf,
@@ -237,6 +238,9 @@ export const noteImplementations = [
               });
               if (!template) throw new HttpError(404, 'not_found', 'Template not found');
               contentMd = applyTemplate(template.contentMd, { title, now: new Date() });
+              if (contentMd.length > NOTE_CONTENT_MAX) {
+                throw new HttpError(400, 'validation_error', 'The template is too long for a note');
+              }
             }
             const [entity] = await tx.insert(entities, { type: 'note', title });
             if (!entity) throw new Error('Could not create the note');
@@ -364,43 +368,59 @@ export const noteImplementations = [
   }),
 
   implement(noteActions.restore, ({ scope }, { id }) =>
-    titleGuard(() =>
-      scope.transaction(async (tx) => {
-        const current = await findNote(tx, id, true);
-        if (!current.deletedAt) return { data: toNote(current), undo: null };
-        // A title taken meanwhile gets " (2)", " (3)", ...
-        let title = current.title;
-        for (let n = 2; await isTitleTaken(tx, title, id); n += 1) {
-          const suffix = ` (${String(n)})`;
-          title = `${current.title.slice(0, NOTE_TITLE_MAX - suffix.length)}${suffix}`;
-        }
-        // The folder may have been deleted while the note was in the trash
-        let folderId = current.folderId;
-        if (folderId) {
-          const [folder] = await tx.select(noteFolders, {
-            where: and(eq(noteFolders.id, folderId), tx.isLive(noteFolders)),
-            limit: 1,
-          });
-          if (!folder) folderId = null;
-        }
-        const [restored] = await tx.update(
-          notes,
-          {
-            deletedAt: null,
-            title,
-            folderId,
-            ...(title === current.title ? {} : { revision: nextRevision() }),
-          },
-          eq(notes.id, id),
-        );
-        if (!restored) throw notFound();
-        await tx.update(entities, { deletedAt: null, title }, eq(entities.id, id));
-        await reresolveLinksTo(tx, title);
-        return {
-          data: toNote(restored),
-          undo: { action: 'notes.delete', input: { id } } satisfies UndoDescriptor,
-        };
-      }),
+    // The notes queue: the tags are rebuilt from the text, like a content save
+    withUserLock('notes', scope.userId, () =>
+      titleGuard(() =>
+        withTagRetry(() =>
+          scope.transaction(async (tx) => {
+            const current = await findNote(tx, id, true);
+            if (!current.deletedAt) return { data: toNote(current), undo: null };
+            // A title taken meanwhile gets " (2)", " (3)", ...
+            let title = current.title;
+            for (let n = 2; await isTitleTaken(tx, title, id); n += 1) {
+              const suffix = ` (${String(n)})`;
+              title = `${current.title.slice(0, NOTE_TITLE_MAX - suffix.length)}${suffix}`;
+            }
+            // The folder may have been deleted while the note was in the trash
+            let folderId = current.folderId;
+            if (folderId) {
+              const [folder] = await tx.select(noteFolders, {
+                where: and(eq(noteFolders.id, folderId), tx.isLive(noteFolders)),
+                limit: 1,
+              });
+              if (!folder) folderId = null;
+            }
+            // Another live daily note may own the day now: this one comes back as a normal note
+            let dailyDate = current.dailyDate;
+            if (dailyDate) {
+              const [owner] = await tx.select(notes, {
+                where: and(eq(notes.dailyDate, dailyDate), tx.isLive(notes), ne(notes.id, id)),
+                limit: 1,
+              });
+              if (owner) dailyDate = null;
+            }
+            const [restored] = await tx.update(
+              notes,
+              {
+                deletedAt: null,
+                title,
+                folderId,
+                dailyDate,
+                ...(title === current.title ? {} : { revision: nextRevision() }),
+              },
+              eq(notes.id, id),
+            );
+            if (!restored) throw notFound();
+            await tx.update(entities, { deletedAt: null, title }, eq(entities.id, id));
+            await rebuildNoteTags(tx, id, restored.contentMd);
+            await reresolveLinksTo(tx, title);
+            return {
+              data: toNote(restored),
+              undo: { action: 'notes.delete', input: { id } } satisfies UndoDescriptor,
+            };
+          }),
+        ),
+      ),
     ),
   ),
 

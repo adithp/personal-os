@@ -231,6 +231,16 @@ export function rewriteWikilinks(markdown: string, oldTitle: string, newTitle: s
 /** `#name` where the name is letters, digits, `_`, `-`, `/` (and `\_` or `\-`, which the editor writes). */
 const TAG = /#((?:\\[_-]|[\p{L}\p{M}\p{N}_\-/])+)/gu;
 
+/** Can the note parser read `#name` as a tag? Letters, digits, `_`, `-`, `/` only, with a letter or `_`. */
+export function isNoteTagName(name: string): boolean {
+  return (
+    name.length > 0 &&
+    name.length <= TAG_NAME_MAX &&
+    /^[\p{L}\p{M}\p{N}_\-/]+$/u.test(name) &&
+    /[\p{L}\p{M}_]/u.test(name)
+  );
+}
+
 /**
  * Visits every tag in a note and rebuilds the text with what `visit` returns for it (undefined keeps
  * the tag). A tag follows a space or a line start (so URL fragments and `a#b` are not tags), is not
@@ -250,7 +260,7 @@ function mapTags(markdown: string, visit: (name: string) => string | undefined):
       const before = offset === 0 ? previous : (part.text[offset - 1] ?? '');
       if (!/\s/.test(before)) return whole;
       const name = raw.replace(/\\([_-])/g, '$1');
-      if (name.length > TAG_NAME_MAX || !/[\p{L}\p{M}_]/u.test(name)) return whole;
+      if (!isNoteTagName(name)) return whole;
       return visit(name) ?? whole;
     });
     previous = part.text.slice(-1) || previous;
@@ -303,9 +313,16 @@ export function indiaDay(now: Date): string {
   return indiaDateTime(now).date;
 }
 
-/** Fills `{{title}}`, `{{date}}` (YYYY-MM-DD) and `{{time}}` (HH:mm), India time, in one pass. */
-export function applyTemplate(markdown: string, context: { title: string; now: Date }): string {
-  const { date, time } = indiaDateTime(context.now);
+/**
+ * Fills `{{title}}`, `{{date}}` (YYYY-MM-DD) and `{{time}}` (HH:mm), India time, in one pass.
+ * `date` (an India day) replaces today's date, for a daily note of another day; the time stays now.
+ */
+export function applyTemplate(
+  markdown: string,
+  context: { title: string; now: Date; date?: string },
+): string {
+  const { date: today, time } = indiaDateTime(context.now);
+  const date = context.date ?? today;
   return markdown.replace(TEMPLATE_VARIABLE, (_whole, variable: string) => {
     const name = variable.toLowerCase();
     return name === 'title' ? context.title : name === 'date' ? date : time;

@@ -4,7 +4,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { HttpError } from '../lib/http-error';
 import type { UserScope } from '../lib/user-scope';
 import { withUserLock } from '../lib/user-lock';
-import { liveNoteCounts, rewriteNotesTag } from './note-tags';
+import { assertNoteSafeTagName, liveNoteCounts, rewriteNotesTag } from './note-tags';
 import { implement } from './registry';
 
 /**
@@ -140,6 +140,7 @@ export const tagImplementations = [
         if (name !== undefined && name !== current.name) values.name = name;
         if (color !== undefined && color !== current.color) values.color = color;
         if (Object.keys(values).length === 0) return { data: toTag(current), undo: null };
+        if (values.name !== undefined) await assertNoteSafeTagName(tx, id, values.name);
         const [updated] = await tx.update(
           tags,
           { ...values, updatedAt: new Date() },

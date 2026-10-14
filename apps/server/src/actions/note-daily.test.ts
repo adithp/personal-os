@@ -151,3 +151,36 @@ describe('notes.openDaily', () => {
     await expect(open(alice(), '2026-02-30')).rejects.toBeInstanceOf(ZodError);
   });
 });
+
+describe('notes.openDaily dates and restore', () => {
+  it('fills {{date}} with the day of the note and {{time}} with the current time', async () => {
+    await run(alice(), 'noteTemplates.create', {
+      name: 'Daily',
+      contentMd: '{{date}} {{time}}',
+      isDailyDefault: true,
+    });
+    at('2026-10-14T06:30:00.000Z');
+    const result = await open(alice(), '2026-12-25');
+    expect(result.data.contentMd).toBe('2026-12-25 12:00');
+  });
+
+  it('restoring a daily note whose day is used by another live daily note keeps it as a normal note', async () => {
+    const first = await open(alice(), '2026-10-14');
+    await run(alice(), 'notes.delete', { id: first.data.id });
+    const second = await open(alice(), '2026-10-14');
+    expect(second.data.id).not.toBe(first.data.id);
+    const restored = await run(alice(), 'notes.restore', { id: first.data.id });
+    expect(restored.data.dailyDate).toBeNull();
+    expect(restored.data.deletedAt).toBeNull();
+    expect(restored.data.title).toBe('2026-10-14 (2)');
+    expect((await open(alice(), '2026-10-14')).data.id).toBe(second.data.id);
+  });
+
+  it('restoring a daily note whose day is free keeps its day', async () => {
+    const first = await open(alice(), '2026-10-14');
+    await run(alice(), 'notes.delete', { id: first.data.id });
+    expect((await run(alice(), 'notes.restore', { id: first.data.id })).data.dailyDate).toBe(
+      '2026-10-14',
+    );
+  });
+});
