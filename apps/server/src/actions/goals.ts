@@ -7,7 +7,7 @@ import {
   type TaskGoal,
   type UndoDescriptor,
 } from '@personal-os/shared';
-import { and, eq, inArray, isNull, or } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne, or } from 'drizzle-orm';
 import { HttpError } from '../lib/http-error';
 import { withUserLock } from '../lib/user-lock';
 import type { UserScope } from '../lib/user-scope';
@@ -379,6 +379,33 @@ export const goalImplementations = [
       const [restored] = await tx.update(goals, { deletedAt: null }, eq(goals.id, id));
       await tx.update(entities, { deletedAt: null }, eq(entities.id, id));
       if (!restored) throw goalNotFound();
+      // A task that moved to another live goal while this goal was deleted stays there: its old link
+      // to this goal is dropped, so a task is never in two goals
+      const own = await tx.select(links, {
+        where: and(scope.isLive(links), eq(links.relation, 'belongs_to'), eq(links.targetId, id)),
+      });
+      if (own.length > 0) {
+        const others = await tx.select(links, {
+          where: and(
+            scope.isLive(links),
+            eq(links.relation, 'belongs_to'),
+            ne(links.targetId, id),
+            inArray(links.sourceId, [...new Set(own.map((link) => link.sourceId))]),
+          ),
+        });
+        const otherGoals = await tx.select(goals, {
+          where: and(
+            scope.isLive(goals),
+            inArray(goals.id, [...new Set(others.map((link) => link.targetId))]),
+          ),
+        });
+        const liveGoalIds = new Set(otherGoals.map((goal) => goal.id));
+        const moved = new Set(
+          others.filter((link) => liveGoalIds.has(link.targetId)).map((link) => link.sourceId),
+        );
+        const stale = own.filter((link) => moved.has(link.sourceId)).map((link) => link.id);
+        if (stale.length > 0) await tx.softDelete(links, inArray(links.id, stale));
+      }
       return { row: restored, changed: true };
     });
     return {
