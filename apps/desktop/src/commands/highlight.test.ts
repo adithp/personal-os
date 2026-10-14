@@ -35,6 +35,14 @@ describe('highlight', () => {
     expect(marked('വാടക കൊടുക്കണം', 'കൊടു')).toEqual(['കൊടു']);
   });
 
+  it('measures lengths on the original text when lower-casing changes the length', () => {
+    // "İ".toLowerCase() is two characters long; the mark must still end at a real boundary
+    const parts = highlight('İstanbul trip', 'i̇st trip');
+    expect(parts.map((p) => p.text).join('')).toBe('İstanbul trip');
+    expect(parts.filter((p) => p.match).map((p) => p.text)).toEqual(['İst', 'trip']);
+    expect(marked('İİ x', 'i̇')).toEqual(['İ']);
+  });
+
   it('marks nothing for a query with no words', () => {
     expect(highlight('Pay rent', ' ?! ')).toEqual([{ text: 'Pay rent', match: false }]);
   });

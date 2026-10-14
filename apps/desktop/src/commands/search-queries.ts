@@ -37,6 +37,8 @@ export function useSearch(text: string) {
     queryKey: [...SEARCH_KEY, debounced],
     enabled,
     staleTime: 30_000,
+    // A failure shows at once; typing again searches again
+    retry: false,
     placeholderData: keepPreviousData,
     queryFn: async ({ signal }) =>
       (

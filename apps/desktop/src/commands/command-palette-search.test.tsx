@@ -21,7 +21,12 @@ beforeEach(() => {
   usePalette.setState({ open: false, query: '' });
   vi.stubGlobal(
     'matchMedia',
-    vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })),
+    // Only the dark-mode query is answered (the theme code asks for it); everything else is off
+    vi.fn((query: string) => ({
+      matches: query === '(prefers-color-scheme: dark)',
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
   );
 });
 
@@ -150,6 +155,28 @@ describe('searching data from the palette', () => {
     });
   });
 
+  it('does not open older results while newer ones load, and marks them with their own query', async () => {
+    const fake = createFakeApi([makeTask({ title: 'Pay rent' })]);
+    const { user, router } = await openPalette(fake);
+    await user.type(input(), 'pay');
+    await findRow('Pay rent');
+    expect(within(palette()).getByRole('listbox')).toHaveAttribute('aria-busy', 'false');
+
+    fake.slow(400);
+    await user.type(input(), 'x');
+    const list = within(palette()).getByRole('listbox');
+    expect(list).toHaveAttribute('aria-busy', 'true');
+    // The old row is still shown, marked for "pay", not for "payx", and cannot be chosen
+    const row = getRow('Pay rent');
+    expect(row).toHaveAttribute('aria-disabled', 'true');
+    expect([...row.querySelectorAll('mark')].map((m) => m.textContent)).toEqual(['Pay']);
+
+    await user.keyboard('{Enter}');
+    expect(router.state.location.pathname).toBe('/');
+    expect(screen.getByRole('dialog', { name: 'Command palette' })).toBeInTheDocument();
+    expect(useRecentItems.getState().items).toEqual([]);
+  });
+
   it('does not ask the server for one character, but still filters commands', async () => {
     const fake = createFakeApi([makeTask({ title: 'Pay rent' })]);
     const { user } = await openPalette(fake);
@@ -204,6 +231,23 @@ describe('searching data from the palette', () => {
       );
     });
     expect(within(palette()).getByRole('option', { name: /Open Tasks/ })).toBeInTheDocument();
+  });
+
+  it('opens a task that has been deleted since without breaking the page', async () => {
+    const id = '00000000-0000-4000-8000-000000000001';
+    useRecentItems.setState({ items: [{ type: 'task', id, title: 'Gone task' }] });
+    const { user, router } = await openPalette();
+    await user.keyboard('{Enter}'); // the recent item is the first row
+    await waitFor(() => {
+      expect(router.state.location.search).toMatchObject({ task: id });
+    });
+    expect(await screen.findByRole('heading', { name: 'My tasks' })).toBeInTheDocument();
+    // The panel asks for the task, gets 404 and closes itself; the list stays usable
+    await waitFor(() => {
+      expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('heading', { name: 'My tasks' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('shows the migration message when the database is behind', async () => {
