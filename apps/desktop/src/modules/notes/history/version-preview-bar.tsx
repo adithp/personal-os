@@ -4,7 +4,7 @@ import { ApiError } from '../../../api/api-client';
 import { useNote } from '../notes-queries';
 import { useNoteVersion, useRestoreVersion } from '../versions-queries';
 import { versionTitle } from './format';
-import { useVersionPreview, useVersionPreviewStore } from './preview-store';
+import { closePreview, useVersionPreview, useVersionPreviewStore } from './preview-store';
 
 /**
  * The bar above the editor while a version is previewed: "Version from 13 Oct, 14:32", the
@@ -18,7 +18,7 @@ export function VersionPreviewBar({ noteId }: { noteId: string }) {
 
 function Bar({ noteId, versionId }: { noteId: string; versionId: string }) {
   const { showChanges } = useVersionPreview(noteId);
-  const { close, setShowChanges, setVersion } = useVersionPreviewStore.getState();
+  const { setShowChanges, setVersion } = useVersionPreviewStore.getState();
   const query = useNoteVersion(noteId, versionId);
   const note = useNote(noteId);
   const restore = useRestoreVersion();
@@ -32,7 +32,7 @@ function Bar({ noteId, versionId }: { noteId: string; versionId: string }) {
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key !== 'Escape' || event.defaultPrevented) return;
     event.preventDefault();
-    close(noteId);
+    closePreview(noteId);
   };
 
   const [now] = useState(() => Date.now());
@@ -44,7 +44,7 @@ function Bar({ noteId, versionId }: { noteId: string; versionId: string }) {
       role="region"
       aria-label="Version preview"
       onKeyDown={onKeyDown}
-      className="mx-6 mb-2 flex shrink-0 items-center gap-3 rounded-control bg-input px-3 py-2"
+      className="mx-6 mb-2 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-control bg-input px-3 py-2"
     >
       {query.isPending ? (
         <p className="flex-1 text-body text-fg-muted" role="status">
@@ -56,8 +56,17 @@ function Bar({ noteId, versionId }: { noteId: string; versionId: string }) {
         </p>
       ) : (
         <>
-          <p className="min-w-0 flex-1 truncate text-body font-medium text-fg">{title}</p>
-          <span id="show-changes-label" className="text-body text-fg-secondary">
+          <p
+            role="status"
+            title={title}
+            className="min-w-0 flex-1 truncate text-body font-medium text-fg"
+          >
+            {title}
+          </p>
+          <span
+            id="show-changes-label"
+            className="shrink-0 text-body whitespace-nowrap text-fg-secondary"
+          >
             Show changes
           </span>
           <Switch
@@ -72,7 +81,7 @@ function Bar({ noteId, versionId }: { noteId: string; versionId: string }) {
       {query.isError ? (
         <Button
           variant="secondary"
-          className="h-7 px-3"
+          className="h-7 shrink-0 px-3 whitespace-nowrap"
           onClick={() => {
             void query.refetch();
           }}
@@ -81,18 +90,12 @@ function Bar({ noteId, versionId }: { noteId: string; versionId: string }) {
         </Button>
       ) : (
         <Button
-          className="h-7 px-3"
+          className="h-7 shrink-0 px-3 whitespace-nowrap"
           disabled={!version || restore.isPending || trashed}
-          title={trashed ? 'Restore the note from the trash first' : undefined}
+          aria-describedby={trashed ? 'restore-hint' : undefined}
           onClick={() => {
-            restore.mutate(
-              { id: noteId, versionId },
-              {
-                onSuccess: () => {
-                  close(noteId);
-                },
-              },
-            );
+            // The hook closes the preview as soon as the restore is answered
+            restore.mutate({ id: noteId, versionId });
           }}
         >
           Restore
@@ -100,13 +103,18 @@ function Bar({ noteId, versionId }: { noteId: string; versionId: string }) {
       )}
       <Button
         variant="secondary"
-        className="h-7 px-3"
+        className="h-7 shrink-0 px-3 whitespace-nowrap"
         onClick={() => {
-          close(noteId);
+          closePreview(noteId);
         }}
       >
         Close
       </Button>
+      {trashed ? (
+        <p id="restore-hint" className="basis-full text-small text-fg-muted">
+          Restore the note from the trash first.
+        </p>
+      ) : null}
     </div>
   );
 }

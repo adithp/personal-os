@@ -69,6 +69,21 @@ export function useVersionPreview(noteId: string) {
   };
 }
 
+/**
+ * Closes the preview and hands the focus back to the History row that opened it (the editor when
+ * that row is not on screen). Waits one tick, so the editor is editable again before it is focused.
+ */
+export function closePreview(noteId: string): void {
+  const versionId = useVersionPreviewStore.getState().byNote[noteId]?.versionId;
+  useVersionPreviewStore.getState().close(noteId);
+  setTimeout(() => {
+    const row = versionId
+      ? document.querySelector<HTMLElement>(`[data-version-id="${versionId}"]`)
+      : null;
+    (row ?? document.querySelector<HTMLElement>('[data-notes-editor] .ProseMirror'))?.focus();
+  }, 0);
+}
+
 export function resetVersionPreview(): void {
   useVersionPreviewStore.setState({ byNote: {} });
 }
