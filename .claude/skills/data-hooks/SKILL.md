@@ -1,6 +1,6 @@
 ---
 name: data-hooks
-description: How the desktop app gets and changes server data: the API client, TanStack Query hooks, cache keys, optimistic updates with rollback and the Undo toast, and later Realtime invalidation. Use when writing or changing hooks that call the backend. Loads automatically for query hook files.
+description: How the desktop app gets and changes server data: the API client, TanStack Query hooks, cache keys, optimistic updates with rollback and the Undo toast, and Realtime invalidation (live updates). Use when writing or changing hooks that call the backend. Loads automatically for query hook files.
 paths:
   - apps/desktop/src/api/**
   - apps/desktop/src/modules/**/*queries*

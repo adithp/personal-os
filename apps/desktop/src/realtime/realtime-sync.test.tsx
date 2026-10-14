@@ -99,6 +99,14 @@ describe('startRealtimeSync', () => {
     expect(invalidatedKeys()).toEqual([['tasks']]);
   });
 
+  it('stops waiting for a change that never finishes saving', async () => {
+    const { fake } = await start();
+    vi.spyOn(queryClient, 'isMutating').mockReturnValue(1);
+    fake.emit('tasks');
+    vi.advanceTimersByTime(10_000);
+    expect(invalidatedKeys()).toEqual([['tasks']]);
+  });
+
   it('does nothing on the first SUBSCRIBED, and refreshes every registry key on the next one', async () => {
     const { fake } = await start();
     fake.setStatus('SUBSCRIBED');

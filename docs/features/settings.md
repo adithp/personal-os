@@ -21,7 +21,7 @@ A centered column (max 672 px) with the Settings icon square (gray) and the titl
 
 ## Account
 - Shows the signed-in email and a "Log out" button. It signs out on this device only and returns to the login screen.
-- A read-only "Live updates" row shows whether changes made elsewhere reach this app: On, Connecting…, Reconnecting…, or Off (signed out). It has no switch.
+- A read-only "Live updates" row shows whether changes made elsewhere reach this app: On, Connecting…, Reconnecting…, or Off (signed out or not configured). After reconnecting the app refreshes everything it shows. It has no switch.
 
 ## Storage
 - Saved on this device only (localStorage key personal-os.settings, version 2): theme, backgroundMode, glassEffect, liquidStrength, blurPx, wallpaperSource, wallpaperFile, dockAutoHide, dockMagnification, dockIconSize. Invalid saved values fall back to the defaults field by field; an old wallpaper On/Off setting migrates (Off becomes Solid).

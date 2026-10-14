@@ -28,6 +28,9 @@ let topicCounter = 0;
  * matching cached queries stale. The event payload is never read or logged; only the table name
  * is used. Returns a function that stops everything.
  */
+/** About 3 seconds at the default window. */
+const MAX_DEFERRALS = 10;
+
 export function startRealtimeSync({
   source,
   auth,
@@ -40,13 +43,17 @@ export function startRealtimeSync({
   const pending = new Map<string, QueryKey>();
   let timer: ReturnType<typeof setTimeout> | undefined;
 
+  let deferrals = 0;
   const flush = () => {
     timer = undefined;
-    // An event must not overwrite an optimistic update that is still pending
-    if (queryClient.isMutating() > 0) {
+    // An event must not overwrite an optimistic update that is still pending, but a mutation that
+    // never settles (a paused or stalled request) must not hold updates back for ever
+    if (queryClient.isMutating() > 0 && deferrals < MAX_DEFERRALS) {
+      deferrals += 1;
       timer = setTimeout(flush, windowMs);
       return;
     }
+    deferrals = 0;
     const keys = [...pending.values()];
     pending.clear();
     for (const queryKey of keys) void queryClient.invalidateQueries({ queryKey });

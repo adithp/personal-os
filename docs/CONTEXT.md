@@ -85,7 +85,7 @@ Full product details: `docs/PRD.md`. Build order: `docs/ROADMAP.md`. Decisions w
 - **Step 1:** done (shell, dock, login, settings, dashboard, palette, server, database, infra).
 - **Skills, agents, lessons and docs-sync job:** done (commit f7a746d).
 - **Step 2, Tasks feature 1:** built, tested and approved by me. ROADMAP.md is ticked.
-- **Decisions 52 to 64:** up to 5 agents at once; Recharts instead of ECharts; keep dnd-kit, rrule and chrono-node; the drag and drop rules; the dependency and recurring rules; the quick add rules; the autonomous build loop; favorites and tag management; the Inbox rules; the Reporting rules; the Goals rules.
+- **Decisions 52 to 65:** up to 5 agents at once; Recharts instead of ECharts; keep dnd-kit, rrule and chrono-node; the drag and drop rules; the dependency and recurring rules; the quick add rules; the autonomous build loop; favorites and tag management; the Inbox rules; the Reporting rules; the Goals rules.
 - **Design-consistency job** (design audit, design:check, shared-components rule, design-reviewer checklist): still unsent: I send it when I want it.
 - **Tasks feature 2 (Board and drag and drop):** built, tested and approved by me (ROADMAP ticked). The dashboard Today's tasks tile is real. Next in order: feature 3 (dependencies and recurring), then 4 to 8, one prompt each; the design-consistency job comes before feature 3.
 - **Tasks feature 3 (dependencies and recurring):** built, tested and approved by me (ROADMAP ticked). Then feature 4 (quick add).
@@ -93,9 +93,9 @@ Full product details: `docs/PRD.md`. Build order: `docs/ROADMAP.md`. Decisions w
 - **Autonomous loop (decision 58):** I am away; features 5 (favorites and manage tags), 6 (inbox) and 7 (reporting) are built one after the other without waiting for "next", each after a research memo (docs/design/research/). Features 4 to 7 wait for my check; nothing is ticked in ROADMAP.md until I say "next". Reports are in docs/reports/.
 - **Tasks feature 5 (favorites and manage tags):** built and merged on step-2-tasks-notes; needs migrations 0006 and 0007 applied (`pnpm db:migrate`, I run it); reviews and the report in progress. Memos for features 6 (inbox) and 7 (reporting) are written in docs/design/research/.
 - **Tasks features 4, 5, 6 and 7:** approved by me ("approve all", 2026-10-13) and ticked in ROADMAP.md. Feature 5 needs `pnpm db:migrate` (0006 and 0007), which I run. Reports: docs/reports/.
-- **Next autonomous batch (decision 62):** Goals (Tasks feature 8) and full-text search are built and merged (migrations 0008, 0009, 0010 to apply); realtime updates and Notes (stages N1 to N4) follow; research memos for all are in docs/design/research/. The server redeploy needs DATABASE_URL in apps/server/.env on the server, which I do myself.
+- **Next autonomous batch (decision 62):** Goals (Tasks feature 8), full-text search and realtime updates are built and merged (migrations 0008 to 0011 to apply; Realtime needs 0011: publication, SELECT for authenticated, REVOKE from anon; code in apps/desktop/src/realtime/); Notes (stages N1 to N4) follow; research memos for all are in docs/design/research/. The server redeploy needs DATABASE_URL in apps/server/.env on the server, which I do myself.
 - **Discuss skill and this CONTEXT.md:** done.
-- **Pending later:** Notes features, realtime, redeploying AWS, Step 3 (AI + OmniRoute + Tailscale), Step 4 (Google), and the rest of the roadmap.
+- **Pending later:** Notes features, redeploying AWS, Step 3 (AI + OmniRoute + Tailscale), Step 4 (Google), and the rest of the roadmap.
 
 ---
 

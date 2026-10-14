@@ -40,5 +40,5 @@ export const things = pgTable('things', {
 ## The message to the owner (always send it)
 List the **new migration files** by name, and say what to check in Supabase afterwards: the new tables with RLS on and their policy names (`<table>_own_rows`), new columns with type and default, new triggers, and the row count of `drizzle.__drizzle_migrations`. Say plainly that the app shows "Database update needed: run pnpm db:migrate" until it is applied (the server checks at startup).
 
-## Later (not built yet)
-Realtime: a migration adds the table to the `supabase_realtime` publication (Step 2 feature "Realtime updates").
+## Realtime
+Realtime is built (step 3b). A table that screens show live also needs its query keys in `apps/desktop/src/modules/<module>/realtime-keys.ts` (data-hooks skill).
