@@ -69,7 +69,7 @@ Undo: a write returns an undo (an action plus its input). tasks.create undoes wi
 - subscriptions: list, upcoming, add, update
 - wallet: balances, transfer
 - reminders: create
-- search: global
+- search: global (read; POST /search; tasks and tags, word-start matching)
 - links: create
 
 ## 6. Skills

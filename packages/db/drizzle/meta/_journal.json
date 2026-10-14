@@ -71,6 +71,13 @@
       "when": 1791896296988,
       "tag": "0009_goals_updated_at_trigger",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791955113893,
+      "tag": "0010_tasks_search_vector",
+      "breakpoints": true
     }
   ]
 }

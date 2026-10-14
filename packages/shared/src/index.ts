@@ -11,6 +11,7 @@ export * from './favorites';
 export * from './goals';
 export * from './modules';
 export * from './recurrence';
+export * from './search';
 export * from './money';
 export * from './settings';
 export * from './tag-management';

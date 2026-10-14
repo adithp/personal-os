@@ -1,7 +1,7 @@
 import { ENTITY_TYPES, LINK_RELATIONS } from '@personal-os/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { entities, goals, links, taskFavorites } from './schema';
+import { entities, goals, links, taskFavorites, tasks } from './schema';
 import {
   asRole,
   createTestDb,
@@ -73,6 +73,7 @@ describe('the generated migrations', () => {
       '0007_task_favorites_updated_at_trigger.sql',
       '0008_goals.sql',
       '0009_goals_updated_at_trigger.sql',
+      '0010_tasks_search_vector.sql',
     ]);
     const all = migrationFiles().flatMap(migrationStatements).join('\n').toUpperCase();
     for (const dangerous of [
@@ -572,5 +573,52 @@ describe('goals', () => {
     await goal(BOB, 'Theirs');
     const seen = await asRole(t.db, ALICE, (tx) => tx.select().from(goals));
     expect(seen.map((row) => row.title)).toEqual(['Mine']);
+  });
+});
+
+describe('task search vector', () => {
+  const vectorOf = async (id: string) =>
+    String((await rows(`select search_vector::text as v from entities where id = '${id}'`))[0]?.v);
+
+  async function task(title: string, description: string | null = null) {
+    const e = await entity(ALICE, title);
+    await t.db.insert(tasks).values({ id: e.id, userId: ALICE, title, description });
+    return e.id;
+  }
+
+  it('fills the vector on insert: title weight A, description weight B', async () => {
+    const id = await task('Pay rent', 'to Mr Nair');
+    const vector = await vectorOf(id);
+    expect(vector).toContain("'pay':1A");
+    expect(vector).toContain("'rent':2A");
+    expect(vector).toContain("'nair':");
+    expect(vector).toMatch(/'nair':\d+B/);
+  });
+
+  it('updates on a title or description change, and the entity title stays as it is', async () => {
+    const id = await task('Old title');
+    await t.db.update(tasks).set({ title: 'Brand new' }).where(eq(tasks.id, id));
+    expect(await vectorOf(id)).toContain("'brand'");
+    await t.db.update(tasks).set({ description: 'extra words' }).where(eq(tasks.id, id));
+    expect(await vectorOf(id)).toContain("'extra'");
+  });
+
+  it('matches word starts with a prefix query', async () => {
+    const id = await task('Pay rent');
+    const hit = await rows(
+      `select 1 from entities where id = '${id}' and search_vector @@ to_tsquery('simple', 'pay:* & re:*')`,
+    );
+    expect(hit).toHaveLength(1);
+  });
+
+  it('uses the GIN index', async () => {
+    for (let i = 0; i < 300; i++) await task(`Task number ${i}`);
+    await t.pg.query('analyze entities');
+    await t.pg.query('set enable_seqscan = off');
+    const plan = await rows(
+      `explain select id from entities where search_vector @@ to_tsquery('simple', 'number:*')`,
+    );
+    await t.pg.query('reset enable_seqscan');
+    expect(JSON.stringify(plan)).toContain('entities_search_vector_idx');
   });
 });
